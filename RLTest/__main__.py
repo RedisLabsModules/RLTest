@@ -216,6 +216,7 @@ class RLTest:
             for testFaild in testsFailed:
                 print '\t' + Colors.Bold(testFaild.testNamePrintable)
                 testFaild.PrintFailuresSummery('\t\t')
+            sys.exit(1)
 
 
 def main():
