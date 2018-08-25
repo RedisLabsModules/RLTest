@@ -42,12 +42,12 @@ class RLTest:
             help='path to the oss redis binary')
 
         parser.add_argument(
-            '--enterprise-redis-path', default='~/.RLTest/opt/redislabs/bin/redis-server',
+            '--enterprise-redis-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/redis-server'),
             help='path to the entrprise redis binary')
 
         parser.add_argument(
-            '--wait', action='store_const', const=True, default=False,
-            help='wait after running the tests')
+            '--stop-on-failure', action='store_const', const=True, default=False,
+            help='stop running on failure')
 
         parser.add_argument(
             '--verbose', '-v', action='count', default=0,
@@ -90,11 +90,11 @@ class RLTest:
             help='run env with slaves enabled')
 
         parser.add_argument(
-            '--proxy-binary-path', default='~/.RLTest/opt/redislabs/bin/dmcproxy',
+            '--proxy-binary-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/dmcproxy'),
             help='dmc proxy binary path')
 
         parser.add_argument(
-            '--enterprise-lib-path', default='~/.RLTest/opt/redislabs/lib/',
+            '--enterprise-lib-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/lib/'),
             help='path of needed libraries to run enterprise binaries')
 
         self.args = parser.parse_args()
@@ -105,7 +105,6 @@ class RLTest:
         Env.defaultModule = self.args.module
         Env.defaultModuleArgs = self.args.module_args
         Env.defaultEnv = self.args.env
-        Env.defaultWait = self.args.wait
         Env.defaultOssRedisBinary = self.args.oss_redis_path
         Env.defaultVerbose = self.args.verbose
         Env.defaultLogDir = self.args.log_dir
@@ -199,13 +198,15 @@ class RLTest:
                 traceback.print_exc(file=sys.stdout)
                 exceptionRaised = True
 
-            if self.currEnv.GetNumberOfFailedAssertion() or exceptionRaised:
+            isTestFaild = self.currEnv.GetNumberOfFailedAssertion() or exceptionRaised
+
+            if isTestFaild:
                 print '\t' + Colors.Bred('Test Failed')
                 testsFailed.append(self.currEnv)
             else:
                 print '\t' + Colors.Green('Test Passed')
 
-            if self.args.wait and (self.currEnv.assertionFailed or exceptionRaised):
+            if self.args.stop_on_failure and isTestFaild:
                 raw_input('press any button to move to the next test')
 
             self.currEnv.Stop()

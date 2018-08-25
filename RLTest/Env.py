@@ -9,7 +9,6 @@ class Env:
 
     defaultModule = None
     defaultEnv = 'oss'
-    defaultWait = False
     defaultOssRedisBinary = None
     defaultVerbose = False
     defaultLogDir = None
@@ -36,7 +35,6 @@ class Env:
         self.env = env if env else Env.defaultEnv
         self.useSlaves = useSlaves if useSlaves else Env.defaultUseSlaves
         self.shardsCount = shardsCount if shardsCount else Env.defaultShardsCount
-        self.wait = Env.defaultWait
         self.verbose = Env.defaultVerbose
         self.logDir = Env.defaultLogDir
         self.debug = Env.defaultDebug
@@ -65,6 +63,11 @@ class Env:
                           logFileFormat='%s-' + '%s-oss-redis.log' % self.testName,
                           dbFileNameFormat='%s-' + '%s-oss-redis.rdb' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves)
+        if self.env == 'enterprise':
+            return OssEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
+                          logFileFormat='%s-' + '%s-oss-redis.log' % self.testName,
+                          dbFileNameFormat='%s-' + '%s-oss-redis.rdb' % self.testName,
+                          dbDirPath=self.logDir, useSlaves=self.useSlaves, libPath=Env.defaultEnterpriseLibsPath)
         if self.env == 'enterprise-cluster':
             return EnterpriseClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                         modulePath=self.module, moduleArgs=self.moduleArgs,
