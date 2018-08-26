@@ -97,6 +97,10 @@ class RLTest:
             '--enterprise-lib-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/lib/'),
             help='path of needed libraries to run enterprise binaries')
 
+        parser.add_argument(
+            '--env-reuse', action='store_const', const=True, default=False,
+            help='reuse exists env, this feature is based on best efforts, if the env can not be reused then it will be taken down.')
+
         self.args = parser.parse_args()
 
         if self.args.download_enterprise_binaries:
@@ -209,6 +213,13 @@ class RLTest:
             if self.args.stop_on_failure and isTestFaild:
                 raw_input('press any button to move to the next test')
 
+            if self.args.env_reuse:
+                self.currEnv.Flush()
+            else:
+                self.currEnv.Stop()
+                self.currEnv = None
+
+        if self.currEnv:
             self.currEnv.Stop()
             self.currEnv = None
 

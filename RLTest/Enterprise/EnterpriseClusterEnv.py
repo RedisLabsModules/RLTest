@@ -15,8 +15,8 @@ class EnterpriseClusterEnv():
     DMC_PORT = 10000
     MODULE_WORKING_DIR = '/tmp/'
 
-    def __init__(self, redisBinaryPath, dmcBinaryPath, libPath, shardsCount=1, modulePath=None, moduleArgs=None, logFileFormat=None,
-                 dbFileNameFormat=None, dbDirPath=None, useSlaves=False):
+    def __init__(self, redisBinaryPath, dmcBinaryPath, libPath, shardsCount=1, modulePath=None, moduleArgs=None, outputFilesFormat=None,
+                 dbDirPath=None, useSlaves=False):
         self.shardsCount = shardsCount
         self.shards = []
         self.modulePath = modulePath
@@ -26,7 +26,7 @@ class EnterpriseClusterEnv():
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
             shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.moduleSoFilePath, moduleArgs=self.moduleArgs,
-                           logFileFormat=logFileFormat, dbFileNameFormat=dbFileNameFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
+                           outputFilesFormat=outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
                            serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath)
             self.shards.append(shard)
             startPort += 2
@@ -34,6 +34,7 @@ class EnterpriseClusterEnv():
         self.ccs = CcsMock(redisBinaryPath=redisBinaryPath, directory=dbDirPath, useSlaves=useSlaves,
                            password=SHARD_PASSWORD, proxyPort=self.DMC_PORT, libPath=libPath)
         self.dmc = Dmc(directory=dbDirPath, dmcBinaryPath=dmcBinaryPath, libPath=libPath)
+        self.envIsUp = False
 
     def preperModule(self):
         if self.modulePath is None:
@@ -75,6 +76,8 @@ class EnterpriseClusterEnv():
         self.dmc.PrintEnvData(prefix + '\t')
 
     def StartEnv(self):
+        if self.envIsUp:
+            return  # env is already up
         for shard in self.shards:
             shard.StartEnv()
 
@@ -96,6 +99,7 @@ class EnterpriseClusterEnv():
         self.dmc.Start()
         con = self.GetConnection()
         wait_for_conn(con)
+        self.envIsUp = True
 
     def StopEnv(self):
         for shard in self.shards:
@@ -108,3 +112,6 @@ class EnterpriseClusterEnv():
 
     def GetSlaveConnection(self):
         raise Exception('unsupported')
+
+    def Flush(self):
+        self.GetConnection().flushall()

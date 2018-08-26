@@ -6,7 +6,8 @@ setup(
     install_requires=[
         'networkx',
         'matplotlib',
-        'redis>=2.10.5'
+        'redis>=2.10.5',
+        'rediscluster'
     ],
     entry_points='''
         [console_scripts]

@@ -10,18 +10,19 @@ SLAVE = 2
 
 
 class OssEnv:
-    def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, logFileFormat=None, dbFileNameFormat=None, dbDirPath=None,
-                 useSlaves=False, serverId=1, password=None, libPath=None):
+    def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
+                 dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False):
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
         self.port = port
         self.modulePath = modulePath
         self.moduleArgs = moduleArgs
-        self.logFileFormat = logFileFormat
-        self.dbFileNameFormat = dbFileNameFormat
+        self.outputFilesFormat = outputFilesFormat
         self.dbDirPath = dbDirPath
         self.useSlaves = useSlaves
         self.masterServerId = serverId
         self.password = password
+        self.clusterEnabled = clusterEnabled
+        self.envIsUp = False
         if libPath:
             self.libPath = os.path.expanduser(libPath) if libPath.startswith('~/') else libPath
         else:
@@ -36,11 +37,14 @@ class OssEnv:
             self.slaveServerId = serverId + 1
             self.slaveCmdArgs = self.createCmdArgs(SLAVE)
 
-    def getFileWithPrefix(self, role, strName):
-        return strName % ('master-%d' % self.masterServerId if role == MASTER else 'slave-%d' % self.slaveServerId)
+    def getFileName(self, role, strName, suffix):
+        return (strName + suffix) % ('master-%d' % self.masterServerId if role == MASTER else 'slave-%d' % self.slaveServerId)
 
     def GetSlavePort(self):
         return self.port + 1
+
+    def GetMasterPort(self):
+        return self.port
 
     def createCmdArgs(self, role):
         cmdArgs = self.redisBinaryPath.split()
@@ -54,16 +58,19 @@ class OssEnv:
                 cmdArgs += self.moduleArgs.split(' ')
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
-        if self.logFileFormat is not None:
-            cmdArgs += ['--logfile', self.getFileWithPrefix(role, self.logFileFormat)]
-        if self.dbFileNameFormat is not None:
-            cmdArgs += ['--dbfilename', self.getFileWithPrefix(role, self.dbFileNameFormat)]
+        if self.outputFilesFormat is not None:
+            cmdArgs += ['--logfile', self.getFileName(role, self.outputFilesFormat, '.log')]
+        if self.outputFilesFormat is not None:
+            cmdArgs += ['--dbfilename', self.getFileName(role, self.outputFilesFormat, '.rdb')]
         if role == SLAVE:
             cmdArgs += ['--slaveof', 'localhost', str(self.port)]
             if self.password:
                 cmdArgs += ['--masterauth', self.password]
         if self.password:
             cmdArgs += ['--requirepass', self.password]
+        if self.clusterEnabled and role is not SLAVE:
+            cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', self.getFileName(role, self.outputFilesFormat, '.cluster.conf'),
+                        '--cluster-node-timeout', '5000']
 
         return cmdArgs
 
@@ -88,10 +95,9 @@ class OssEnv:
             print Colors.Yellow(prefix + 'module: %s' % (self.modulePath))
             if self.moduleArgs:
                 print Colors.Yellow(prefix + 'module args: %s' % (self.moduleArgs))
-        if self.logFileFormat:
-            print Colors.Yellow(prefix + 'log file: %s' % (self.getFileWithPrefix(role, self.logFileFormat)))
-        if self.dbFileNameFormat:
-            print Colors.Yellow(prefix + 'db file name: %s' % self.getFileWithPrefix(role, self.dbFileNameFormat))
+        if self.outputFilesFormat:
+            print Colors.Yellow(prefix + 'log file: %s' % (self.getFileName(role, self.outputFilesFormat, '.log')))
+            print Colors.Yellow(prefix + 'db file name: %s' % self.getFileName(role, self.outputFilesFormat, '.rdb'))
         if self.dbDirPath:
             print Colors.Yellow(prefix + 'db dir path: %s' % (self.dbDirPath))
         if self.libPath:
@@ -105,6 +111,8 @@ class OssEnv:
             self.printEnvData(prefix + '\t', SLAVE)
 
     def StartEnv(self):
+        if self.envIsUp:
+            return  # env is already up
         self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.env)
         con = self.GetConnection()
         self.waitForRedisToStart(con)
@@ -112,6 +120,7 @@ class OssEnv:
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.env)
             con = self.GetSlaveConnection()
             self.waitForRedisToStart(con)
+        self.envIsUp = True
 
     def StopEnv(self):
         if self.masterProcess:
@@ -136,3 +145,6 @@ class OssEnv:
         if self.useSlaves:
             return redis.Redis('localhost', self.GetSlavePort(), password=self.password)
         raise Exception('asked for slave connection but no slave exists')
+
+    def Flush(self):
+        self.GetConnection().flushall()

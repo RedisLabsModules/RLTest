@@ -1,6 +1,7 @@
 import os
 import inspect
 from OssEnv import OssEnv
+from OssClusterEnv import OssClusterEnv
 from utils import Colors
 from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
 
@@ -22,8 +23,17 @@ class Env:
 
     RTestInstance = None
 
-    def __init__(self, testName=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None):
+    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount']
 
+    def compareEnvs(self, env):
+        if env is None:
+            return False
+        for param in Env.EnvCompareParams:
+            if self.__dict__[param] != env.__dict__[param]:
+                return False
+        return True
+
+    def __init__(self, testName=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None):
         self.testName = testName if testName else inspect.currentframe().f_back.f_code.co_name
         self.testNamePrintable = self.testName
         self.testName = self.testName.replace(' ', '_')
@@ -39,8 +49,14 @@ class Env:
         self.logDir = Env.defaultLogDir
         self.debug = Env.defaultDebug
 
-        self.envRunner = self.GetEnvByName()
         self.assertionFailedSummery = []
+
+        if Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
+            self.envRunner = Env.RTestInstance.currEnv.envRunner
+        else:
+            if Env.RTestInstance.currEnv:
+                Env.RTestInstance.currEnv.Stop()
+            self.envRunner = self.GetEnvByName()
 
         try:
             os.makedirs(self.logDir)
@@ -60,21 +76,23 @@ class Env:
     def GetEnvByName(self):
         if self.env == 'oss':
             return OssEnv(redisBinaryPath=Env.defaultOssRedisBinary, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          logFileFormat='%s-' + '%s-oss-redis.log' % self.testName,
-                          dbFileNameFormat='%s-' + '%s-oss-redis.rdb' % self.testName,
+                          outputFilesFormat='%s-' + '%s-oss-redis.log' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves)
         if self.env == 'enterprise':
             return OssEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          logFileFormat='%s-' + '%s-oss-redis.log' % self.testName,
-                          dbFileNameFormat='%s-' + '%s-oss-redis.rdb' % self.testName,
+                          outputFilesFormat='%s-' + '%s-oss-redis.log' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves, libPath=Env.defaultEnterpriseLibsPath)
         if self.env == 'enterprise-cluster':
             return EnterpriseClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                         modulePath=self.module, moduleArgs=self.moduleArgs,
-                                        logFileFormat='%s-' + '%s-enterprise-cluster-redis.log' % self.testName,
-                                        dbFileNameFormat='%s-' + '%s-enterprise-cluster-redis.rdb' % self.testName,
+                                        outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
                                         dbDirPath=self.logDir, useSlaves=self.useSlaves, dmcBinaryPath=Env.defaultProxyBinaryPath,
                                         libPath=Env.defaultEnterpriseLibsPath)
+        if self.env == 'oss-cluster':
+            return OssClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
+                                 modulePath=self.module, moduleArgs=self.moduleArgs,
+                                 outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
+                                 dbDirPath=self.logDir, useSlaves=self.useSlaves)
 
     def Start(self):
         self.envRunner.StartEnv()
@@ -90,6 +108,9 @@ class Env:
 
     def GetSlaveConnection(self):
         return self.envRunner.GetSlaveConnection()
+
+    def Flush(self):
+        self.envRunner.Flush()
 
     def _get_caller_position(self, back_frames):
         frame = inspect.currentframe()
