@@ -15,19 +15,21 @@ class EnterpriseClusterEnv():
     DMC_PORT = 10000
     MODULE_WORKING_DIR = '/tmp/'
 
-    def __init__(self, redisBinaryPath, dmcBinaryPath, libPath, shardsCount=1, modulePath=None, moduleArgs=None, outputFilesFormat=None,
-                 dbDirPath=None, useSlaves=False):
+    def __init__(self, redisBinaryPath, dmcBinaryPath, libPath, shardsCount=1, modulePath=None, moduleArgs=None,
+                 outputFilesFormat=None, dbDirPath=None, useSlaves=False, useAof=None):
         self.shardsCount = shardsCount
         self.shards = []
         self.modulePath = modulePath
         self.moduleArgs = moduleArgs
+        self.useAof = useAof
+        self.useSlaves = useSlaves
         self.preperModule()
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
             shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.moduleSoFilePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
-                           serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath)
+                           serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath, useAof=self.useAof)
             self.shards.append(shard)
             startPort += 2
 
@@ -57,7 +59,7 @@ class EnterpriseClusterEnv():
             if self.moduleArgs is None:
                 self.moduleArgs = self.moduleConfig['command_line_args']
 
-    def PrintEnvData(self, prefix=''):
+    def printEnvData(self, prefix=''):
         print Colors.Yellow(prefix + 'bdb info:')
         print Colors.Yellow(prefix + '\tlistening port:%d' % self.DMC_PORT)
         print Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards))
@@ -69,17 +71,17 @@ class EnterpriseClusterEnv():
             print Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs)
         for i, shard in enumerate(self.shards):
             print Colors.Yellow(prefix + 'shard: %d' % (i + 1))
-            shard.PrintEnvData(prefix + '\t')
+            shard.printEnvData(prefix + '\t')
         print Colors.Yellow(prefix + 'ccs:')
         self.ccs.PrintEnvData(prefix + '\t')
         print Colors.Yellow(prefix + 'dmc:')
         self.dmc.PrintEnvData(prefix + '\t')
 
-    def StartEnv(self):
+    def startEnv(self):
         if self.envIsUp:
             return  # env is already up
         for shard in self.shards:
-            shard.StartEnv()
+            shard.startEnv()
 
         ccs_bdb_config = {'shard_key_regex': '012.*\{(?<tag>.*)\}.*00a(?<tag>.*)',
                           'sharding': 'enabled' if self.shardsCount > 0 else 'disabled'}
@@ -97,21 +99,34 @@ class EnterpriseClusterEnv():
 
         self.ccs.Start(self.shards, bdb_fields=ccs_bdb_config, legacy_hash_slots=True, extra_keys=extra_keys)
         self.dmc.Start()
-        con = self.GetConnection()
-        wait_for_conn(con)
+        con = self.getConnection()
+        wait_for_conn(con, command='sping', shouldBe=['SPONG 0' for i in self.shards])
         self.envIsUp = True
 
-    def StopEnv(self):
+    def stopEnv(self):
         for shard in self.shards:
-            shard.StopEnv()
+            shard.stopEnv()
         self.ccs.Stop()
         self.dmc.Stop()
+        self.envIsUp = False
 
-    def GetConnection(self):
+    def getConnection(self):
         return redis.Redis('localhost', self.DMC_PORT)
 
-    def GetSlaveConnection(self):
+    def getSlaveConnection(self):
         raise Exception('unsupported')
 
-    def Flush(self):
-        self.GetConnection().flushall()
+    def flush(self):
+        self.getConnection().flushall()
+
+    def dumpAndReload(self, restart=False):
+        for shard in self.shards:
+            shard.dumpAndReload(restart=restart)
+        self.dmc.Stop()
+        self.dmc.Start()
+        con = self.getConnection()
+        wait_for_conn(con, command='sping', shouldBe=['SPONG 0' for i in self.shards])
+
+    def broadcast(self, *cmd):
+        for shard in self.shards:
+            shard.broadcast(*cmd)

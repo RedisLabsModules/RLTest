@@ -6,6 +6,9 @@ import sys
 import subprocess
 import platform
 import shutil
+import inspect
+import unittest
+import time
 from Env import Env
 from utils import Colors
 
@@ -101,6 +104,14 @@ class RLTest:
             '--env-reuse', action='store_const', const=True, default=False,
             help='reuse exists env, this feature is based on best efforts, if the env can not be reused then it will be taken down.')
 
+        parser.add_argument(
+            '--use-aof', action='store_const', const=True, default=False,
+            help='use aof instead of rdb')
+
+        parser.add_argument(
+            '--debug-print', action='store_const', const=True, default=False,
+            help='print debug messages')
+
         self.args = parser.parse_args()
 
         if self.args.download_enterprise_binaries:
@@ -112,12 +123,15 @@ class RLTest:
         Env.defaultOssRedisBinary = self.args.oss_redis_path
         Env.defaultVerbose = self.args.verbose
         Env.defaultLogDir = self.args.log_dir
-        Env.defaultDebug = self.args.debug
         Env.defaultUseSlaves = self.args.use_slaves
         Env.defaultShardsCount = self.args.shards_count
         Env.defaultProxyBinaryPath = self.args.proxy_binary_path
         Env.defaultEnterpriseRedisBinaryPath = self.args.enterprise_redis_path
         Env.defaultEnterpriseLibsPath = self.args.enterprise_lib_path
+        Env.defaultUseAof = self.args.use_aof
+        Env.defaultDebugPrints = self.args.debug_print
+
+        sys.path.append(self.args.tests_dir)
 
         self.tests = []
 
@@ -157,77 +171,137 @@ class RLTest:
 
         print Colors.Yellow('finished installing enterprise binaries')
 
-    def load_file_tests(self, module_name):
+    def loadFileTests(self, module_name):
         filename = '%s/%s.py' % (self.args.tests_dir, module_name)
         module_file = open(filename, 'r')
         module = imp.load_module(module_name, module_file, filename,
                                  ('.py', 'r', imp.PY_SOURCE))
         for func in dir(module):
+            if inspect.isclass(func) and func.startswith('test') or func.startswith('Test'):
+                self.tests.append(getattr(module, func))
+                continue
             if self.args.test_name:
                 if func == self.args.test_name:
                     self.tests.append(getattr(module, func))
                     return
-            elif func.startswith('test_'):
+            elif func.startswith('test') or func.startswith('Test'):
                 self.tests.append(getattr(module, func))
 
-    def load_tests(self):
+    def loadTests(self):
         for filename in os.listdir(self.args.tests_dir):
             if filename.startswith('test_') and filename.endswith('.py'):
                 module_name, ext = os.path.splitext(filename)
-                self.load_file_tests(module_name)
+                self.loadFileTests(module_name)
+
+    def takeEnvDown(self, fullShutDown=False):
+        if self.currEnv:
+            if self.args.env_reuse and not fullShutDown:
+                self.currEnv.flush()
+            else:
+                self.currEnv.stop()
+                self.currEnv = None
+
+    def runTest(self, method, printTestName=False, numberOfAssertionFailed=0):
+        exceptionRaised = False
+        if printTestName:
+            print '\t' + Colors.Cyan(method.__name__)
+        try:
+            if self.args.debug:
+                raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
+            method()
+        except unittest.SkipTest:
+            print '\t' + Colors.Green('Skipping test')
+        except Exception as err:
+            msg = 'Unhandled exception: %s' % err
+            print '\t' + Colors.Bred(msg)
+            traceback.print_exc(file=sys.stdout)
+            exceptionRaised = True
+
+        isTestFaild = self.currEnv is None or self.currEnv.getNumberOfFailedAssertion() > numberOfAssertionFailed or exceptionRaised
+
+        if isTestFaild:
+            print '\t' + Colors.Bred('Test Failed')
+            if self.currEnv not in self.testsFailed:
+                self.testsFailed.append(self.currEnv)
+        else:
+            print '\t' + Colors.Green('Test Passed')
+
+        if self.args.stop_on_failure and isTestFaild:
+            raw_input('press any button to move to the next test')
+
+        return self.currEnv.getNumberOfFailedAssertion()
 
     def execute(self):
-        testsFailed = []
+        self.testsFailed = []
         Env.RTestInstance = self
         if self.args.env_only:
             Env.defaultVerbose = 2
             env = Env(testName='manual test env')
             raw_input('press any button to stop')
-            env.Stop()
+            env.stop()
             return
         if self.args.tests_file:
-            self.load_file_tests(self.args.tests_file)
+            self.loadFileTests(self.args.tests_file)
         else:
-            self.load_tests()
+            self.loadTests()
         done = 0
+        startTime = time.time()
         while self.tests:
-            done += 1
             test = self.tests.pop(0)
-            exceptionRaised = False
-            try:
-                test()
-            except Exception as err:
-                msg = 'Unhandled exception: %s' % err
-                print '\t' + Colors.Bred(msg)
-                traceback.print_exc(file=sys.stdout)
-                exceptionRaised = True
+            if inspect.isclass(test):
 
-            isTestFaild = self.currEnv.GetNumberOfFailedAssertion() or exceptionRaised
+                # checking if there are tests to run
+                methodsToTest = []
+                for m in dir(test):
+                    if self.args.test_name is not None:
+                        if self.args.test_name == m:
+                            methodsToTest.append(m)
+                    elif m.startswith('test') or m.startswith('Test'):
+                        methodsToTest.append(m)
 
-            if isTestFaild:
-                print '\t' + Colors.Bred('Test Failed')
-                testsFailed.append(self.currEnv)
+                if len(methodsToTest) == 0:
+                    continue
+                try:
+                    testObj = test()
+                except unittest.SkipTest:
+                    print '\t' + Colors.Green('Skipping test')
+                except Exception as err:
+                    msg = 'Unhandled exception: %s' % err
+                    print '\t' + Colors.Bred(msg)
+                    traceback.print_exc(file=sys.stdout)
+                    print '\t' + Colors.Bred('Test Failed')
+                    if self.currEnv:
+                        self.testsFailed.append(self.currEnv)
+                    continue
+                methods = [getattr(testObj, m) for m in dir(testObj) if callable(getattr(testObj, m)) and
+                           (m.startswith('test') or m.startswith('Test'))]
+                numberOfAssertionFailed = 0
+                for m in methods:
+                    if self.args.test_name is None or self.args.test_name == m.__name__:
+                        numberOfAssertionFailed = self.runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
+                    done += 1
+            elif not inspect.isfunction(test):
+                continue
+            elif len(inspect.getargspec(test).args) > 0:
+                env = Env(testName='%s.%s' % (str(test.__module__), test.func_name))
+                self.runTest(lambda: test(env))
+                done += 1
             else:
-                print '\t' + Colors.Green('Test Passed')
+                self.runTest(test)
+                done += 1
 
-            if self.args.stop_on_failure and isTestFaild:
-                raw_input('press any button to move to the next test')
+            self.takeEnvDown()
 
-            if self.args.env_reuse:
-                self.currEnv.Flush()
-            else:
-                self.currEnv.Stop()
-                self.currEnv = None
+        self.takeEnvDown(fullShutDown=True)
+        endTime = time.time()
 
-        if self.currEnv:
-            self.currEnv.Stop()
-            self.currEnv = None
-
-        if len(testsFailed) > 0:
+        print Colors.Bold('Test Took: %d sec' % (endTime - startTime))
+        print Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, len(self.testsFailed), done - len(self.testsFailed)))
+        if len(self.testsFailed) > 0:
             print Colors.Bold('Faild Tests Summery:')
-            for testFaild in testsFailed:
+            for testFaild in self.testsFailed:
                 print '\t' + Colors.Bold(testFaild.testNamePrintable)
-                testFaild.PrintFailuresSummery('\t\t')
+                testFaild.printFailuresSummery('\t\t')
             sys.exit(1)
 
 

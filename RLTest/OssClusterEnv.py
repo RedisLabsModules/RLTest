@@ -4,9 +4,9 @@ import rediscluster
 import time
 
 
-class OssClusterEnv():
+class OssClusterEnv:
     def __init__(self, redisBinaryPath, modulePath=None, moduleArgs=None, outputFilesFormat=None,
-                 dbDirPath=None, useSlaves=False, shardsCount=1):
+                 dbDirPath=None, useSlaves=False, shardsCount=1, useAof=None):
         self.redisBinaryPath = redisBinaryPath
         self.modulePath = modulePath
         self.moduleArgs = moduleArgs
@@ -16,17 +16,18 @@ class OssClusterEnv():
         self.shardsCount = shardsCount
         self.shards = []
         self.envIsUp = False
+        self.useAof = useAof
 
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
             shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.modulePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=self.outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
-                           serverId=(i + 1), clusterEnabled=True)
+                           serverId=(i + 1), clusterEnabled=True, useAof=self.useAof)
             self.shards.append(shard)
             startPort += 2
 
-    def PrintEnvData(self, prefix=''):
+    def printEnvData(self, prefix=''):
         pass
 
     def waitCluster(self, timeout_sec=5):
@@ -37,7 +38,7 @@ class OssClusterEnv():
         while st + timeout_sec > time.time():
             ok = 0
             for shard in self.shards:
-                con = shard.GetConnection()
+                con = shard.getConnection()
                 status = con.cluster('INFO')
                 if status.get('cluster_state') == 'ok':
                     ok += 1
@@ -47,17 +48,17 @@ class OssClusterEnv():
             time.sleep(0.0001)
         raise RuntimeError("Cluster OK wait loop timed out after %s seconds" % timeout_sec)
 
-    def StartEnv(self):
+    def startEnv(self):
         if self.envIsUp:
             return  # env is already up
         for shard in self.shards:
-            shard.StartEnv()
+            shard.startEnv()
 
         slots_per_node = int(16384 / len(self.shards)) + 1
         for i, shard in enumerate(self.shards):
-            con = shard.GetConnection()
+            con = shard.getConnection()
             for s in self.shards:
-                con.cluster('MEET', '127.0.0.1', s.GetMasterPort())
+                con.cluster('MEET', '127.0.0.1', s.getMasterPort())
 
             start_slot = i * slots_per_node
             end_slot = start_slot + slots_per_node
@@ -70,19 +71,33 @@ class OssClusterEnv():
                 pass
 
         self.waitCluster()
+        for shard in self.shards:
+            shard.getConnection().execute_command('FT.CLUSTERREFRESH')
         self.envIsUp = True
 
-    def StopEnv(self):
+    def stopEnv(self):
         for shard in self.shards:
-            shard.StopEnv()
+            shard.stopEnv()
         self.envIsUp = False
 
-    def GetConnection(self):
-        return rediscluster.StrictRedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].GetMasterPort()}],
+    def getConnection(self):
+        return self.shards[0].getConnection()
+
+    def getClusterConnection(self):
+        return rediscluster.StrictRedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
                                                decode_responses=True)
 
-    def GetSlaveConnection(self):
+    def getSlaveConnection(self):
         raise Exception('unsupported')
 
-    def Flush(self):
-        self.GetConnection().flushall()
+    def flush(self):
+        self.getClusterConnection().flushall()
+
+    def dumpAndReload(self, restart=False):
+        for shard in self.shards:
+            shard.dumpAndReload(restart=restart)
+        self.waitCluster()
+
+    def broadcast(self, *cmd):
+        for shard in self.shards:
+            shard.broadcast(*cmd)
