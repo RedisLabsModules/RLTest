@@ -13,17 +13,17 @@ $ python setup.py install
 # Usage:
 ```
 usage: RLTest [-h] [--module MODULE] [--module-args MODULE_ARGS]
-                   [--env {oss,oss-cluster,enterprise,enterprise-cluster}]
-                   [--oss-redis-path OSS_REDIS_PATH]
-                   [--enterprise-redis-path ENTERPRISE_REDIS_PATH]
-                   [--stop-on-failure] [--verbose] [--debug]
-                   [--tests-dir TESTS_DIR] [--test-name TEST_NAME]
-                   [--tests-file TESTS_FILE] [--env-only] [--log-dir LOG_DIR]
-                   [--use-slaves] [--shards-count SHARDS_COUNT]
-                   [--download-enterprise-binaries]
-                   [--proxy-binary-path PROXY_BINARY_PATH]
-                   [--enterprise-lib-path ENTERPRISE_LIB_PATH] [--env-reuse]	
-
+              [--env {oss,oss-cluster,enterprise,enterprise-cluster}]
+              [--oss-redis-path OSS_REDIS_PATH]
+              [--enterprise-redis-path ENTERPRISE_REDIS_PATH]
+              [--stop-on-failure] [--verbose] [--debug]
+              [--tests-dir TESTS_DIR] [--test-name TEST_NAME]
+              [--tests-file TESTS_FILE] [--env-only] [--log-dir LOG_DIR]
+              [--use-slaves] [--shards-count SHARDS_COUNT]
+              [--download-enterprise-binaries]
+              [--proxy-binary-path PROXY_BINARY_PATH]
+              [--enterprise-lib-path ENTERPRISE_LIB_PATH] [--env-reuse]
+              [--use-aof] [--debug-print]	
 ```
 
 # Test Example

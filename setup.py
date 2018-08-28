@@ -4,10 +4,9 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=[
-        'networkx',
-        'matplotlib',
         'redis>=2.10.5',
-        'rediscluster'
+        'redis-py-cluster',
+        'psutil'
     ],
     entry_points='''
         [console_scripts]
