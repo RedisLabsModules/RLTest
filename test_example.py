@@ -3,6 +3,10 @@ import time
 
 
 class testExample():
+    '''
+    run all tests on a single env without taking
+    env down between tests
+    '''
     def __init__(self):
         self.env = Env()
 
@@ -23,6 +27,7 @@ class testExample():
         self.env.assertEqual(con.get('x'), '1')
 
 
+# run each test on different env
 def test_example():
     env = Env()
     con = env.getConnection()
@@ -35,7 +40,7 @@ def test_example_2():
     env.assertOk(env.cmd('set', 'x', '1'))
     env.expect('get', 'x').equal('1')
 
-    env.expect('lpush', 'list', '1', '2', '3').debugPrint().equal(3)
+    env.expect('lpush', 'list', '1', '2', '3').equal(3)
     env.expect('lrange', 'list', '0', '-1').debugPrint().contains('1')
     env.debugPrint('this is some debug printing')
 
