@@ -3,7 +3,7 @@ Redis Labs Test Framework, allow to run tests on redis and modules on verity of 
 
 Supported Environment: oss, oss-cluster, enterprise, enterprise-cluster
 
-The framework allow you to write a test without environment spasification and then run the test on all supported environment.
+The framework allow you to write a test without environment specification and then run the test on all supported environment.
 
 # Install
 ```
