@@ -77,6 +77,10 @@ class RLTest:
             help='start the env but do not run any tests')
 
         parser.add_argument(
+            '--clear-logs', action='store_const', const=True, default=False,
+            help='deleting the log direcotry before the execution')
+
+        parser.add_argument(
             '--log-dir', default='./logs',
             help='directory to write logs to')
 
@@ -124,6 +128,12 @@ class RLTest:
 
         if self.args.download_enterprise_binaries:
             self.downloadEnterpriseBinaries()
+
+        if self.args.clear_logs:
+            try:
+                shutil.rmtree(self.args.log_dir)
+            except Exception:
+                pass
 
         Env.defaultModule = self.args.module
         Env.defaultModuleArgs = self.args.module_args
@@ -199,7 +209,7 @@ class RLTest:
 
     def loadTests(self):
         for filename in os.listdir(self.args.tests_dir):
-            if filename.startswith('test_') and filename.endswith('.py'):
+            if filename.startswith('test') and filename.endswith('.py'):
                 module_name, ext = os.path.splitext(filename)
                 self.loadFileTests(module_name)
 
