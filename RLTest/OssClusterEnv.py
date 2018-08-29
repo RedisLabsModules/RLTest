@@ -113,3 +113,12 @@ class OssClusterEnv:
             if not shard.checkExitCode():
                 return False
         return True
+
+    def exists(self, val):
+        return self.getClusterConnection().exists(val)
+
+    def hmset(self, *args):
+        return self.getClusterConnection().hmset(*args)
+
+    def keys(self, reg):
+        return self.getClusterConnection().keys(reg)

@@ -250,7 +250,7 @@ class Env:
         self._assertion('%s instance of %s' % (str(value), str(instance)), isinstance(value, instance), depth)
 
     def assertAlmostEqual(self, value1, value2, delta, depth=0):
-        self._assertion('%s almost equels %s (delta %s)' % (str(value1), str(value2), str(delta)), abs(value1 - value2) < delta, depth)
+        self._assertion('%s almost equels %s (delta %s)' % (str(value1), str(value2), str(delta)), abs(value1 - value2) <= delta, depth)
 
     def expect(self, *query):
         return Query(self, *query)
@@ -263,7 +263,7 @@ class Env:
 
     def exists(self, val):
         warnings.warn("Exists is deprecated, use cmd instead", DeprecationWarning)
-        return self.con.exists(val)
+        return self.envRunner.exists(val)
 
     def assertExists(self, val, depth=0):
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
@@ -283,11 +283,11 @@ class Env:
 
     def hmset(self, *args):
         warnings.warn("hmset is deprecated, use Cmd instead", DeprecationWarning)
-        return self.con.hmset(*args)
+        return self.envRunner.hmset(*args)
 
     def keys(self, reg):
         warnings.warn("keys is deprecated, use Cmd instead", DeprecationWarning)
-        return self.con.keys(reg)
+        return self.envRunner.keys(reg)
 
     def assertRaises(self, var1, var2, *query):
         warnings.warn("assertRaises is deprecated, use Expect + RaiseError instead", DeprecationWarning)

@@ -139,3 +139,12 @@ class EnterpriseClusterEnv():
             if not shard.checkExitCode():
                 return False
         return True
+
+    def exists(self, val):
+        return self.getConnection().exists(val)
+
+    def hmset(self, *args):
+        return self.getConnection().hmset(*args)
+
+    def keys(self, reg):
+        return self.getConnection().keys(reg)

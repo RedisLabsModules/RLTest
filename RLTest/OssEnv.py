@@ -227,3 +227,12 @@ class OssEnv:
             print '\t' + Colors.Bred('bad exit code for serverId %s' % str(self.slaveServerId))
             ret = False
         return ret
+
+    def exists(self, val):
+        return self.getConnection().exists(val)
+
+    def hmset(self, *args):
+        return self.getConnection().hmset(*args)
+
+    def keys(self, reg):
+        return self.getConnection().keys(reg)
