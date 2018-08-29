@@ -112,6 +112,14 @@ class RLTest:
             '--debug-print', action='store_const', const=True, default=False,
             help='print debug messages')
 
+        parser.add_argument(
+            '--use-valgrind', action='store_const', const=True, default=False,
+            help='running redis under valgrind (assuming valgrind is install on the machine)')
+
+        parser.add_argument(
+            '--valgrind-suppressions-file', default=None,
+            help='path valgrind suppressions file')
+
         self.args = parser.parse_args()
 
         if self.args.download_enterprise_binaries:
@@ -130,6 +138,8 @@ class RLTest:
         Env.defaultEnterpriseLibsPath = self.args.enterprise_lib_path
         Env.defaultUseAof = self.args.use_aof
         Env.defaultDebugPrints = self.args.debug_print
+        Env.defaultUseValgrind = self.args.use_valgrind
+        Env.defaultValgrindSuppressionsFile = self.args.valgrind_suppressions_file
 
         sys.path.append(self.args.tests_dir)
 
@@ -199,6 +209,9 @@ class RLTest:
                 self.currEnv.flush()
             else:
                 self.currEnv.stop()
+                if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
+                    print Colors.Bred('\tvalgrind check failure')
+                    self.testsFailed.add(self.currEnv)
                 self.currEnv = None
 
     def runTest(self, method, printTestName=False, numberOfAssertionFailed=0):
@@ -221,8 +234,7 @@ class RLTest:
 
         if isTestFaild:
             print '\t' + Colors.Bred('Test Failed')
-            if self.currEnv not in self.testsFailed:
-                self.testsFailed.append(self.currEnv)
+            self.testsFailed.add(self.currEnv)
         else:
             print '\t' + Colors.Green('Test Passed')
 
@@ -232,7 +244,7 @@ class RLTest:
         return self.currEnv.getNumberOfFailedAssertion()
 
     def execute(self):
-        self.testsFailed = []
+        self.testsFailed = set()
         Env.RTestInstance = self
         if self.args.env_only:
             Env.defaultVerbose = 2
@@ -271,7 +283,7 @@ class RLTest:
                     traceback.print_exc(file=sys.stdout)
                     print '\t' + Colors.Bred('Test Failed')
                     if self.currEnv:
-                        self.testsFailed.append(self.currEnv)
+                        self.testsFailed.add(self.currEnv)
                     continue
                 methods = [getattr(testObj, m) for m in dir(testObj) if callable(getattr(testObj, m)) and
                            (m.startswith('test') or m.startswith('Test'))]

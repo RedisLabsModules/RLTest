@@ -16,20 +16,23 @@ class EnterpriseClusterEnv():
     MODULE_WORKING_DIR = '/tmp/'
 
     def __init__(self, redisBinaryPath, dmcBinaryPath, libPath, shardsCount=1, modulePath=None, moduleArgs=None,
-                 outputFilesFormat=None, dbDirPath=None, useSlaves=False, useAof=None):
+                 outputFilesFormat=None, dbDirPath=None, useSlaves=False, useAof=None, useValgrind=False, valgrindSuppressionsFile=None):
         self.shardsCount = shardsCount
         self.shards = []
         self.modulePath = modulePath
         self.moduleArgs = moduleArgs
         self.useAof = useAof
         self.useSlaves = useSlaves
+        self.useValgrind = useValgrind
+        self.valgrindSuppressionsFile = valgrindSuppressionsFile
         self.preperModule()
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
             shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.moduleSoFilePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
-                           serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath, useAof=self.useAof)
+                           serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath, useAof=self.useAof, useValgrind=self.useValgrind,
+                           valgrindSuppressionsFile=self.valgrindSuppressionsFile)
             self.shards.append(shard)
             startPort += 2
 
@@ -130,3 +133,9 @@ class EnterpriseClusterEnv():
     def broadcast(self, *cmd):
         for shard in self.shards:
             shard.broadcast(*cmd)
+
+    def checkExitCode(self):
+        for shard in self.shards:
+            if not shard.checkExitCode():
+                return False
+        return True

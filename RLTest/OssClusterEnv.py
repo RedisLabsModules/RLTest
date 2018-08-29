@@ -6,7 +6,7 @@ import time
 
 class OssClusterEnv:
     def __init__(self, redisBinaryPath, modulePath=None, moduleArgs=None, outputFilesFormat=None,
-                 dbDirPath=None, useSlaves=False, shardsCount=1, useAof=None):
+                 dbDirPath=None, useSlaves=False, shardsCount=1, useAof=None, useValgrind=False, valgrindSuppressionsFile=None):
         self.redisBinaryPath = redisBinaryPath
         self.modulePath = modulePath
         self.moduleArgs = moduleArgs
@@ -17,13 +17,16 @@ class OssClusterEnv:
         self.shards = []
         self.envIsUp = False
         self.useAof = useAof
+        self.useValgrind = useValgrind
+        self.valgrindSuppressionsFile = valgrindSuppressionsFile
 
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
             shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.modulePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=self.outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
-                           serverId=(i + 1), clusterEnabled=True, useAof=self.useAof)
+                           serverId=(i + 1), clusterEnabled=True, useAof=self.useAof, useValgrind=self.useValgrind,
+                           valgrindSuppressionsFile=self.valgrindSuppressionsFile)
             self.shards.append(shard)
             startPort += 2
 
@@ -72,7 +75,10 @@ class OssClusterEnv:
 
         self.waitCluster()
         for shard in self.shards:
-            shard.getConnection().execute_command('FT.CLUSTERREFRESH')
+            try:
+                shard.getConnection().execute_command('FT.CLUSTERREFRESH')
+            except Exception:
+                pass
         self.envIsUp = True
 
     def stopEnv(self):
@@ -101,3 +107,9 @@ class OssClusterEnv:
     def broadcast(self, *cmd):
         for shard in self.shards:
             shard.broadcast(*cmd)
+
+    def checkExitCode(self):
+        for shard in self.shards:
+            if not shard.checkExitCode():
+                return False
+        return True

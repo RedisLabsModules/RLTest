@@ -85,6 +85,9 @@ class Env:
 
     defaultDebugPrints = False
 
+    defaultUseValgrind = False
+    defaultValgrindSuppressionsFile = None
+
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
 
     def compareEnvs(self, env):
@@ -136,23 +139,26 @@ class Env:
         if self.env == 'oss':
             return OssEnv(redisBinaryPath=Env.defaultOssRedisBinary, modulePath=self.module, moduleArgs=self.moduleArgs,
                           outputFilesFormat='%s-' + '%s-oss-redis.log' % self.testName,
-                          dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof)
+                          dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
+                          valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
         if self.env == 'enterprise':
             return OssEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
                           outputFilesFormat='%s-' + '%s-oss-redis.log' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves, libPath=Env.defaultEnterpriseLibsPath,
-                          useAof=self.useAof)
+                          useAof=self.useAof, useValgrind=Env.defaultUseValgrind, valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
         if self.env == 'enterprise-cluster':
             return EnterpriseClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                         modulePath=self.module, moduleArgs=self.moduleArgs,
                                         outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
                                         dbDirPath=self.logDir, useSlaves=self.useSlaves, dmcBinaryPath=Env.defaultProxyBinaryPath,
-                                        libPath=Env.defaultEnterpriseLibsPath, useAof=self.useAof)
+                                        libPath=Env.defaultEnterpriseLibsPath, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
+                                        valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
         if self.env == 'oss-cluster':
             return OssClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
                                  modulePath=self.module, moduleArgs=self.moduleArgs,
                                  outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
-                                 dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof)
+                                 dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
+                                 valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
 
     def start(self):
         self.envRunner.startEnv()
@@ -318,6 +324,9 @@ class Env:
     def debugPrint(self, msg, force=False):
         if Env.defaultDebugPrints or force:
             print '\t' + Colors.Bold('debug:\t') + Colors.Gray(msg)
+
+    def checkExitCode(self):
+        return self.envRunner.checkExitCode()
 
 
 def addDepricatedMethod(cls, name, invoke):

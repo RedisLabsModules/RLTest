@@ -19,7 +19,7 @@ class testExample():
         con = self.env.getConnection()
         con.set('x', 1)
         self.env.assertEqual(con.get('x'), '1')
-        self.env.assertFalse(True)
+        self.env.assertFalse(True)  # check failure
 
     def testExample2(self):
         con = self.env.getConnection()
