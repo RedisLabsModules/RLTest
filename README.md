@@ -1,5 +1,5 @@
 # RLTest
-Redis Labs Test Framework, allow to run tests on redis and modules on verity of environment.
+Redis Labs Test Framework, allow to run tests on redis and modules on verity of environments.
 
 Supported Environment: oss, oss-cluster, enterprise, enterprise-cluster
 
@@ -29,67 +29,70 @@ usage: RLTest [-h] [--module MODULE] [--module-args MODULE_ARGS]
 ```
 
 ### module
-load a spacific module to the environment, notice that on enterprise the file should be a zip file packed with [RAMP](https://github.com/RedisLabs/RAMP). might overide by the test.
+Load a spacific module to the environment, notice that on enterprise the file should be a zip file packed with [RAMP](https://github.com/RedisLabs/RAMP). might override by the test.
 
 ### module-args
-pass arguments to the loaded module. might overide by the test.
+Pass arguments to the loaded module. might override by the test.
 
 ### env
-the environment on which to run the tests (oss,oss-cluster,enterprise,enterprise-cluster), might overide by the test.
+The environment on which to run the tests (oss,oss-cluster,enterprise,enterprise-cluster), might override by the test.
 
 ### oss-redis-path
-path to the oss redis binary (default - redis-server)
+Path to the oss redis binary (default - redis-server)
 
 ### enterprise-redis-path
-path to the enterprise redis binarty (default - ~/.RLTest/opt/redislabs/bin/redis-server).
+Path to the enterprise redis binarty (default - ~/.RLTest/opt/redislabs/bin/redis-server).
 
 ### stop-on-failure
-stop the tests run on failure, allows you to check what went wrong.
+Stop the tests run on failure, allows you to check what went wrong.
 
 ### verbose
-increase verbosity, it is possible to write this options twice (-vv) to increase verbosity even more.
+Increase verbosity, it is possible to write this options twice (-vv) to increase verbosity even more.
 
 ### debug
-stop before each test execution and allow you to attach to any process with debuger.
+Stop before each test execution and allow you to attach to any process with debuger.
 
 ### tests-dir
-directory to search for tests (default - current directory).
+Directory to search for tests (default - current directory).
 
 ### test-name
-name of spacific test function to run.
+Name of spacific test function to run.
 
 ### tests-file
-file inside the test_dir to search for tests (if not specified the framework searches in all files)
+File inside the test_dir to search for tests (if not specified the framework searches in all files)
 
 ### env-only
-not running any tests, just setup the environment and keep it up for manual tests.
+Not running any tests, just setup the environment and keep it up for manual tests.
 
 ### log-dir
-directory on which logs will be written to (default - ./logs).
+Directory on which logs will be written to (default - ./logs).
 
 ### use-slaves
-setup the environment with slaves. might overide by the test.
+Setup the environment with slaves. might override by the test.
 
 ### shards-count
-on cluster, setting the amount on required shards. might overide by the test.
+On cluster, setting the amount on required shards. might override by the test.
 
 ### download-enterprise-binaries
-downloading the enterprise binaries before running the tests and save it under ~/.RLTest/.
+Downloading the enterprise binaries before running the tests and save it under ~/.RLTest/.
 
 ### proxy-binary-path
-enterprise proxy binary path (default - ~/.RLTest/opt/redislabs/bin/dmcproxy)
+Enterprise proxy binary path (default - ~/.RLTest/opt/redislabs/bin/dmcproxy)
 
 ### enterprise-lib-path
-enterprise libraries requires for run (default - ~/.RLTest/opt/redislabs/lib/)
+Enterprise libraries requires for run (default - ~/.RLTest/opt/redislabs/lib/)
+
+### env-reuse
+Reuse the existing env between tests. Notice that if some test requires a different env setting then the current env will be taken down (and a new one will be setup) regardless this parameter value.
 
 ### use-aof
-using aof instead of rdb, might overide by the test.
+Using aof instead of rdb, might override by the test.
 
 ### use-valgrind
-run redis under valgrind (assuming valgrind is installed on the machine).
+Run redis under valgrind (assuming valgrind is installed on the machine).
 
 ### valgrind-suppressions-file
-path to valgrind suppressions (not mandatory).
+Path to valgrind suppressions (not mandatory).
 
 
 # Test Example
