@@ -9,6 +9,7 @@ import shutil
 import inspect
 import unittest
 import time
+import json
 from Env import Env
 from utils import Colors
 
@@ -124,10 +125,26 @@ class RLTest:
             '--valgrind-suppressions-file', default=None,
             help='path valgrind suppressions file')
 
+        parser.add_argument(
+            '--config-file', default=None,
+            help='path to configuration file, parameters value will be taken from configuration file,'
+                 'values which was not specified on configuration file will get their value from the command line args,'
+                 'values which was not specifies either on configuration file nor on command line args will be getting their default value')
+
         self.args = parser.parse_args()
 
+        if self.args.config_file:
+            with open(self.args.config_file) as f:
+                data = json.load(f)
+                for key, val in data.items():
+                    readKey = key.replace('-', '_')
+                    if readKey not in self.args.__dict__:
+                        print Colors.Bred('bad parameter on config file: %s, aborting execution!!!' % str(key))
+                        sys.exit(1)
+                    self.args.__dict__[readKey] = val
+
         if self.args.download_enterprise_binaries:
-            self.downloadEnterpriseBinaries()
+            self._downloadEnterpriseBinaries()
 
         if self.args.clear_logs:
             try:
@@ -157,7 +174,7 @@ class RLTest:
 
         self.currEnv = None
 
-    def downloadEnterpriseBinaries(self):
+    def _downloadEnterpriseBinaries(self):
         binariesName = 'binaries.tar'
         print Colors.Yellow('installing enterprise binaries')
         print Colors.Yellow('creating RLTest working dir: %s' % RLTest_WORKING_DIR)
@@ -191,7 +208,7 @@ class RLTest:
 
         print Colors.Yellow('finished installing enterprise binaries')
 
-    def loadFileTests(self, module_name):
+    def _loadFileTests(self, module_name):
         filename = '%s/%s.py' % (self.args.tests_dir, module_name)
         module_file = open(filename, 'r')
         module = imp.load_module(module_name, module_file, filename,
@@ -207,13 +224,13 @@ class RLTest:
             elif func.startswith('test') or func.startswith('Test'):
                 self.tests.append(getattr(module, func))
 
-    def loadTests(self):
+    def _loadTests(self):
         for filename in os.listdir(self.args.tests_dir):
             if filename.startswith('test') and filename.endswith('.py'):
                 module_name, ext = os.path.splitext(filename)
-                self.loadFileTests(module_name)
+                self._loadFileTests(module_name)
 
-    def takeEnvDown(self, fullShutDown=False):
+    def _takeEnvDown(self, fullShutDown=False):
         if self.currEnv:
             if self.args.env_reuse and not fullShutDown:
                 self.currEnv.flush()
@@ -224,7 +241,7 @@ class RLTest:
                     self.testsFailed.add(self.currEnv)
                 self.currEnv = None
 
-    def runTest(self, method, printTestName=False, numberOfAssertionFailed=0):
+    def _runTest(self, method, printTestName=False, numberOfAssertionFailed=0):
         exceptionRaised = False
         if printTestName:
             print '\t' + Colors.Cyan(method.__name__)
@@ -263,9 +280,9 @@ class RLTest:
             env.stop()
             return
         if self.args.tests_file:
-            self.loadFileTests(self.args.tests_file)
+            self._loadFileTests(self.args.tests_file)
         else:
-            self.loadTests()
+            self._loadTests()
         done = 0
         startTime = time.time()
         while self.tests:
@@ -300,21 +317,21 @@ class RLTest:
                 numberOfAssertionFailed = 0
                 for m in methods:
                     if self.args.test_name is None or self.args.test_name == m.__name__:
-                        numberOfAssertionFailed = self.runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
+                        numberOfAssertionFailed = self._runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
                     done += 1
             elif not inspect.isfunction(test):
                 continue
             elif len(inspect.getargspec(test).args) > 0:
                 env = Env(testName='%s.%s' % (str(test.__module__), test.func_name))
-                self.runTest(lambda: test(env))
+                self._runTest(lambda: test(env))
                 done += 1
             else:
-                self.runTest(test)
+                self._runTest(test)
                 done += 1
 
-            self.takeEnvDown()
+            self._takeEnvDown()
 
-        self.takeEnvDown(fullShutDown=True)
+        self._takeEnvDown(fullShutDown=True)
         endTime = time.time()
 
         print Colors.Bold('Test Took: %d sec' % (endTime - startTime))

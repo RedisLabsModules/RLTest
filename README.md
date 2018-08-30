@@ -19,13 +19,14 @@ usage: RLTest [-h] [--module MODULE] [--module-args MODULE_ARGS]
               [--enterprise-redis-path ENTERPRISE_REDIS_PATH]
               [--stop-on-failure] [--verbose] [--debug]
               [--tests-dir TESTS_DIR] [--test-name TEST_NAME]
-              [--tests-file TESTS_FILE] [--env-only] [--log-dir LOG_DIR]
-              [--use-slaves] [--shards-count SHARDS_COUNT]
+              [--tests-file TESTS_FILE] [--env-only] [--clear-logs]
+              [--log-dir LOG_DIR] [--use-slaves] [--shards-count SHARDS_COUNT]
               [--download-enterprise-binaries]
               [--proxy-binary-path PROXY_BINARY_PATH]
               [--enterprise-lib-path ENTERPRISE_LIB_PATH] [--env-reuse]
               [--use-aof] [--debug-print] [--use-valgrind]
               [--valgrind-suppressions-file VALGRIND_SUPPRESSIONS_FILE]
+              [--config-file CONFIG_FILE]
 ```
 
 ### module
@@ -93,6 +94,9 @@ Run redis under valgrind (assuming valgrind is installed on the machine).
 
 ### valgrind-suppressions-file
 Path to valgrind suppressions (not mandatory).
+
+### config-file
+path to configuration file (json format), parameters value will be taken from configuration file, values which was not specified on configuration file will get their value from the command line args, values which was not specifies either on configuration file nor on command line args will be getting their default value
 
 
 # Test Example
