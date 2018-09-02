@@ -20,14 +20,29 @@ RLTest_ENTERPRISE_SUB_VERSION = '14'
 OS_NAME = platform.dist()[2]
 RLTest_ENTERPRISE_TAR_FILE_NAME = 'redislabs-%s-%s-%s-amd64.tar' % (RLTest_ENTERPRISE_VERSION, RLTest_ENTERPRISE_SUB_VERSION, OS_NAME)
 RLTest_ENTERPRISE_URL = 'https://s3.amazonaws.com/rlec-downloads/%s/%s' % (RLTest_ENTERPRISE_VERSION, RLTest_ENTERPRISE_TAR_FILE_NAME)
+RLTest_CONFIG_FILE_PREFIX = '@'
+RLTest_CONFIG_FILE_NAME = 'config.txt'
+
+
+class CustomArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwrags):
+        super(CustomArgumentParser, self).__init__(*args, **kwrags)
+
+    def convert_arg_line_to_args(self, line):
+        for arg in line.split():
+            if not arg.strip():
+                continue
+            if arg[0] == '#':
+                break
+            yield line
 
 
 class RLTest:
 
     def __init__(self):
-        parser = argparse.ArgumentParser(
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-            description='RedisConTest Test Suite Runner')
+        parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
+                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                      description='Test Framework for redis and redis module')
 
         parser.add_argument(
             '--module', default=None,
@@ -131,7 +146,8 @@ class RLTest:
                  'values which was not specified on configuration file will get their value from the command line args,'
                  'values which was not specifies either on configuration file nor on command line args will be getting their default value')
 
-        self.args = parser.parse_args()
+        args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
+        self.args = parser.parse_args(args=args)
 
         if self.args.config_file:
             with open(self.args.config_file) as f:
@@ -173,6 +189,9 @@ class RLTest:
         self.tests = []
 
         self.currEnv = None
+
+    def _convertArgsType(self):
+        pass
 
     def _downloadEnterpriseBinaries(self):
         binariesName = 'binaries.tar'

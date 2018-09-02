@@ -26,7 +26,6 @@ usage: RLTest [-h] [--module MODULE] [--module-args MODULE_ARGS]
               [--enterprise-lib-path ENTERPRISE_LIB_PATH] [--env-reuse]
               [--use-aof] [--debug-print] [--use-valgrind]
               [--valgrind-suppressions-file VALGRIND_SUPPRESSIONS_FILE]
-              [--config-file CONFIG_FILE]
 ```
 
 ### module
@@ -95,8 +94,23 @@ Run redis under valgrind (assuming valgrind is installed on the machine).
 ### valgrind-suppressions-file
 Path to valgrind suppressions (not mandatory).
 
-### config-file
-path to configuration file (json format), parameters value will be taken from configuration file, values which was not specified on configuration file will get their value from the command line args, values which was not specifies either on configuration file nor on command line args will be getting their default value
+
+# Configuration File
+By default the framework search for configuration file on the current directory. The configuration file name is: config.txt.
+It is possible to specify defferent configuration file on command line using the 'prefix', for example:
+```
+RLTest @myConfig.txt # search for myConfig.txt configuration file
+```
+The configuration file format is the same as the command line argument, i.e : '--< param_name > < param_val >'.
+
+It is also possable to comment a spacific lines in the configuration file using '#'.
+
+Example:
+```
+-vv
+--clear-logs
+#--debug
+```
 
 
 # Test Example
