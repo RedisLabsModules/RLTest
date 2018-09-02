@@ -34,7 +34,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
                 continue
             if arg[0] == '#':
                 break
-            yield line
+            yield arg
 
 
 class RLTest:
@@ -146,18 +146,42 @@ class RLTest:
                  'values which was not specified on configuration file will get their value from the command line args,'
                  'values which was not specifies either on configuration file nor on command line args will be getting their default value')
 
-        args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
+        parser.add_argument(
+            '--interactive-debugger', action='store_const', const=True, default=False,
+            help='runs the redis on a debuger (gdb/lldb) interactivly.'
+                 'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
+                 'it is also not possible to use valgrind on interactive mode.'
+                 'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
+                 'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
+
+        parser.add_argument(
+            '--debugger-args', default=None,
+            help='arguments to the interactive debugger')
+
+        parser.add_argument(
+            '--no-output-catch', action='store_const', const=True, default=False,
+            help='all output will be written to the stdout, no log files.')
+
+        configFilePath = './%s' % RLTest_CONFIG_FILE_NAME
+        if os.path.exists(configFilePath):
+            args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
+        else:
+            args = sys.argv[1:]
         self.args = parser.parse_args(args=args)
 
-        if self.args.config_file:
-            with open(self.args.config_file) as f:
-                data = json.load(f)
-                for key, val in data.items():
-                    readKey = key.replace('-', '_')
-                    if readKey not in self.args.__dict__:
-                        print Colors.Bred('bad parameter on config file: %s, aborting execution!!!' % str(key))
-                        sys.exit(1)
-                    self.args.__dict__[readKey] = val
+        if self.args.interactive_debugger:
+            if self.args.env != 'oss' and self.args.env != 'enterprise':
+                print Colors.Bred('interactive debugger can only be used on non cluster env')
+                sys.exit(1)
+            if self.args.use_valgrind:
+                print Colors.Bred('can not use valgrind with interactive debugger')
+                sys.exit(1)
+            if self.args.use_slaves:
+                print Colors.Bred('can not use slaves with interactive debugger')
+                sys.exit(1)
+
+            self.args.no_output_catch = True
+            self.args.stop_on_failure = True
 
         if self.args.download_enterprise_binaries:
             self._downloadEnterpriseBinaries()
@@ -183,6 +207,9 @@ class RLTest:
         Env.defaultDebugPrints = self.args.debug_print
         Env.defaultUseValgrind = self.args.use_valgrind
         Env.defaultValgrindSuppressionsFile = self.args.valgrind_suppressions_file
+        Env.defaultInteractiveDebugger = self.args.interactive_debugger
+        Env.defaultInteractiveDebuggerArgs = self.args.debugger_args
+        Env.defaultNoCatch = self.args.no_output_catch
 
         sys.path.append(self.args.tests_dir)
 
@@ -233,7 +260,7 @@ class RLTest:
         module = imp.load_module(module_name, module_file, filename,
                                  ('.py', 'r', imp.PY_SOURCE))
         for func in dir(module):
-            if inspect.isclass(func) and func.startswith('test') or func.startswith('Test'):
+            if inspect.isclass(getattr(module, func)) and func.startswith('test') or func.startswith('Test'):
                 self.tests.append(getattr(module, func))
                 continue
             if self.args.test_name:
@@ -285,6 +312,9 @@ class RLTest:
             print '\t' + Colors.Green('Test Passed')
 
         if self.args.stop_on_failure and isTestFaild:
+            if self.args.interactive_debugger:
+                while self.currEnv.isUp():
+                    time.sleep(1)
             raw_input('press any button to move to the next test')
 
         return self.currEnv.getNumberOfFailedAssertion()
@@ -295,6 +325,9 @@ class RLTest:
         if self.args.env_only:
             Env.defaultVerbose = 2
             env = Env(testName='manual test env')
+            if self.args.interactive_debugger:
+                while env.isUp():
+                    time.sleep(1)
             raw_input('press any button to stop')
             env.stop()
             return
@@ -304,6 +337,9 @@ class RLTest:
             self._loadTests()
         done = 0
         startTime = time.time()
+        if self.args.interactive_debugger and len(self.tests) != 1:
+            print Colors.Bred('only one test can be run on interactive-debugger use --test-name')
+            sys.exit(1)
         while self.tests:
             test = self.tests.pop(0)
             if inspect.isclass(test):
@@ -337,7 +373,7 @@ class RLTest:
                 for m in methods:
                     if self.args.test_name is None or self.args.test_name == m.__name__:
                         numberOfAssertionFailed = self._runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
-                    done += 1
+                        done += 1
             elif not inspect.isfunction(test):
                 continue
             elif len(inspect.getargspec(test).args) > 0:

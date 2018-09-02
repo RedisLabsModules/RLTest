@@ -16,7 +16,8 @@ class EnterpriseClusterEnv():
     MODULE_WORKING_DIR = '/tmp/'
 
     def __init__(self, redisBinaryPath, dmcBinaryPath, libPath, shardsCount=1, modulePath=None, moduleArgs=None,
-                 outputFilesFormat=None, dbDirPath=None, useSlaves=False, useAof=None, useValgrind=False, valgrindSuppressionsFile=None):
+                 outputFilesFormat=None, dbDirPath=None, useSlaves=False, useAof=None, useValgrind=False, valgrindSuppressionsFile=None,
+                 noCatch=False):
         self.shardsCount = shardsCount
         self.shards = []
         self.modulePath = modulePath
@@ -32,7 +33,7 @@ class EnterpriseClusterEnv():
             shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.moduleSoFilePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
                            serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath, useAof=self.useAof, useValgrind=self.useValgrind,
-                           valgrindSuppressionsFile=self.valgrindSuppressionsFile)
+                           valgrindSuppressionsFile=self.valgrindSuppressionsFile, noCatch=noCatch)
             self.shards.append(shard)
             startPort += 2
 
@@ -148,3 +149,6 @@ class EnterpriseClusterEnv():
 
     def keys(self, reg):
         return self.getConnection().keys(reg)
+
+    def isUp(self):
+        raise Exception('unsupported operation')

@@ -88,6 +88,11 @@ class Env:
     defaultUseValgrind = False
     defaultValgrindSuppressionsFile = None
 
+    defaultInteractiveDebugger = False
+    defaultInteractiveDebuggerArgs = None
+
+    defaultNoCatch = False
+
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
 
     def compareEnvs(self, env):
@@ -138,27 +143,31 @@ class Env:
     def getEnvByName(self):
         if self.env == 'oss':
             return OssEnv(redisBinaryPath=Env.defaultOssRedisBinary, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          outputFilesFormat='%s-' + '%s-oss-redis.log' % self.testName,
+                          outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                          valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
+                          valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
+                          interactiveDebugger=Env.defaultInteractiveDebugger, interactiveDebuggerArgs=Env.defaultInteractiveDebuggerArgs,
+                          noCatch=Env.defaultNoCatch)
         if self.env == 'enterprise':
             return OssEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          outputFilesFormat='%s-' + '%s-oss-redis.log' % self.testName,
+                          outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves, libPath=Env.defaultEnterpriseLibsPath,
-                          useAof=self.useAof, useValgrind=Env.defaultUseValgrind, valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
+                          useAof=self.useAof, useValgrind=Env.defaultUseValgrind, valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
+                          interactiveDebugger=Env.defaultInteractiveDebugger, interactiveDebuggerArgs=Env.defaultInteractiveDebuggerArgs,
+                          noCatch=Env.defaultNoCatch)
         if self.env == 'enterprise-cluster':
             return EnterpriseClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                         modulePath=self.module, moduleArgs=self.moduleArgs,
                                         outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
                                         dbDirPath=self.logDir, useSlaves=self.useSlaves, dmcBinaryPath=Env.defaultProxyBinaryPath,
                                         libPath=Env.defaultEnterpriseLibsPath, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                                        valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
+                                        valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile, noCatch=Env.defaultNoCatch)
         if self.env == 'oss-cluster':
             return OssClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
                                  modulePath=self.module, moduleArgs=self.moduleArgs,
                                  outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
                                  dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                                 valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile)
+                                 valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile, noCatch=Env.defaultNoCatch)
 
     def start(self):
         self.envRunner.startEnv()
@@ -327,6 +336,9 @@ class Env:
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()
+
+    def isUp(self):
+        return self.envRunner.isUp()
 
 
 def addDepricatedMethod(cls, name, invoke):

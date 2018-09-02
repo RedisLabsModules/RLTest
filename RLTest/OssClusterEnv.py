@@ -6,7 +6,8 @@ import time
 
 class OssClusterEnv:
     def __init__(self, redisBinaryPath, modulePath=None, moduleArgs=None, outputFilesFormat=None,
-                 dbDirPath=None, useSlaves=False, shardsCount=1, useAof=None, useValgrind=False, valgrindSuppressionsFile=None):
+                 dbDirPath=None, useSlaves=False, shardsCount=1, useAof=None, useValgrind=False, valgrindSuppressionsFile=None,
+                 noCatch=False):
         self.redisBinaryPath = redisBinaryPath
         self.modulePath = modulePath
         self.moduleArgs = moduleArgs
@@ -26,7 +27,7 @@ class OssClusterEnv:
             shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.modulePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=self.outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
                            serverId=(i + 1), clusterEnabled=True, useAof=self.useAof, useValgrind=self.useValgrind,
-                           valgrindSuppressionsFile=self.valgrindSuppressionsFile)
+                           valgrindSuppressionsFile=self.valgrindSuppressionsFile, noCatch=noCatch)
             self.shards.append(shard)
             startPort += 2
 
@@ -113,6 +114,9 @@ class OssClusterEnv:
             if not shard.checkExitCode():
                 return False
         return True
+
+    def isUp(self):
+        raise Exception('unsupported operation')
 
     def exists(self, val):
         return self.getClusterConnection().exists(val)

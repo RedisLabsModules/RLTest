@@ -2,6 +2,7 @@ import redis
 import subprocess
 import sys
 import os
+import platform
 from utils import Colors, wait_for_conn
 
 
@@ -12,7 +13,8 @@ SLAVE = 2
 class OssEnv:
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
-                 useAof=False, useValgrind=False, valgrindSuppressionsFile=None):
+                 useAof=False, useValgrind=False, valgrindSuppressionsFile=None, interactiveDebugger=False,
+                 interactiveDebuggerArgs=True, noCatch=False):
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
         self.port = port
         self.modulePath = os.path.abspath(modulePath) if modulePath is not None else None
@@ -27,6 +29,12 @@ class OssEnv:
         self.envIsUp = False
         self.useValgrind = useValgrind
         self.valgrindSuppressionsFile = os.path.abspath(valgrindSuppressionsFile) if valgrindSuppressionsFile is not None else None
+        self.interactiveDebugger = interactiveDebugger
+        self.interactiveDebuggerArgs = interactiveDebuggerArgs
+        self.noCatch = noCatch
+
+        if self.interactiveDebugger:
+            assert self.noCatch and not self.useSlaves and not self.useValgrind and not self.clusterEnabled
 
         if libPath:
             self.libPath = os.path.expanduser(libPath) if libPath.startswith('~/') else libPath
@@ -62,7 +70,10 @@ class OssEnv:
                         '--error-exitcode=1']
             if self.valgrindSuppressionsFile:
                 cmdArgs += ['--suppressions=%s' % self.valgrindSuppressionsFile]
-        cmdArgs += [self.redisBinaryPath]
+        elif self.interactiveDebugger:
+            cmdArgs += ['lldb' if platform.system() == 'Darwin' else 'gdb', '-ex', 'run', '--args', self.redisBinaryPath]
+        else:
+            cmdArgs += [self.redisBinaryPath]
         if role == MASTER:
             cmdArgs += ['--port', str(self.port)]
         else:
@@ -73,7 +84,7 @@ class OssEnv:
                 cmdArgs += self.moduleArgs.split(' ')
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
-        if self.outputFilesFormat is not None:
+        if self.outputFilesFormat is not None and not self.noCatch:
             cmdArgs += ['--logfile', self._getFileName(role, '.log')]
         if self.outputFilesFormat is not None:
             cmdArgs += ['--dbfilename', self._getFileName(role, '.rdb')]
@@ -91,10 +102,13 @@ class OssEnv:
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             cmdArgs += ['--aof-use-rdb-preamble', 'yes']
 
+        if self.interactiveDebugger and self.interactiveDebuggerArgs:
+            cmdArgs += self.interactiveDebuggerArgs.split(' ')
+
         return cmdArgs
 
     def waitForRedisToStart(self, con):
-        wait_for_conn(con, retries=1000 if self.useValgrind else 20)
+        wait_for_conn(con, retries=1000 if self.useValgrind or self.interactiveDebugger else 20)
 
     def getPid(self, role):
         return self.masterProcess.pid if role == MASTER else self.slaveProcess.pid
@@ -105,7 +119,7 @@ class OssEnv:
     def getServerId(self, role):
         return self.masterServerId if role == MASTER else self.slaveServerId
 
-    def innerPrintEnvData(self, prefix='', role=MASTER):
+    def _printEnvData(self, prefix='', role=MASTER):
         print Colors.Yellow(prefix + 'pid: %d' % (self.getPid(role)))
         print Colors.Yellow(prefix + 'port: %d' % (self.getPort(role)))
         print Colors.Yellow(prefix + 'binary path: %s' % (self.redisBinaryPath))
@@ -125,19 +139,27 @@ class OssEnv:
 
     def printEnvData(self, prefix=''):
         print Colors.Yellow(prefix + 'master:')
-        self.innerPrintEnvData(prefix + '\t', MASTER)
+        self._printEnvData(prefix + '\t', MASTER)
         if self.useSlaves:
             print Colors.Yellow(prefix + 'slave:')
-            self.innerPrintEnvData(prefix + '\t', SLAVE)
+            self._printEnvData(prefix + '\t', SLAVE)
 
     def startEnv(self):
         if self.envIsUp:
             return  # env is already up
-        self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.env)
+        stdoutPipe = subprocess.PIPE
+        stderrPipe = subprocess.STDOUT
+        stdinPipe = subprocess.PIPE
+        if self.noCatch:
+            stdoutPipe = sys.stdout
+            stderrPipe = sys.stderr
+        if self.interactiveDebugger:
+            stdinPipe = sys.stdin
+        self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, stdout=stdoutPipe, stderr=stderrPipe, stdin=stdinPipe, env=self.env)
         con = self.getConnection()
         self.waitForRedisToStart(con)
         if self.useSlaves:
-            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=self.env)
+            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, stdout=stdoutPipe, stderr=stderrPipe, env=self.env)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)
         self.envIsUp = True
@@ -151,7 +173,9 @@ class OssEnv:
         process = self.masterProcess if role == MASTER else self.slaveProcess
         serverId = self.masterServerId if role == MASTER else self.slaveServerId
         if not self._isAlive(process):
-            print '\t' + Colors.Bred('process is not alive, might have crash durring test execution, check this out. server id : %s' % str(serverId))
+            if not self.interactiveDebugger:
+                # on interactive debugger its expected that then process will not be alive
+                print '\t' + Colors.Bred('process is not alive, might have crash durring test execution, check this out. server id : %s' % str(serverId))
             return
         try:
             process.terminate()
@@ -227,6 +251,11 @@ class OssEnv:
             print '\t' + Colors.Bred('bad exit code for serverId %s' % str(self.slaveServerId))
             ret = False
         return ret
+
+    def isUp(self):
+        if self.useSlaves:
+            raise Exception('unsupported operation')
+        return self._isAlive(self.masterProcess)
 
     def exists(self, val):
         return self.getConnection().exists(val)

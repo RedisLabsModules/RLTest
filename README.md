@@ -26,6 +26,8 @@ usage: RLTest [-h] [--module MODULE] [--module-args MODULE_ARGS]
               [--enterprise-lib-path ENTERPRISE_LIB_PATH] [--env-reuse]
               [--use-aof] [--debug-print] [--use-valgrind]
               [--valgrind-suppressions-file VALGRIND_SUPPRESSIONS_FILE]
+              [--config-file CONFIG_FILE] [--interactive-debugger]
+              [--debugger-args DEBUGGER_ARGS] [--no-output-catch]
 ```
 
 ### module
@@ -94,16 +96,28 @@ Run redis under valgrind (assuming valgrind is installed on the machine).
 ### valgrind-suppressions-file
 Path to valgrind suppressions (not mandatory).
 
+### interactive-debugger
+runs the redis on a debugger (gdb/lldb) interactivly.
+debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.
+it is also not possible to use valgrind on interactive debugger.
+interactive debugger direcly applies: --no-output-catch and --stop-on-failure.
+it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.
+
+### debugger-args
+arguments to pass to the debugger.
+
+### no-output-catch
+all output will be written to the stdout, no log files.
 
 # Configuration File
 By default the framework search for configuration file on the current directory. The configuration file name is: config.txt.
-It is possible to specify defferent configuration file on command line using the 'prefix', for example:
+It is possible to specify different configuration file on command line using the '@' prefix, for example:
 ```
 RLTest @myConfig.txt # search for myConfig.txt configuration file
 ```
 The configuration file format is the same as the command line argument, i.e : '--< param_name > < param_val >'.
 
-It is also possable to comment a spacific lines in the configuration file using '#'.
+It is also possible to comment a spacific lines in the configuration file using '#'.
 
 Example:
 ```
