@@ -71,9 +71,8 @@ class OssEnv:
             if self.valgrindSuppressionsFile:
                 cmdArgs += ['--suppressions=%s' % self.valgrindSuppressionsFile]
         elif self.interactiveDebugger:
-            cmdArgs += ['lldb' if platform.system() == 'Darwin' else 'gdb', '-ex', 'run', '--args', self.redisBinaryPath]
-        else:
-            cmdArgs += [self.redisBinaryPath]
+            cmdArgs += ['lldb' if platform.system() == 'Darwin' else 'gdb', '-ex', 'run', '--args']
+        cmdArgs += [self.redisBinaryPath]
         if role == MASTER:
             cmdArgs += ['--port', str(self.port)]
         else:

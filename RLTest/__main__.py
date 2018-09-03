@@ -37,6 +37,17 @@ class CustomArgumentParser(argparse.ArgumentParser):
             yield arg
 
 
+class EnvScopeGuard:
+    def __init__(self, runner):
+        self.runner = runner
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type, value, traceback):
+        self.runner.takeEnvDown()
+
+
 class RLTest:
 
     def __init__(self):
@@ -276,7 +287,7 @@ class RLTest:
                 module_name, ext = os.path.splitext(filename)
                 self._loadFileTests(module_name)
 
-    def _takeEnvDown(self, fullShutDown=False):
+    def takeEnvDown(self, fullShutDown=False):
         if self.currEnv:
             if self.args.env_reuse and not fullShutDown:
                 self.currEnv.flush()
@@ -319,6 +330,9 @@ class RLTest:
 
         return self.currEnv.getNumberOfFailedAssertion()
 
+    def envScopeGuard(self):
+        return EnvScopeGuard(self)
+
     def execute(self):
         self.testsFailed = set()
         Env.RTestInstance = self
@@ -341,52 +355,52 @@ class RLTest:
             print Colors.Bred('only one test can be run on interactive-debugger use --test-name')
             sys.exit(1)
         while self.tests:
-            test = self.tests.pop(0)
-            if inspect.isclass(test):
+            with self.envScopeGuard():
+                test = self.tests.pop(0)
+                if inspect.isclass(test):
 
-                # checking if there are tests to run
-                methodsToTest = []
-                for m in dir(test):
-                    if self.args.test_name is not None:
-                        if self.args.test_name == m:
+                    # checking if there are tests to run
+                    methodsToTest = []
+                    for m in dir(test):
+                        if self.args.test_name is not None:
+                            if self.args.test_name == m:
+                                methodsToTest.append(m)
+                        elif m.startswith('test') or m.startswith('Test'):
                             methodsToTest.append(m)
-                    elif m.startswith('test') or m.startswith('Test'):
-                        methodsToTest.append(m)
 
-                if len(methodsToTest) == 0:
+                    if len(methodsToTest) == 0:
+                        continue
+                    try:
+                        testObj = test()
+                    except unittest.SkipTest:
+                        print '\t' + Colors.Green('Skipping test')
+                        continue
+                    except Exception as err:
+                        msg = 'Unhandled exception: %s' % err
+                        print '\t' + Colors.Bred(msg)
+                        traceback.print_exc(file=sys.stdout)
+                        print '\t' + Colors.Bred('Test Failed')
+                        if self.currEnv:
+                            self.testsFailed.add(self.currEnv)
+                        continue
+                    methods = [getattr(testObj, m) for m in dir(testObj) if callable(getattr(testObj, m)) and
+                               (m.startswith('test') or m.startswith('Test'))]
+                    numberOfAssertionFailed = 0
+                    for m in methods:
+                        if self.args.test_name is None or self.args.test_name == m.__name__:
+                            numberOfAssertionFailed = self._runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
+                            done += 1
+                elif not inspect.isfunction(test):
                     continue
-                try:
-                    testObj = test()
-                except unittest.SkipTest:
-                    print '\t' + Colors.Green('Skipping test')
-                except Exception as err:
-                    msg = 'Unhandled exception: %s' % err
-                    print '\t' + Colors.Bred(msg)
-                    traceback.print_exc(file=sys.stdout)
-                    print '\t' + Colors.Bred('Test Failed')
-                    if self.currEnv:
-                        self.testsFailed.add(self.currEnv)
-                    continue
-                methods = [getattr(testObj, m) for m in dir(testObj) if callable(getattr(testObj, m)) and
-                           (m.startswith('test') or m.startswith('Test'))]
-                numberOfAssertionFailed = 0
-                for m in methods:
-                    if self.args.test_name is None or self.args.test_name == m.__name__:
-                        numberOfAssertionFailed = self._runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
-                        done += 1
-            elif not inspect.isfunction(test):
-                continue
-            elif len(inspect.getargspec(test).args) > 0:
-                env = Env(testName='%s.%s' % (str(test.__module__), test.func_name))
-                self._runTest(lambda: test(env))
-                done += 1
-            else:
-                self._runTest(test)
-                done += 1
+                elif len(inspect.getargspec(test).args) > 0:
+                    env = Env(testName='%s.%s' % (str(test.__module__), test.func_name))
+                    self._runTest(lambda: test(env))
+                    done += 1
+                else:
+                    self._runTest(test)
+                    done += 1
 
-            self._takeEnvDown()
-
-        self._takeEnvDown(fullShutDown=True)
+        self.takeEnvDown(fullShutDown=True)
         endTime = time.time()
 
         print Colors.Bold('Test Took: %d sec' % (endTime - startTime))

@@ -1,6 +1,7 @@
 import os
 import sys
 import redis
+import unittest
 import inspect
 import contextlib
 import warnings
@@ -46,7 +47,7 @@ class Query:
         return self
 
     def ok(self):
-        self.AssertEqual(self.res, 'OK', 1)
+        self.env.assertEqual(self.res, 'OK', 1)
         return self
 
     def contains(self, val):
@@ -103,7 +104,7 @@ class Env:
                 return False
         return True
 
-    def __init__(self, testName=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None):
+    def __init__(self, testName=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, ):
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testNamePrintable = self.testName
         self.testName = self.testName.replace(' ', '_')
@@ -339,6 +340,13 @@ class Env:
 
     def isUp(self):
         return self.envRunner.isUp()
+
+    def skip(self):
+        raise unittest.SkipTest()
+
+    def skipOnCluster(self):
+        if self.isCluster():
+            self.skip()
 
 
 def addDepricatedMethod(cls, name, invoke):
