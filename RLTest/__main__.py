@@ -88,6 +88,9 @@ class RLTest:
             help='stop before each test allow gdb attachment')
 
         parser.add_argument(
+            '-t', '--test', help='Specify test to run, in the form of "file:test"')
+
+        parser.add_argument(
             '--tests-dir', default='.',
             help='directory on which to run the tests')
 
@@ -265,8 +268,8 @@ class RLTest:
 
         print Colors.Yellow('finished installing enterprise binaries')
 
-    def _loadFileTests(self, module_name):
-        filename = '%s/%s.py' % (self.args.tests_dir, module_name)
+    def _loadFileTests(self, module_dir, module_name, test_name=None):
+        filename = '%s/%s.py' % (module_dir, module_name)
         module_file = open(filename, 'r')
         module = imp.load_module(module_name, module_file, filename,
                                  ('.py', 'r', imp.PY_SOURCE))
@@ -274,18 +277,46 @@ class RLTest:
             if inspect.isclass(getattr(module, func)) and func.startswith('test') or func.startswith('Test'):
                 self.tests.append(getattr(module, func))
                 continue
-            if self.args.test_name:
-                if func == self.args.test_name:
+            if test_name is not None:
+                if func == test_name:
                     self.tests.append(getattr(module, func))
                     return
             elif func.startswith('test') or func.startswith('Test'):
                 self.tests.append(getattr(module, func))
 
-    def _loadTests(self):
-        for filename in os.listdir(self.args.tests_dir):
+    def _scanTestsDir(self, testdir, testname=None):
+        for filename in os.listdir(testdir):
             if filename.startswith('test') and filename.endswith('.py'):
                 module_name, ext = os.path.splitext(filename)
-                self._loadFileTests(module_name)
+                self._loadFileTests(testdir, module_name, testname)
+
+    def _loadSingleArg(self, arg):
+        """
+        Load tests from single argument form, e.g. foo.py:BarBaz
+        """
+        if ':' in arg:
+            filename, testfunc = arg.split(':')
+        else:
+            filename = arg
+            testfunc = None
+            if os.path.isdir(filename):
+                print filename
+                self._scanTestsDir(filename)
+                return
+
+        # Ensure the path is in sys.path
+        dirname = os.path.abspath(os.path.dirname(filename))
+        if dirname not in sys.path:
+            sys.path.append(dirname)
+
+        module_name, _ = os.path.splitext(os.path.basename(filename))
+        self._loadFileTests(dirname, module_name, testfunc)
+
+    def _loadTests(self):
+        if self.args.test:
+            self._loadSingleArg(self.args.test)
+        else:
+            self._scanTestsDir(self.args.tests_dir, self.args.test_name)
 
     def takeEnvDown(self, fullShutDown=False):
         if self.currEnv:
