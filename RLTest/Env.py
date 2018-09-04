@@ -58,13 +58,16 @@ class Query:
         self.env.assertNotContains(val, self.res, 1)
         return self
 
-    def raiseError(self):
+    def error(self):
         self.env.assertTrue(self.errorRaised, 1)
         return self
 
-    def notRaiseError(self):
+    def noError(self):
         self.env.assertFalse(self.errorRaised, 1)
         return self
+
+    raiseError = error
+    notRaiseError = noError
 
 
 class Env:
