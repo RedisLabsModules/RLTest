@@ -26,7 +26,7 @@ usage: RLTest [-h] [--module MODULE] [--module-args MODULE_ARGS]
               [--enterprise-lib-path ENTERPRISE_LIB_PATH] [--env-reuse]
               [--use-aof] [--debug-print] [--use-valgrind]
               [--valgrind-suppressions-file VALGRIND_SUPPRESSIONS_FILE]
-              [--config-file CONFIG_FILE] [--interactive-debugger]
+              [--interactive-debugger]
               [--debugger-args DEBUGGER_ARGS] [--no-output-catch]
 ```
 
