@@ -9,7 +9,7 @@ import shutil
 import inspect
 import unittest
 import time
-import json
+import shlex
 from Env import Env
 from utils import Colors
 
@@ -29,7 +29,7 @@ class CustomArgumentParser(argparse.ArgumentParser):
         super(CustomArgumentParser, self).__init__(*args, **kwrags)
 
     def convert_arg_line_to_args(self, line):
-        for arg in line.split():
+        for arg in shlex.split(line):
             if not arg.strip():
                 continue
             if arg[0] == '#':
