@@ -65,9 +65,13 @@ class OssEnv:
     def createCmdArgs(self, role):
         cmdArgs = []
         if self.useValgrind:
-            cmdArgs += ['valgrind', '--log-file=%s' % self._getVlgrindFilePath(role),
-                        '--leak-check=full', '--errors-for-leak-kinds=definite',
+            cmdArgs += ['valgrind']
+            if not self.noCatch:
+                cmdArgs += ['--log-file=%s' % self._getVlgrindFilePath(role)]
+
+            cmdArgs += ['--leak-check=full', '--errors-for-leak-kinds=definite',
                         '--error-exitcode=1']
+
             if self.valgrindSuppressionsFile:
                 cmdArgs += ['--suppressions=%s' % self.valgrindSuppressionsFile]
         elif self.interactiveDebugger:
