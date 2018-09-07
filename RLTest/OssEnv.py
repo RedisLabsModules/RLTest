@@ -78,7 +78,7 @@ class OssEnv:
             if platform.system() == 'Darwin':
                 cmdArgs += ['lldb', '--']
             else:
-                cmdArgs += ['gdb', '-ex']
+                cmdArgs += ['gdb', '-ex', 'run', '--args']
         cmdArgs += [self.redisBinaryPath]
         if role == MASTER:
             cmdArgs += ['--port', str(self.port)]
