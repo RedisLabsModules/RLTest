@@ -135,7 +135,7 @@ class RLTest:
             help='path of needed libraries to run enterprise binaries')
 
         parser.add_argument(
-            '--env-reuse', action='store_const', const=True, default=False,
+            '-r', '--env-reuse', action='store_const', const=True, default=False,
             help='reuse exists env, this feature is based on best efforts, if the env can not be reused then it will be taken down.')
 
         parser.add_argument(
@@ -147,7 +147,7 @@ class RLTest:
             help='print debug messages')
 
         parser.add_argument(
-            '--use-valgrind', action='store_const', const=True, default=False,
+            '-V', '--use-valgrind', action='store_const', const=True, default=False,
             help='running redis under valgrind (assuming valgrind is install on the machine)')
 
         parser.add_argument(
@@ -161,7 +161,7 @@ class RLTest:
                  'values which was not specifies either on configuration file nor on command line args will be getting their default value')
 
         parser.add_argument(
-            '--interactive-debugger', action='store_const', const=True, default=False,
+            '-i', '--interactive-debugger', action='store_const', const=True, default=False,
             help='runs the redis on a debuger (gdb/lldb) interactivly.'
                  'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
                  'it is also not possible to use valgrind on interactive mode.'
