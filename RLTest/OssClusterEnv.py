@@ -1,4 +1,4 @@
-from OssEnv import OssEnv
+from RLTest.OssEnv import OssEnv
 import redis
 import rediscluster
 import time

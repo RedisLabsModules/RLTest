@@ -182,13 +182,13 @@ class RLTest:
 
         if self.args.interactive_debugger:
             if self.args.env != 'oss' and self.args.env != 'enterprise':
-                print Colors.Bred('interactive debugger can only be used on non cluster env')
+                print(Colors.Bred('interactive debugger can only be used on non cluster env'))
                 sys.exit(1)
             if self.args.use_valgrind:
-                print Colors.Bred('can not use valgrind with interactive debugger')
+                print(Colors.Bred('can not use valgrind with interactive debugger'))
                 sys.exit(1)
             if self.args.use_slaves:
-                print Colors.Bred('can not use slaves with interactive debugger')
+                print(Colors.Bred('can not use slaves with interactive debugger'))
                 sys.exit(1)
 
             self.args.no_output_catch = True
@@ -233,22 +233,22 @@ class RLTest:
 
     def _downloadEnterpriseBinaries(self):
         binariesName = 'binaries.tar'
-        print Colors.Yellow('installing enterprise binaries')
-        print Colors.Yellow('creating RLTest working dir: %s' % RLTest_WORKING_DIR)
+        print(Colors.Yellow('installing enterprise binaries'))
+        print(Colors.Yellow('creating RLTest working dir: %s' % RLTest_WORKING_DIR))
         try:
             shutil.rmtree(RLTest_WORKING_DIR)
             os.makedirs(RLTest_WORKING_DIR)
         except Exception:
             pass
 
-        print Colors.Yellow('download binaries')
+        print(Colors.Yellow('download binaries'))
         args = ['wget', RLTest_ENTERPRISE_URL, '-O', os.path.join(RLTest_WORKING_DIR, binariesName)]
         self.process = subprocess.Popen(args=args, stdout=sys.stdout, stderr=sys.stdout)
         self.process.wait()
         if self.process.poll() != 0:
             raise Exception('failed to download enterprise binaries from s3')
 
-        print Colors.Yellow('extracting binaries')
+        print(Colors.Yellow('extracting binaries'))
         debFileName = 'redislabs_%s-%s~%s_amd64.deb' % (RLTest_ENTERPRISE_VERSION, RLTest_ENTERPRISE_SUB_VERSION, OS_NAME)
         args = ['tar', '-xvf', os.path.join(RLTest_WORKING_DIR, binariesName), '--directory', RLTest_WORKING_DIR, debFileName]
         self.process = subprocess.Popen(args=args, stdout=sys.stdout, stderr=sys.stdout)
@@ -263,7 +263,7 @@ class RLTest:
         if self.process.poll() != 0:
             raise Exception('failed to extract binaries to %s' % self.RLTest_WORKING_DIR)
 
-        print Colors.Yellow('finished installing enterprise binaries')
+        print(Colors.Yellow('finished installing enterprise binaries'))
 
     def _loadFileTests(self, module_name):
         filename = '%s/%s.py' % (self.args.tests_dir, module_name)
@@ -294,33 +294,33 @@ class RLTest:
             else:
                 self.currEnv.stop()
                 if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
-                    print Colors.Bred('\tvalgrind check failure')
+                    print(Colors.Bred('\tvalgrind check failure'))
                     self.testsFailed.add(self.currEnv)
                 self.currEnv = None
 
     def _runTest(self, method, printTestName=False, numberOfAssertionFailed=0):
         exceptionRaised = False
         if printTestName:
-            print '\t' + Colors.Cyan(method.__name__)
+            print('\t' + Colors.Cyan(method.__name__))
         try:
             if self.args.debug:
                 raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
             method()
         except unittest.SkipTest:
-            print '\t' + Colors.Green('Skipping test')
+            print('\t' + Colors.Green('Skipping test'))
         except Exception as err:
             msg = 'Unhandled exception: %s' % err
-            print '\t' + Colors.Bred(msg)
+            print('\t' + Colors.Bred(msg))
             traceback.print_exc(file=sys.stdout)
             exceptionRaised = True
 
         isTestFaild = self.currEnv is None or self.currEnv.getNumberOfFailedAssertion() > numberOfAssertionFailed or exceptionRaised
 
         if isTestFaild:
-            print '\t' + Colors.Bred('Test Failed')
+            print('\t' + Colors.Bred('Test Failed'))
             self.testsFailed.add(self.currEnv)
         else:
-            print '\t' + Colors.Green('Test Passed')
+            print('\t' + Colors.Green('Test Passed'))
 
         if self.args.stop_on_failure and isTestFaild:
             if self.args.interactive_debugger:
@@ -352,7 +352,7 @@ class RLTest:
         done = 0
         startTime = time.time()
         if self.args.interactive_debugger and len(self.tests) != 1:
-            print Colors.Bred('only one test can be run on interactive-debugger use --test-name')
+            print(Colors.Bred('only one test can be run on interactive-debugger use --test-name'))
             sys.exit(1)
         while self.tests:
             with self.envScopeGuard():
@@ -373,13 +373,13 @@ class RLTest:
                     try:
                         testObj = test()
                     except unittest.SkipTest:
-                        print '\t' + Colors.Green('Skipping test')
+                        print('\t' + Colors.Green('Skipping test'))
                         continue
                     except Exception as err:
                         msg = 'Unhandled exception: %s' % err
-                        print '\t' + Colors.Bred(msg)
+                        print('\t' + Colors.Bred(msg))
                         traceback.print_exc(file=sys.stdout)
-                        print '\t' + Colors.Bred('Test Failed')
+                        print('\t' + Colors.Bred('Test Failed'))
                         if self.currEnv:
                             self.testsFailed.add(self.currEnv)
                         continue
@@ -403,12 +403,12 @@ class RLTest:
         self.takeEnvDown(fullShutDown=True)
         endTime = time.time()
 
-        print Colors.Bold('Test Took: %d sec' % (endTime - startTime))
-        print Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, len(self.testsFailed), done - len(self.testsFailed)))
+        print(Colors.Bold('Test Took: %d sec' % (endTime - startTime)))
+        print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, len(self.testsFailed), done - len(self.testsFailed))))
         if len(self.testsFailed) > 0:
-            print Colors.Bold('Faild Tests Summery:')
+            print(Colors.Bold('Faild Tests Summery:'))
             for testFaild in self.testsFailed:
-                print '\t' + Colors.Bold(testFaild.testNamePrintable)
+                print('\t' + Colors.Bold(testFaild.testNamePrintable))
                 testFaild.printFailuresSummery('\t\t')
             sys.exit(1)
 

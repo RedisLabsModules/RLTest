@@ -5,10 +5,10 @@ import unittest
 import inspect
 import contextlib
 import warnings
-from OssEnv import OssEnv
-from OssClusterEnv import OssClusterEnv
-from utils import Colors
-from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
+from RLTest.OssEnv import OssEnv
+from RLTest.OssClusterEnv import OssClusterEnv
+from RLTest.utils import Colors
+from RLTest.Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
 
 
 class Query:
@@ -109,7 +109,7 @@ class Env:
         self.testNamePrintable = self.testName
         self.testName = self.testName.replace(' ', '_')
 
-        print Colors.Cyan(self.testNamePrintable + ':')
+        print(Colors.Cyan(self.testNamePrintable + ':'))
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
@@ -136,7 +136,7 @@ class Env:
 
         self.start()
         if self.verbose >= 2:
-            print Colors.Blue('\tenv data:')
+            print(Colors.Blue('\tenv data:'))
             self.envRunner.printEnvData('\t\t')
 
         Env.RTestInstance.currEnv = self
@@ -204,10 +204,10 @@ class Env:
 
     def _assertion(self, checkStr, trueValue, depth=0):
         if trueValue and self.verbose:
-            print '\t' + Colors.Green('assertion success:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+            print('\t' + Colors.Green('assertion success:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth)))
         elif not trueValue:
             FailureSummery = Colors.Bred('assertion faild:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
-            print '\t' + FailureSummery
+            print('\t' + FailureSummery)
             self.assertionFailedSummery.append(FailureSummery)
 
     def getNumberOfFailedAssertion(self):
@@ -215,7 +215,7 @@ class Env:
 
     def printFailuresSummery(self, prefix=''):
         for failure in self.assertionFailedSummery:
-            print prefix + failure
+            print(prefix + failure)
 
     def assertEqual(self, first, second, depth=0):
         self._assertion('%s == %s' % (first, second), first == second, depth)
@@ -333,7 +333,7 @@ class Env:
 
     def debugPrint(self, msg, force=False):
         if Env.defaultDebugPrints or force:
-            print '\t' + Colors.Bold('debug:\t') + Colors.Gray(msg)
+            print('\t' + Colors.Bold('debug:\t') + Colors.Gray(msg))
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()
@@ -353,7 +353,7 @@ def addDepricatedMethod(cls, name, invoke):
     def method(*argc, **nargs):
         warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
         return invoke(*argc, **nargs)
-    cls.__dict__[name] = method
+    setattr(cls, name, method)
 
 
 addDepricatedMethod(Env, 'assertEquals', Env.assertEqual)
