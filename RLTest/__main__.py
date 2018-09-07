@@ -173,7 +173,7 @@ class RLTest:
             help='arguments to the interactive debugger')
 
         parser.add_argument(
-            '--no-output-catch', action='store_const', const=True, default=False,
+            '-s', '--no-output-catch', action='store_const', const=True, default=False,
             help='all output will be written to the stdout, no log files.')
 
         configFilePath = './%s' % RLTest_CONFIG_FILE_NAME
