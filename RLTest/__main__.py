@@ -37,6 +37,137 @@ class CustomArgumentParser(argparse.ArgumentParser):
             yield arg
 
 
+parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
+                              formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                              description='Test Framework for redis and redis module')
+
+
+parser.add_argument(
+    '--module', default=None,
+    help='path to the module file')
+
+parser.add_argument(
+    '--module-args', default=None,
+    help='arguments to give to the module on loading')
+
+parser.add_argument(
+    '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster'],
+    help='env on which to run the test')
+
+parser.add_argument(
+    '--oss-redis-path', default='redis-server',
+    help='path to the oss redis binary')
+
+parser.add_argument(
+    '--enterprise-redis-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/redis-server'),
+    help='path to the entrprise redis binary')
+
+parser.add_argument(
+    '--stop-on-failure', action='store_const', const=True, default=False,
+    help='stop running on failure')
+
+parser.add_argument(
+    '--verbose', '-v', action='count', default=0,
+    help='print more information about the test')
+
+parser.add_argument(
+    '--debug', action='store_const', const=True, default=False,
+    help='stop before each test allow gdb attachment')
+
+parser.add_argument(
+    '-t', '--test', help='Specify test to run, in the form of "file:test"')
+
+parser.add_argument(
+    '--tests-dir', default='.',
+    help='directory on which to run the tests')
+
+parser.add_argument(
+    '--test-name', default=None,
+    help='test name to run')
+
+parser.add_argument(
+    '--tests-file', default=None,
+    help='tests file to run (with out the .py extention)')
+
+parser.add_argument(
+    '--env-only', action='store_const', const=True, default=False,
+    help='start the env but do not run any tests')
+
+parser.add_argument(
+    '--clear-logs', action='store_const', const=True, default=False,
+    help='deleting the log direcotry before the execution')
+
+parser.add_argument(
+    '--log-dir', default='./logs',
+    help='directory to write logs to')
+
+parser.add_argument(
+    '--use-slaves', action='store_const', const=True, default=False,
+    help='run env with slaves enabled')
+
+parser.add_argument(
+    '--shards-count', default=1, type=int,
+    help='Number shards in bdb')
+
+parser.add_argument(
+    '--download-enterprise-binaries', action='store_const', const=True, default=False,
+    help='run env with slaves enabled')
+
+parser.add_argument(
+    '--proxy-binary-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/dmcproxy'),
+    help='dmc proxy binary path')
+
+parser.add_argument(
+    '--enterprise-lib-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/lib/'),
+    help='path of needed libraries to run enterprise binaries')
+
+parser.add_argument(
+    '-r', '--env-reuse', action='store_const', const=True, default=False,
+    help='reuse exists env, this feature is based on best efforts, if the env can not be reused then it will be taken down.')
+
+parser.add_argument(
+    '--use-aof', action='store_const', const=True, default=False,
+    help='use aof instead of rdb')
+
+parser.add_argument(
+    '--debug-print', action='store_const', const=True, default=False,
+    help='print debug messages')
+
+parser.add_argument(
+    '-V', '--use-valgrind', action='store_const', const=True, default=False,
+    help='running redis under valgrind (assuming valgrind is install on the machine)')
+
+parser.add_argument(
+    '--valgrind-suppressions-file', default=None,
+    help='path valgrind suppressions file')
+
+parser.add_argument(
+    '--config-file', default=None,
+    help='path to configuration file, parameters value will be taken from configuration file,'
+         'values which was not specified on configuration file will get their value from the command line args,'
+         'values which was not specifies either on configuration file nor on command line args will be getting their default value')
+
+parser.add_argument(
+    '-i', '--interactive-debugger', action='store_const', const=True, default=False,
+    help='runs the redis on a debuger (gdb/lldb) interactivly.'
+         'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
+         'it is also not possible to use valgrind on interactive mode.'
+         'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
+         'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
+
+parser.add_argument(
+    '--debugger-args', default=None,
+    help='arguments to the interactive debugger')
+
+parser.add_argument(
+    '-s', '--no-output-catch', action='store_const', const=True, default=False,
+    help='all output will be written to the stdout, no log files.')
+
+parser.add_argument(
+    '--collect-only', action='store_true',
+    help='Collect the tests and exit')
+
+
 class EnvScopeGuard:
     def __init__(self, runner):
         self.runner = runner
@@ -51,135 +182,6 @@ class EnvScopeGuard:
 class RLTest:
 
     def __init__(self):
-        parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
-                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                      description='Test Framework for redis and redis module')
-
-        parser.add_argument(
-            '--module', default=None,
-            help='path to the module file')
-
-        parser.add_argument(
-            '--module-args', default=None,
-            help='arguments to give to the module on loading')
-
-        parser.add_argument(
-            '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster'],
-            help='env on which to run the test')
-
-        parser.add_argument(
-            '--oss-redis-path', default='redis-server',
-            help='path to the oss redis binary')
-
-        parser.add_argument(
-            '--enterprise-redis-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/redis-server'),
-            help='path to the entrprise redis binary')
-
-        parser.add_argument(
-            '--stop-on-failure', action='store_const', const=True, default=False,
-            help='stop running on failure')
-
-        parser.add_argument(
-            '--verbose', '-v', action='count', default=0,
-            help='print more information about the test')
-
-        parser.add_argument(
-            '--debug', action='store_const', const=True, default=False,
-            help='stop before each test allow gdb attachment')
-
-        parser.add_argument(
-            '-t', '--test', help='Specify test to run, in the form of "file:test"')
-
-        parser.add_argument(
-            '--tests-dir', default='.',
-            help='directory on which to run the tests')
-
-        parser.add_argument(
-            '--test-name', default=None,
-            help='test name to run')
-
-        parser.add_argument(
-            '--tests-file', default=None,
-            help='tests file to run (with out the .py extention)')
-
-        parser.add_argument(
-            '--env-only', action='store_const', const=True, default=False,
-            help='start the env but do not run any tests')
-
-        parser.add_argument(
-            '--clear-logs', action='store_const', const=True, default=False,
-            help='deleting the log direcotry before the execution')
-
-        parser.add_argument(
-            '--log-dir', default='./logs',
-            help='directory to write logs to')
-
-        parser.add_argument(
-            '--use-slaves', action='store_const', const=True, default=False,
-            help='run env with slaves enabled')
-
-        parser.add_argument(
-            '--shards-count', default=1, type=int,
-            help='Number shards in bdb')
-
-        parser.add_argument(
-            '--download-enterprise-binaries', action='store_const', const=True, default=False,
-            help='run env with slaves enabled')
-
-        parser.add_argument(
-            '--proxy-binary-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/dmcproxy'),
-            help='dmc proxy binary path')
-
-        parser.add_argument(
-            '--enterprise-lib-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/lib/'),
-            help='path of needed libraries to run enterprise binaries')
-
-        parser.add_argument(
-            '-r', '--env-reuse', action='store_const', const=True, default=False,
-            help='reuse exists env, this feature is based on best efforts, if the env can not be reused then it will be taken down.')
-
-        parser.add_argument(
-            '--use-aof', action='store_const', const=True, default=False,
-            help='use aof instead of rdb')
-
-        parser.add_argument(
-            '--debug-print', action='store_const', const=True, default=False,
-            help='print debug messages')
-
-        parser.add_argument(
-            '-V', '--use-valgrind', action='store_const', const=True, default=False,
-            help='running redis under valgrind (assuming valgrind is install on the machine)')
-
-        parser.add_argument(
-            '--valgrind-suppressions-file', default=None,
-            help='path valgrind suppressions file')
-
-        parser.add_argument(
-            '--config-file', default=None,
-            help='path to configuration file, parameters value will be taken from configuration file,'
-                 'values which was not specified on configuration file will get their value from the command line args,'
-                 'values which was not specifies either on configuration file nor on command line args will be getting their default value')
-
-        parser.add_argument(
-            '-i', '--interactive-debugger', action='store_const', const=True, default=False,
-            help='runs the redis on a debuger (gdb/lldb) interactivly.'
-                 'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
-                 'it is also not possible to use valgrind on interactive mode.'
-                 'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
-                 'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
-
-        parser.add_argument(
-            '--debugger-args', default=None,
-            help='arguments to the interactive debugger')
-
-        parser.add_argument(
-            '-s', '--no-output-catch', action='store_const', const=True, default=False,
-            help='all output will be written to the stdout, no log files.')
-
-        parser.add_argument(
-            '--collect-only', action='store_true',
-            help='Collect the tests and exit')
-
         configFilePath = './%s' % RLTest_CONFIG_FILE_NAME
         if os.path.exists(configFilePath):
             args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
