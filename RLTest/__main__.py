@@ -12,7 +12,7 @@ import time
 import shlex
 from Env import Env
 from utils import Colors
-
+from RLTest.loader import TestLoader
 
 RLTest_WORKING_DIR = os.path.expanduser('~/.RLTest/')
 RLTest_ENTERPRISE_VERSION = '5.2.0'
@@ -176,6 +176,10 @@ class RLTest:
             '-s', '--no-output-catch', action='store_const', const=True, default=False,
             help='all output will be written to the stdout, no log files.')
 
+        parser.add_argument(
+            '--collect-only', action='store_true',
+            help='Collect the tests and exit')
+
         configFilePath = './%s' % RLTest_CONFIG_FILE_NAME
         if os.path.exists(configFilePath):
             args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
@@ -228,8 +232,16 @@ class RLTest:
         sys.path.append(self.args.tests_dir)
 
         self.tests = []
-
         self.currEnv = None
+        self.loader = TestLoader(filter=self.args.test_name)
+        if self.args.test:
+            self.loader.load_spec(self.args.test)
+        else:
+            self.loader.scan_dir(self.args.tests_dir)
+
+        if self.args.collect_only:
+            self.loader.print_tests()
+            sys.exit(0)
 
     def _convertArgsType(self):
         pass
@@ -268,56 +280,6 @@ class RLTest:
 
         print Colors.Yellow('finished installing enterprise binaries')
 
-    def _loadFileTests(self, module_dir, module_name, test_name=None):
-        filename = '%s/%s.py' % (module_dir, module_name)
-        module_file = open(filename, 'r')
-        module = imp.load_module(module_name, module_file, filename,
-                                 ('.py', 'r', imp.PY_SOURCE))
-        for func in dir(module):
-            if inspect.isclass(getattr(module, func)) and func.startswith('test') or func.startswith('Test'):
-                self.tests.append(getattr(module, func))
-                continue
-            if test_name is not None:
-                if func == test_name:
-                    self.tests.append(getattr(module, func))
-                    return
-            elif func.startswith('test') or func.startswith('Test'):
-                self.tests.append(getattr(module, func))
-
-    def _scanTestsDir(self, testdir, testname=None):
-        for filename in os.listdir(testdir):
-            if filename.startswith('test') and filename.endswith('.py'):
-                module_name, ext = os.path.splitext(filename)
-                self._loadFileTests(testdir, module_name, testname)
-
-    def _loadSingleArg(self, arg):
-        """
-        Load tests from single argument form, e.g. foo.py:BarBaz
-        """
-        if ':' in arg:
-            filename, testfunc = arg.split(':')
-        else:
-            filename = arg
-            testfunc = None
-            if os.path.isdir(filename):
-                print filename
-                self._scanTestsDir(filename)
-                return
-
-        # Ensure the path is in sys.path
-        dirname = os.path.abspath(os.path.dirname(filename))
-        if dirname not in sys.path:
-            sys.path.append(dirname)
-
-        module_name, _ = os.path.splitext(os.path.basename(filename))
-        self._loadFileTests(dirname, module_name, testfunc)
-
-    def _loadTests(self):
-        if self.args.test:
-            self._loadSingleArg(self.args.test)
-        else:
-            self._scanTestsDir(self.args.tests_dir, self.args.test_name)
-
     def takeEnvDown(self, fullShutDown=False):
         if self.currEnv:
             if self.args.env_reuse and not fullShutDown:
@@ -329,37 +291,65 @@ class RLTest:
                     self.testsFailed.add(self.currEnv)
                 self.currEnv = None
 
-    def _runTest(self, method, printTestName=False, numberOfAssertionFailed=0):
+    def _runTest(self, test, printTestName=False, numberOfAssertionFailed=0):
+        if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
+            env = Env(testName=test.name)
+            fn = lambda: test.target(env)
+        else:
+            fn = test.target
+
         exceptionRaised = False
+        msgPrefix = test.name if not printTestName else ''
+
         if printTestName:
-            print '\t' + Colors.Cyan(method.__name__)
+            print '\t' + Colors.Cyan(test.name)
         try:
             if self.args.debug:
                 raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
-            method()
+
+            fn()
         except unittest.SkipTest:
-            print '\t' + Colors.Green('Skipping test')
+            self.printSkip(prefix=msgPrefix)
         except Exception as err:
-            msg = 'Unhandled exception: %s' % err
+            msg = 'Unhandled exception: {}'.format(err)
             print '\t' + Colors.Bred(msg)
             traceback.print_exc(file=sys.stdout)
             exceptionRaised = True
 
-        isTestFaild = self.currEnv is None or self.currEnv.getNumberOfFailedAssertion() > numberOfAssertionFailed or exceptionRaised
+        isFailed = self.currEnv is None or self.currEnv.getNumberOfFailedAssertion() > numberOfAssertionFailed or exceptionRaised
 
-        if isTestFaild:
-            print '\t' + Colors.Bred('Test Failed')
+        if isFailed:
+            if exceptionRaised:
+                self.printError(prefix=msgPrefix)
+            else:
+                self.printFail(prefix=msgPrefix)
+
             self.testsFailed.add(self.currEnv)
         else:
-            print '\t' + Colors.Green('Test Passed')
+            self.printPass()
 
-        if self.args.stop_on_failure and isTestFaild:
+        if self.args.stop_on_failure and isFailed:
             if self.args.interactive_debugger:
                 while self.currEnv.isUp():
                     time.sleep(1)
             raw_input('press any button to move to the next test')
 
         return self.currEnv.getNumberOfFailedAssertion()
+
+    def _fmtPrefix(self, prefix):
+        return prefix + ': ' if prefix else ''
+
+    def printSkip(self, prefix=''):
+        print '\t' + Colors.Green(self._fmtPrefix(prefix) + '[SKIP]')
+
+    def printFail(self, prefix=''):
+        print '\t' + Colors.Bred(self._fmtPrefix(prefix) + '[FAIL]')
+
+    def printError(self, prefix=''):
+        print '\t' + Colors.Yellow(self._fmtPrefix(prefix) + '[ERROR]')
+
+    def printPass(self, prefix=''):
+        print '\t' + Colors.Green(self._fmtPrefix(prefix) + '[PASS]')
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
@@ -376,57 +366,25 @@ class RLTest:
             raw_input('press any button to stop')
             env.stop()
             return
-        if self.args.tests_file:
-            self._loadFileTests(self.args.tests_file)
-        else:
-            self._loadTests()
         done = 0
         startTime = time.time()
         if self.args.interactive_debugger and len(self.tests) != 1:
             print Colors.Bred('only one test can be run on interactive-debugger use --test-name')
             sys.exit(1)
-        while self.tests:
+
+        for test in self.loader:
             with self.envScopeGuard():
-                test = self.tests.pop(0)
-                if inspect.isclass(test):
-
-                    # checking if there are tests to run
-                    methodsToTest = []
-                    for m in dir(test):
-                        if self.args.test_name is not None:
-                            if self.args.test_name == m:
-                                methodsToTest.append(m)
-                        elif m.startswith('test') or m.startswith('Test'):
-                            methodsToTest.append(m)
-
-                    if len(methodsToTest) == 0:
-                        continue
+                if test.is_class:
                     try:
-                        testObj = test()
+                        obj = test.create_instance()
                     except unittest.SkipTest:
-                        print '\t' + Colors.Green('Skipping test')
+                        self.printSkip(test.name)
                         continue
-                    except Exception as err:
-                        msg = 'Unhandled exception: %s' % err
-                        print '\t' + Colors.Bred(msg)
-                        traceback.print_exc(file=sys.stdout)
-                        print '\t' + Colors.Bred('Test Failed')
-                        if self.currEnv:
-                            self.testsFailed.add(self.currEnv)
-                        continue
-                    methods = [getattr(testObj, m) for m in dir(testObj) if callable(getattr(testObj, m)) and
-                               (m.startswith('test') or m.startswith('Test'))]
-                    numberOfAssertionFailed = 0
-                    for m in methods:
-                        if self.args.test_name is None or self.args.test_name == m.__name__:
-                            numberOfAssertionFailed = self._runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
-                            done += 1
-                elif not inspect.isfunction(test):
-                    continue
-                elif len(inspect.getargspec(test).args) > 0:
-                    env = Env(testName='%s.%s' % (str(test.__module__), test.func_name))
-                    self._runTest(lambda: test(env))
-                    done += 1
+
+                    for subtest in test.get_functions(obj):
+                        self._runTest(subtest, printTestName=True)
+                        done += 1
+
                 else:
                     self._runTest(test)
                     done += 1
