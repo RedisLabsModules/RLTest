@@ -142,12 +142,6 @@ parser.add_argument(
     help='path valgrind suppressions file')
 
 parser.add_argument(
-    '--config-file', default=None,
-    help='path to configuration file, parameters value will be taken from configuration file,'
-         'values which was not specified on configuration file will get their value from the command line args,'
-         'values which was not specifies either on configuration file nor on command line args will be getting their default value')
-
-parser.add_argument(
     '-i', '--interactive-debugger', action='store_const', const=True, default=False,
     help='runs the redis on a debuger (gdb/lldb) interactivly.'
          'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
