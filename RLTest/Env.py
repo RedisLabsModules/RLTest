@@ -10,6 +10,12 @@ from OssClusterEnv import OssClusterEnv
 from utils import Colors
 from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
 
+def addDeprecatedMethod(cls, name, invoke):
+    def method(*argc, **nargs):
+        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
+        return invoke(*argc, **nargs)
+    cls.__dict__[name] = method
+
 
 class Query:
     def __init__(self, env, *query):
@@ -68,6 +74,10 @@ class Query:
 
     raiseError = error
     notRaiseError = noError
+
+
+addDeprecatedMethod(Query, 'raiseError', Query.error)
+addDeprecatedMethod(Query, 'notRaiseError', Query.noError)
 
 
 class Env:
@@ -346,13 +356,6 @@ class Env:
     def skipOnCluster(self):
         if self.isCluster():
             self.skip()
-
-
-def addDeprecatedMethod(cls, name, invoke):
-    def method(*argc, **nargs):
-        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
-        return invoke(*argc, **nargs)
-    cls.__dict__[name] = method
 
 
 addDeprecatedMethod(Env, 'assertEquals', Env.assertEqual)
