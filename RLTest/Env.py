@@ -10,6 +10,12 @@ from OssClusterEnv import OssClusterEnv
 from utils import Colors
 from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
 
+def addDeprecatedMethod(cls, name, invoke):
+    def method(*argc, **nargs):
+        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
+        return invoke(*argc, **nargs)
+    cls.__dict__[name] = method
+
 
 class Query:
     def __init__(self, env, *query):
@@ -58,13 +64,20 @@ class Query:
         self.env.assertNotContains(val, self.res, 1)
         return self
 
-    def raiseError(self):
+    def error(self):
         self.env.assertTrue(self.errorRaised, 1)
         return self
 
-    def notRaiseError(self):
+    def noError(self):
         self.env.assertFalse(self.errorRaised, 1)
         return self
+
+    raiseError = error
+    notRaiseError = noError
+
+
+addDeprecatedMethod(Query, 'raiseError', Query.error)
+addDeprecatedMethod(Query, 'notRaiseError', Query.noError)
 
 
 class Env:
@@ -104,12 +117,12 @@ class Env:
                 return False
         return True
 
-    def __init__(self, testName=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, ):
+    def __init__(self, testName=None, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, ):
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
-        self.testNamePrintable = self.testName
         self.testName = self.testName.replace(' ', '_')
 
-        print Colors.Cyan(self.testNamePrintable + ':')
+        if testDescription:
+            print Colors.Gray('\tdescription: ' + testDescription)
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
@@ -120,7 +133,7 @@ class Env:
         self.verbose = Env.defaultVerbose
         self.logDir = Env.defaultLogDir
 
-        self.assertionFailedSummery = []
+        self.assertionFailedSummary = []
 
         if Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
@@ -206,16 +219,12 @@ class Env:
         if trueValue and self.verbose:
             print '\t' + Colors.Green('assertion success:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
         elif not trueValue:
-            FailureSummery = Colors.Bred('assertion faild:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
-            print '\t' + FailureSummery
-            self.assertionFailedSummery.append(FailureSummery)
+            failureSummary = Colors.Bred('assertion failed:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+            print '\t' + failureSummary
+            self.assertionFailedSummary.append(failureSummary)
 
     def getNumberOfFailedAssertion(self):
-        return len(self.assertionFailedSummery)
-
-    def printFailuresSummery(self, prefix=''):
-        for failure in self.assertionFailedSummery:
-            print prefix + failure
+        return len(self.assertionFailedSummary)
 
     def assertEqual(self, first, second, depth=0):
         self._assertion('%s == %s' % (first, second), first == second, depth)
@@ -349,21 +358,14 @@ class Env:
             self.skip()
 
 
-def addDepricatedMethod(cls, name, invoke):
-    def method(*argc, **nargs):
-        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
-        return invoke(*argc, **nargs)
-    cls.__dict__[name] = method
-
-
-addDepricatedMethod(Env, 'assertEquals', Env.assertEqual)
-addDepricatedMethod(Env, 'assertListEqual', Env.assertEqual)
-addDepricatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
-addDepricatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
-addDepricatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
-addDepricatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
-addDepricatedMethod(Env, 'is_cluster', Env.isCluster)
-addDepricatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
-addDepricatedMethod(Env, 'execute_command', Env.cmd)
-addDepricatedMethod(Env, 'assertIn', Env.assertContains)
-addDepricatedMethod(Env, 'assertNotIn', Env.assertNotContains)
+addDeprecatedMethod(Env, 'assertEquals', Env.assertEqual)
+addDeprecatedMethod(Env, 'assertListEqual', Env.assertEqual)
+addDeprecatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
+addDeprecatedMethod(Env, 'is_cluster', Env.isCluster)
+addDeprecatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
+addDeprecatedMethod(Env, 'execute_command', Env.cmd)
+addDeprecatedMethod(Env, 'assertIn', Env.assertContains)
+addDeprecatedMethod(Env, 'assertNotIn', Env.assertNotContains)

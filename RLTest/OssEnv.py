@@ -65,13 +65,20 @@ class OssEnv:
     def createCmdArgs(self, role):
         cmdArgs = []
         if self.useValgrind:
-            cmdArgs += ['valgrind', '--log-file=%s' % self._getVlgrindFilePath(role),
-                        '--leak-check=full', '--errors-for-leak-kinds=definite',
+            cmdArgs += ['valgrind']
+            if not self.noCatch:
+                cmdArgs += ['--log-file=%s' % self._getVlgrindFilePath(role)]
+
+            cmdArgs += ['--leak-check=full', '--errors-for-leak-kinds=definite',
                         '--error-exitcode=1']
+
             if self.valgrindSuppressionsFile:
                 cmdArgs += ['--suppressions=%s' % self.valgrindSuppressionsFile]
         elif self.interactiveDebugger:
-            cmdArgs += ['lldb' if platform.system() == 'Darwin' else 'gdb', '-ex', 'run', '--args']
+            if platform.system() == 'Darwin':
+                cmdArgs += ['lldb', '--']
+            else:
+                cmdArgs += ['gdb', '-ex', 'run', '--args']
         cmdArgs += [self.redisBinaryPath]
         if role == MASTER:
             cmdArgs += ['--port', str(self.port)]

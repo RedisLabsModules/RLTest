@@ -12,7 +12,7 @@ import time
 import shlex
 from Env import Env
 from utils import Colors
-
+from RLTest.loader import TestLoader
 
 RLTest_WORKING_DIR = os.path.expanduser('~/.RLTest/')
 RLTest_ENTERPRISE_VERSION = '5.2.0'
@@ -37,6 +37,131 @@ class CustomArgumentParser(argparse.ArgumentParser):
             yield arg
 
 
+parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
+                              formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                              description='Test Framework for redis and redis module')
+
+
+parser.add_argument(
+    '--module', default=None,
+    help='path to the module file')
+
+parser.add_argument(
+    '--module-args', default=None,
+    help='arguments to give to the module on loading')
+
+parser.add_argument(
+    '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster'],
+    help='env on which to run the test')
+
+parser.add_argument(
+    '--oss-redis-path', default='redis-server',
+    help='path to the oss redis binary')
+
+parser.add_argument(
+    '--enterprise-redis-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/redis-server'),
+    help='path to the entrprise redis binary')
+
+parser.add_argument(
+    '--stop-on-failure', action='store_const', const=True, default=False,
+    help='stop running on failure')
+
+parser.add_argument(
+    '--verbose', '-v', action='count', default=0,
+    help='print more information about the test')
+
+parser.add_argument(
+    '--debug', action='store_const', const=True, default=False,
+    help='stop before each test allow gdb attachment')
+
+parser.add_argument(
+    '-t', '--test', help='Specify test to run, in the form of "file:test"')
+
+parser.add_argument(
+    '--tests-dir', default='.',
+    help='directory on which to run the tests')
+
+parser.add_argument(
+    '--test-name', default=None,
+    help='test name to run')
+
+parser.add_argument(
+    '--tests-file', default=None,
+    help='tests file to run (with out the .py extention)')
+
+parser.add_argument(
+    '--env-only', action='store_const', const=True, default=False,
+    help='start the env but do not run any tests')
+
+parser.add_argument(
+    '--clear-logs', action='store_const', const=True, default=False,
+    help='deleting the log direcotry before the execution')
+
+parser.add_argument(
+    '--log-dir', default='./logs',
+    help='directory to write logs to')
+
+parser.add_argument(
+    '--use-slaves', action='store_const', const=True, default=False,
+    help='run env with slaves enabled')
+
+parser.add_argument(
+    '--shards-count', default=1, type=int,
+    help='Number shards in bdb')
+
+parser.add_argument(
+    '--download-enterprise-binaries', action='store_const', const=True, default=False,
+    help='run env with slaves enabled')
+
+parser.add_argument(
+    '--proxy-binary-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/dmcproxy'),
+    help='dmc proxy binary path')
+
+parser.add_argument(
+    '--enterprise-lib-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/lib/'),
+    help='path of needed libraries to run enterprise binaries')
+
+parser.add_argument(
+    '-r', '--env-reuse', action='store_const', const=True, default=False,
+    help='reuse exists env, this feature is based on best efforts, if the env can not be reused then it will be taken down.')
+
+parser.add_argument(
+    '--use-aof', action='store_const', const=True, default=False,
+    help='use aof instead of rdb')
+
+parser.add_argument(
+    '--debug-print', action='store_const', const=True, default=False,
+    help='print debug messages')
+
+parser.add_argument(
+    '-V', '--use-valgrind', action='store_const', const=True, default=False,
+    help='running redis under valgrind (assuming valgrind is install on the machine)')
+
+parser.add_argument(
+    '--valgrind-suppressions-file', default=None,
+    help='path valgrind suppressions file')
+
+parser.add_argument(
+    '-i', '--interactive-debugger', action='store_const', const=True, default=False,
+    help='runs the redis on a debuger (gdb/lldb) interactivly.'
+         'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
+         'it is also not possible to use valgrind on interactive mode.'
+         'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
+         'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
+
+parser.add_argument(
+    '--debugger-args', default=None,
+    help='arguments to the interactive debugger')
+
+parser.add_argument(
+    '-s', '--no-output-catch', action='store_const', const=True, default=False,
+    help='all output will be written to the stdout, no log files.')
+
+parser.add_argument(
+    '--collect-only', action='store_true',
+    help='Collect the tests and exit')
+
+
 class EnvScopeGuard:
     def __init__(self, runner):
         self.runner = runner
@@ -51,128 +176,6 @@ class EnvScopeGuard:
 class RLTest:
 
     def __init__(self):
-        parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
-                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                      description='Test Framework for redis and redis module')
-
-        parser.add_argument(
-            '--module', default=None,
-            help='path to the module file')
-
-        parser.add_argument(
-            '--module-args', default=None,
-            help='arguments to give to the module on loading')
-
-        parser.add_argument(
-            '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster'],
-            help='env on which to run the test')
-
-        parser.add_argument(
-            '--oss-redis-path', default='redis-server',
-            help='path to the oss redis binary')
-
-        parser.add_argument(
-            '--enterprise-redis-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/redis-server'),
-            help='path to the entrprise redis binary')
-
-        parser.add_argument(
-            '--stop-on-failure', action='store_const', const=True, default=False,
-            help='stop running on failure')
-
-        parser.add_argument(
-            '--verbose', '-v', action='count', default=0,
-            help='print more information about the test')
-
-        parser.add_argument(
-            '--debug', action='store_const', const=True, default=False,
-            help='stop before each test allow gdb attachment')
-
-        parser.add_argument(
-            '--tests-dir', default='.',
-            help='directory on which to run the tests')
-
-        parser.add_argument(
-            '--test-name', default=None,
-            help='test name to run')
-
-        parser.add_argument(
-            '--tests-file', default=None,
-            help='tests file to run (with out the .py extention)')
-
-        parser.add_argument(
-            '--env-only', action='store_const', const=True, default=False,
-            help='start the env but do not run any tests')
-
-        parser.add_argument(
-            '--clear-logs', action='store_const', const=True, default=False,
-            help='deleting the log direcotry before the execution')
-
-        parser.add_argument(
-            '--log-dir', default='./logs',
-            help='directory to write logs to')
-
-        parser.add_argument(
-            '--use-slaves', action='store_const', const=True, default=False,
-            help='run env with slaves enabled')
-
-        parser.add_argument(
-            '--shards-count', default=1, type=int,
-            help='Number shards in bdb')
-
-        parser.add_argument(
-            '--download-enterprise-binaries', action='store_const', const=True, default=False,
-            help='run env with slaves enabled')
-
-        parser.add_argument(
-            '--proxy-binary-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/dmcproxy'),
-            help='dmc proxy binary path')
-
-        parser.add_argument(
-            '--enterprise-lib-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/lib/'),
-            help='path of needed libraries to run enterprise binaries')
-
-        parser.add_argument(
-            '--env-reuse', action='store_const', const=True, default=False,
-            help='reuse exists env, this feature is based on best efforts, if the env can not be reused then it will be taken down.')
-
-        parser.add_argument(
-            '--use-aof', action='store_const', const=True, default=False,
-            help='use aof instead of rdb')
-
-        parser.add_argument(
-            '--debug-print', action='store_const', const=True, default=False,
-            help='print debug messages')
-
-        parser.add_argument(
-            '--use-valgrind', action='store_const', const=True, default=False,
-            help='running redis under valgrind (assuming valgrind is install on the machine)')
-
-        parser.add_argument(
-            '--valgrind-suppressions-file', default=None,
-            help='path valgrind suppressions file')
-
-        parser.add_argument(
-            '--config-file', default=None,
-            help='path to configuration file, parameters value will be taken from configuration file,'
-                 'values which was not specified on configuration file will get their value from the command line args,'
-                 'values which was not specifies either on configuration file nor on command line args will be getting their default value')
-
-        parser.add_argument(
-            '--interactive-debugger', action='store_const', const=True, default=False,
-            help='runs the redis on a debuger (gdb/lldb) interactivly.'
-                 'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
-                 'it is also not possible to use valgrind on interactive mode.'
-                 'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
-                 'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
-
-        parser.add_argument(
-            '--debugger-args', default=None,
-            help='arguments to the interactive debugger')
-
-        parser.add_argument(
-            '--no-output-catch', action='store_const', const=True, default=False,
-            help='all output will be written to the stdout, no log files.')
-
         configFilePath = './%s' % RLTest_CONFIG_FILE_NAME
         if os.path.exists(configFilePath):
             args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
@@ -200,8 +203,8 @@ class RLTest:
         if self.args.clear_logs:
             try:
                 shutil.rmtree(self.args.log_dir)
-            except Exception:
-                pass
+            except Exception as e:
+                print e
 
         Env.defaultModule = self.args.module
         Env.defaultModuleArgs = self.args.module_args
@@ -225,8 +228,17 @@ class RLTest:
         sys.path.append(self.args.tests_dir)
 
         self.tests = []
-
+        self.testsFailed = []
         self.currEnv = None
+        self.loader = TestLoader(filter=self.args.test_name)
+        if self.args.test:
+            self.loader.load_spec(self.args.test)
+        else:
+            self.loader.scan_dir(self.args.tests_dir)
+
+        if self.args.collect_only:
+            self.loader.print_tests()
+            sys.exit(0)
 
     def _convertArgsType(self):
         pass
@@ -265,76 +277,164 @@ class RLTest:
 
         print Colors.Yellow('finished installing enterprise binaries')
 
-    def _loadFileTests(self, module_name):
-        filename = '%s/%s.py' % (self.args.tests_dir, module_name)
-        module_file = open(filename, 'r')
-        module = imp.load_module(module_name, module_file, filename,
-                                 ('.py', 'r', imp.PY_SOURCE))
-        for func in dir(module):
-            if inspect.isclass(getattr(module, func)) and func.startswith('test') or func.startswith('Test'):
-                self.tests.append(getattr(module, func))
-                continue
-            if self.args.test_name:
-                if func == self.args.test_name:
-                    self.tests.append(getattr(module, func))
-                    return
-            elif func.startswith('test') or func.startswith('Test'):
-                self.tests.append(getattr(module, func))
-
-    def _loadTests(self):
-        for filename in os.listdir(self.args.tests_dir):
-            if filename.startswith('test') and filename.endswith('.py'):
-                module_name, ext = os.path.splitext(filename)
-                self._loadFileTests(module_name)
-
     def takeEnvDown(self, fullShutDown=False):
-        if self.currEnv:
-            if self.args.env_reuse and not fullShutDown:
-                self.currEnv.flush()
-            else:
-                self.currEnv.stop()
-                if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
-                    print Colors.Bred('\tvalgrind check failure')
-                    self.testsFailed.add(self.currEnv)
-                self.currEnv = None
+        if not self.currEnv:
+            return
 
-    def _runTest(self, method, printTestName=False, numberOfAssertionFailed=0):
-        exceptionRaised = False
-        if printTestName:
-            print '\t' + Colors.Cyan(method.__name__)
+        needShutdown = True
+        if self.args.env_reuse and not fullShutDown:
+            try:
+                self.currEnv.flush()
+                needShutdown = False
+            except Exception as e:
+                self.handleFailure(exception=e, testname='[env dtor]',
+                                   env=self.currEnv)
+
+        if needShutdown:
+            self.currEnv.stop()
+            if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
+                print Colors.Bred('\tvalgrind check failure')
+                self.addFailure(self.currEnv.testNamePrintable,
+                                ['<Valgrind Failure>'])
+            self.currEnv = None
+
+    def printException(self, err):
+        msg = 'Unhandled exception: {}'.format(err)
+        print '\t' + Colors.Bred(msg)
+        traceback.print_exc(file=sys.stdout)
+
+    def addFailuresFromEnv(self, name, env):
+        """
+        Extract the list of failures from the given test Env
+        :param name: The name of the test that failed
+        :param env: The Environment which contains the failures
+        """
+        if not env:
+            self.addFailure(name, ['<unknown (environment destroyed)>'])
+        else:
+            self.addFailure(name, failures=env.assertionFailedSummary)
+
+    def addFailure(self, name, failures=None):
+        """
+        Adds a list of failures to the report
+        :param name: The name of the test that has failures
+        :param failures: A string or of strings describing the individual failures
+        """
+        if failures and not isinstance(failures, (list, tuple)):
+            failures = [failures]
+        if not failures:
+            failures = []
+        self.testsFailed.append([name, failures])
+
+    def getTotalFailureCount(self):
+        ret = 0
+        for _, failures in self.testsFailed:
+            ret += len(failures)
+        return ret
+
+    def handleFailure(self, exception=None, prefix='', testname=None, env=None):
+        """
+        Failure omni-function.
+
+        This function handles failures given a set of input parameters.
+        At least one of these must not be empty
+        :param exception: The exception to report, of any
+        :param prefix: The prefix to use for logging.
+            This is usually the test name
+        :param testname: The test name, use for recording the failures
+        :param env: The environment, used for extracting failed assertions
+        """
+        if not testname and env:
+            testname = env.testNamePrintable
+        elif not testname:
+            if prefix:
+                testname = prefix
+            else:
+                testname = '<unknown>'
+
+        if exception:
+            self.printError()
+            self.printException(exception)
+        else:
+            self.printFail()
+
+        if env:
+            self.addFailuresFromEnv(testname, env)
+        elif exception:
+            self.addFailure(testname, str(exception))
+        else:
+            self.addFailure(testname, '<No exception or environment>')
+
+    def _runTest(self, test, numberOfAssertionFailed=0, prefix=''):
+        msgPrefix = test.name
+
+        print Colors.Cyan(prefix + test.name)
+
+        if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
+            try:
+                env = Env(testName=test.name)
+            except Exception as e:
+                self.handleFailure(exception=e, prefix=msgPrefix, testname=test.name)
+                return 0
+
+            fn = lambda: test.target(env)
+        else:
+            fn = test.target
+
+        hasException = False
         try:
             if self.args.debug:
                 raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
-            method()
+
+            fn()
+            passed = True
         except unittest.SkipTest:
-            print '\t' + Colors.Green('Skipping test')
+            self.printSkip()
+            return 0
         except Exception as err:
-            msg = 'Unhandled exception: %s' % err
-            print '\t' + Colors.Bred(msg)
-            traceback.print_exc(file=sys.stdout)
-            exceptionRaised = True
+            self.handleFailure(exception=err, prefix=msgPrefix,
+                               testname=test.name, env=self.currEnv)
+            hasException = True
+            passed = False
 
-        isTestFaild = self.currEnv is None or self.currEnv.getNumberOfFailedAssertion() > numberOfAssertionFailed or exceptionRaised
+        if self.currEnv:
+            numFailed = self.currEnv.getNumberOfFailedAssertion()
+            if numFailed > numberOfAssertionFailed:
+                self.handleFailure(prefix=msgPrefix,
+                                   testname=test.name, env=self.currEnv)
+                passed = False
+        elif not hasException:
+            self.addFailure(test.name, '<Environment destroyed>')
+            passed = False
 
-        if isTestFaild:
-            print '\t' + Colors.Bred('Test Failed')
-            self.testsFailed.add(self.currEnv)
-        else:
-            print '\t' + Colors.Green('Test Passed')
-
-        if self.args.stop_on_failure and isTestFaild:
+        # Handle debugger, if needed
+        if self.args.stop_on_failure and not passed:
             if self.args.interactive_debugger:
                 while self.currEnv.isUp():
                     time.sleep(1)
             raw_input('press any button to move to the next test')
 
-        return self.currEnv.getNumberOfFailedAssertion()
+        if passed:
+            self.printPass()
+
+        return numFailed
+
+    def printSkip(self):
+        print '\t' + Colors.Green('[SKIP]')
+
+    def printFail(self):
+        print '\t' + Colors.Bred('[FAIL]')
+
+    def printError(self):
+        print '\t' + Colors.Yellow('[ERROR]')
+
+    def printPass(self):
+        print '\t' + Colors.Green('[PASS]')
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
 
     def execute(self):
-        self.testsFailed = set()
         Env.RTestInstance = self
         if self.args.env_only:
             Env.defaultVerbose = 2
@@ -345,57 +445,34 @@ class RLTest:
             raw_input('press any button to stop')
             env.stop()
             return
-        if self.args.tests_file:
-            self._loadFileTests(self.args.tests_file)
-        else:
-            self._loadTests()
         done = 0
         startTime = time.time()
         if self.args.interactive_debugger and len(self.tests) != 1:
             print Colors.Bred('only one test can be run on interactive-debugger use --test-name')
             sys.exit(1)
-        while self.tests:
+
+        for test in self.loader:
             with self.envScopeGuard():
-                test = self.tests.pop(0)
-                if inspect.isclass(test):
-
-                    # checking if there are tests to run
-                    methodsToTest = []
-                    for m in dir(test):
-                        if self.args.test_name is not None:
-                            if self.args.test_name == m:
-                                methodsToTest.append(m)
-                        elif m.startswith('test') or m.startswith('Test'):
-                            methodsToTest.append(m)
-
-                    if len(methodsToTest) == 0:
-                        continue
+                if test.is_class:
                     try:
-                        testObj = test()
+                        obj = test.create_instance()
+
                     except unittest.SkipTest:
-                        print '\t' + Colors.Green('Skipping test')
+                        self.printSkip()
                         continue
-                    except Exception as err:
-                        msg = 'Unhandled exception: %s' % err
-                        print '\t' + Colors.Bred(msg)
-                        traceback.print_exc(file=sys.stdout)
-                        print '\t' + Colors.Bred('Test Failed')
-                        if self.currEnv:
-                            self.testsFailed.add(self.currEnv)
+
+                    except Exception as e:
+                        self.printException(e)
+                        self.addFailure(test.name + " [__init__]")
                         continue
-                    methods = [getattr(testObj, m) for m in dir(testObj) if callable(getattr(testObj, m)) and
-                               (m.startswith('test') or m.startswith('Test'))]
-                    numberOfAssertionFailed = 0
-                    for m in methods:
-                        if self.args.test_name is None or self.args.test_name == m.__name__:
-                            numberOfAssertionFailed = self._runTest(m, printTestName=True, numberOfAssertionFailed=numberOfAssertionFailed)
-                            done += 1
-                elif not inspect.isfunction(test):
-                    continue
-                elif len(inspect.getargspec(test).args) > 0:
-                    env = Env(testName='%s.%s' % (str(test.__module__), test.func_name))
-                    self._runTest(lambda: test(env))
-                    done += 1
+
+                    print Colors.Cyan(test.name)
+
+                    failures = 0
+                    for subtest in test.get_functions(obj):
+                        failures += self._runTest(subtest, prefix='\t', numberOfAssertionFailed=failures)
+                        done += 1
+
                 else:
                     self._runTest(test)
                     done += 1
@@ -404,12 +481,15 @@ class RLTest:
         endTime = time.time()
 
         print Colors.Bold('Test Took: %d sec' % (endTime - startTime))
-        print Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, len(self.testsFailed), done - len(self.testsFailed)))
-        if len(self.testsFailed) > 0:
-            print Colors.Bold('Faild Tests Summery:')
-            for testFaild in self.testsFailed:
-                print '\t' + Colors.Bold(testFaild.testNamePrintable)
-                testFaild.printFailuresSummery('\t\t')
+        print Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount()))
+        if self.testsFailed:
+            print Colors.Bold('Failed Tests Summary:')
+            for group, failures in self.testsFailed:
+                print '\t' + Colors.Bold(group)
+                if not failures:
+                    print '\t\t' + Colors.Bred('Exception raised during test execution. See logs')
+                for failure in failures:
+                    print '\t\t' + failure
             sys.exit(1)
 
 

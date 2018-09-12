@@ -9,10 +9,10 @@ def wait_for_conn(conn, retries=20, command='PING', shouldBe=True):
             if conn.execute_command(command) == shouldBe:
                 return conn
         except redis.exceptions.BusyLoadingError:
-            time.sleep(0.01)  # give extra 100msec in case of RDB loading
+            time.sleep(0.1)  # give extra 100msec in case of RDB loading
         except redis.ConnectionError as err:
             pass
-        time.sleep(0.01)
+        time.sleep(0.1)
         retries -= 1
     raise Exception('Cannot establish connection %s: %s' % (conn, err))
 
