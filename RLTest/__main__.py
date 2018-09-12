@@ -297,7 +297,7 @@ class RLTest:
         if not env:
             self.addFailure('<unknown (environment destroyed)>')
         else:
-            self.addFailure(name, failures=env.assertionFailedSummery)
+            self.addFailure(name, failures=env.assertionFailedSummary)
 
     def addFailure(self, name, failures=None):
         if not failures:

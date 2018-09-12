@@ -123,7 +123,7 @@ class Env:
         self.verbose = Env.defaultVerbose
         self.logDir = Env.defaultLogDir
 
-        self.assertionFailedSummery = []
+        self.assertionFailedSummary = []
 
         if Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
@@ -209,12 +209,12 @@ class Env:
         if trueValue and self.verbose:
             print '\t' + Colors.Green('assertion success:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
         elif not trueValue:
-            FailureSummery = Colors.Bred('assertion faild:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
-            print '\t' + FailureSummery
-            self.assertionFailedSummery.append(FailureSummery)
+            failureSummary = Colors.Bred('assertion failed:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+            print '\t' + failureSummary
+            self.assertionFailedSummary.append(failureSummary)
 
     def getNumberOfFailedAssertion(self):
-        return len(self.assertionFailedSummery)
+        return len(self.assertionFailedSummary)
 
     def assertEqual(self, first, second, depth=0):
         self._assertion('%s == %s' % (first, second), first == second, depth)
