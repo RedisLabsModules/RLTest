@@ -203,8 +203,8 @@ class RLTest:
         if self.args.clear_logs:
             try:
                 shutil.rmtree(self.args.log_dir)
-            except Exception:
-                pass
+            except Exception as e:
+                print e
 
         Env.defaultModule = self.args.module
         Env.defaultModuleArgs = self.args.module_args
@@ -375,7 +375,7 @@ class RLTest:
                 env = Env(testName=test.name)
             except Exception as e:
                 self.handleFailure(exception=e, prefix=msgPrefix, testname=test.name)
-                return
+                return 0
 
             fn = lambda: test.target(env)
         else:
@@ -390,14 +390,13 @@ class RLTest:
             passed = True
         except unittest.SkipTest:
             self.printSkip()
-            return
+            return 0
         except Exception as err:
             self.handleFailure(exception=err, prefix=msgPrefix,
                                testname=test.name, env=self.currEnv)
             hasException = True
             passed = False
 
-        numFailed = numberOfAssertionFailed
         if self.currEnv:
             numFailed = self.currEnv.getNumberOfFailedAssertion()
             if numFailed > numberOfAssertionFailed:
@@ -469,8 +468,9 @@ class RLTest:
 
                     print Colors.Cyan(test.name)
 
+                    failures = 0
                     for subtest in test.get_functions(obj):
-                        self._runTest(subtest, prefix='\t')
+                        failures += self._runTest(subtest, prefix='\t', numberOfAssertionFailed=failures)
                         done += 1
 
                 else:
