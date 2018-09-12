@@ -216,10 +216,6 @@ class Env:
     def getNumberOfFailedAssertion(self):
         return len(self.assertionFailedSummery)
 
-    def printFailuresSummery(self, prefix=''):
-        for failure in self.assertionFailedSummery:
-            print prefix + failure
-
     def assertEqual(self, first, second, depth=0):
         self._assertion('%s == %s' % (first, second), first == second, depth)
 

@@ -228,6 +228,7 @@ class RLTest:
         sys.path.append(self.args.tests_dir)
 
         self.tests = []
+        self.testsFailed = []
         self.currEnv = None
         self.loader = TestLoader(filter=self.args.test_name)
         if self.args.test:
@@ -287,6 +288,28 @@ class RLTest:
                     self.testsFailed.add(self.currEnv)
                 self.currEnv = None
 
+    def printException(self, err):
+        msg = 'Unhandled exception: {}'.format(err)
+        print '\t' + Colors.Bred(msg)
+        traceback.print_exc(file=sys.stdout)
+
+    def addFailuresFromEnv(self, name, env):
+        if not env:
+            self.addFailure('<unknown (environment destroyed)>')
+        else:
+            self.addFailure(name, failures=env.assertionFailedSummery)
+
+    def addFailure(self, name, failures=None):
+        if not failures:
+            failures = []
+        self.testsFailed.append([name, failures])
+
+    def getTotalFailureCount(self):
+        ret = 0
+        for _, failures in self.testsFailed:
+            ret += len(failures)
+        return ret
+
     def _runTest(self, test, printTestName=False, numberOfAssertionFailed=0):
         if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
             env = Env(testName=test.name)
@@ -307,9 +330,7 @@ class RLTest:
         except unittest.SkipTest:
             self.printSkip(prefix=msgPrefix)
         except Exception as err:
-            msg = 'Unhandled exception: {}'.format(err)
-            print '\t' + Colors.Bred(msg)
-            traceback.print_exc(file=sys.stdout)
+            self.printException(err)
             exceptionRaised = True
 
         isFailed = self.currEnv is None or self.currEnv.getNumberOfFailedAssertion() > numberOfAssertionFailed or exceptionRaised
@@ -319,8 +340,7 @@ class RLTest:
                 self.printError(prefix=msgPrefix)
             else:
                 self.printFail(prefix=msgPrefix)
-
-            self.testsFailed.add(self.currEnv)
+            self.addFailuresFromEnv(test.name, self.currEnv)
         else:
             self.printPass()
 
@@ -351,7 +371,6 @@ class RLTest:
         return EnvScopeGuard(self)
 
     def execute(self):
-        self.testsFailed = set()
         Env.RTestInstance = self
         if self.args.env_only:
             Env.defaultVerbose = 2
@@ -373,8 +392,14 @@ class RLTest:
                 if test.is_class:
                     try:
                         obj = test.create_instance()
+
                     except unittest.SkipTest:
                         self.printSkip(test.name)
+                        continue
+
+                    except Exception as e:
+                        self.printException(e)
+                        self.addFailure(test.name + " [__init__]")
                         continue
 
                     for subtest in test.get_functions(obj):
@@ -389,12 +414,15 @@ class RLTest:
         endTime = time.time()
 
         print Colors.Bold('Test Took: %d sec' % (endTime - startTime))
-        print Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, len(self.testsFailed), done - len(self.testsFailed)))
-        if len(self.testsFailed) > 0:
-            print Colors.Bold('Faild Tests Summery:')
-            for testFaild in self.testsFailed:
-                print '\t' + Colors.Bold(testFaild.testNamePrintable)
-                testFaild.printFailuresSummery('\t\t')
+        print Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount()))
+        if self.testsFailed:
+            print Colors.Bold('Failed Tests Summary:')
+            for group, failures in self.testsFailed:
+                print '\t' + Colors.Bold(group)
+                if not failures:
+                    print '\t\t(Exception raised during test execution. See logs)'
+                for failure in failures:
+                    print '\t\t' + failure
             sys.exit(1)
 
 
