@@ -29,10 +29,12 @@ class testExample():
 
 # run each test on different env
 def test_example():
-    env = Env()
+    env = Env(testDescription="this is an example")
     con = env.getConnection()
     con.set('x', 1)
     env.assertEqual(con.get('x'), '1')
+    env.assertTrue(False)
+    env.assertTrue(False)
 
 
 def test_example_2():
@@ -52,3 +54,13 @@ def test_example_3():
     con2 = env.getSlaveConnection()
     time.sleep(0.1)
     env.assertEqual(con2.get('x'), '1')
+
+
+def test_skip():
+    env = Env(useSlaves=True, env='oss')
+    env.skip()
+
+
+def test_exception():
+    env = Env(useSlaves=True, env='oss')
+    raise Exception()

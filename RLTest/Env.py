@@ -117,12 +117,12 @@ class Env:
                 return False
         return True
 
-    def __init__(self, testName=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, ):
-        self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
-        self.testNamePrintable = self.testName
+    def __init__(self, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, ):
+        self.testName = '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 
-        print Colors.Cyan(self.testNamePrintable + ':')
+        if testDescription:
+            print Colors.Gray('\tdescription: ' + testDescription)
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs

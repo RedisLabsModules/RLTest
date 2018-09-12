@@ -353,10 +353,10 @@ class RLTest:
                 testname = '<unknown>'
 
         if exception:
-            self.printError(prefix=prefix)
+            self.printError()
             self.printException(exception)
         else:
-            self.printFail(prefix=prefix)
+            self.printFail()
 
         if env:
             self.addFailuresFromEnv(testname, env)
@@ -365,8 +365,10 @@ class RLTest:
         else:
             self.addFailure(testname, '<No exception or environment>')
 
-    def _runTest(self, test, printTestName=False, numberOfAssertionFailed=0):
-        msgPrefix = test.name if not printTestName else ''
+    def _runTest(self, test, numberOfAssertionFailed=0, prefix=''):
+        msgPrefix = test.name
+
+        print Colors.Cyan(prefix + test.name)
 
         if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
             try:
@@ -380,8 +382,6 @@ class RLTest:
             fn = test.target
 
         hasException = False
-        if printTestName:
-            print '\t' + Colors.Cyan(test.name)
         try:
             if self.args.debug:
                 raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
@@ -389,7 +389,8 @@ class RLTest:
             fn()
             passed = True
         except unittest.SkipTest:
-            self.printSkip(prefix=msgPrefix)
+            self.printSkip()
+            return
         except Exception as err:
             self.handleFailure(exception=err, prefix=msgPrefix,
                                testname=test.name, env=self.currEnv)
@@ -415,24 +416,21 @@ class RLTest:
             raw_input('press any button to move to the next test')
 
         if passed:
-            self.printPass(msgPrefix)
+            self.printPass()
 
         return numFailed
 
-    def _fmtPrefix(self, prefix):
-        return prefix + ': ' if prefix else ''
+    def printSkip(self):
+        print '\t' + Colors.Green('[SKIP]')
 
-    def printSkip(self, prefix=''):
-        print '\t' + Colors.Green(self._fmtPrefix(prefix) + '[SKIP]')
+    def printFail(self):
+        print '\t' + Colors.Bred('[FAIL]')
 
-    def printFail(self, prefix=''):
-        print '\t' + Colors.Bred(self._fmtPrefix(prefix) + '[FAIL]')
+    def printError(self):
+        print '\t' + Colors.Yellow('[ERROR]')
 
-    def printError(self, prefix=''):
-        print '\t' + Colors.Yellow(self._fmtPrefix(prefix) + '[ERROR]')
-
-    def printPass(self, prefix=''):
-        print '\t' + Colors.Green(self._fmtPrefix(prefix) + '[PASS]')
+    def printPass(self):
+        print '\t' + Colors.Green('[PASS]')
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
@@ -461,7 +459,7 @@ class RLTest:
                         obj = test.create_instance()
 
                     except unittest.SkipTest:
-                        self.printSkip(test.name)
+                        self.printSkip()
                         continue
 
                     except Exception as e:
@@ -469,8 +467,10 @@ class RLTest:
                         self.addFailure(test.name + " [__init__]")
                         continue
 
+                    print Colors.Cyan(test.name)
+
                     for subtest in test.get_functions(obj):
-                        self._runTest(subtest, printTestName=True)
+                        self._runTest(subtest, prefix='\t')
                         done += 1
 
                 else:
@@ -487,7 +487,7 @@ class RLTest:
             for group, failures in self.testsFailed:
                 print '\t' + Colors.Bold(group)
                 if not failures:
-                    print '\t\t(Exception raised during test execution. See logs)'
+                    print '\t\t' + Colors.Bred('Exception raised during test execution. See logs')
                 for failure in failures:
                     print '\t\t' + failure
             sys.exit(1)
