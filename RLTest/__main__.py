@@ -278,16 +278,25 @@ class RLTest:
         print Colors.Yellow('finished installing enterprise binaries')
 
     def takeEnvDown(self, fullShutDown=False):
-        if self.currEnv:
-            if self.args.env_reuse and not fullShutDown:
+        if not self.currEnv:
+            return
+
+        needShutdown = True
+        if self.args.env_reuse and not fullShutDown:
+            try:
                 self.currEnv.flush()
-            else:
-                self.currEnv.stop()
-                if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
-                    print Colors.Bred('\tvalgrind check failure')
-                    self.addFailure(self.currEnv.testNamePrintable,
-                                    ['<Valgrind Failure>'])
-                self.currEnv = None
+                needShutdown = False
+            except Exception as e:
+                self.handleFailure(exception=e, testname='[env dtor]',
+                                   env=self.currEnv)
+
+        if needShutdown:
+            self.currEnv.stop()
+            if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
+                print Colors.Bred('\tvalgrind check failure')
+                self.addFailure(self.currEnv.testNamePrintable,
+                                ['<Valgrind Failure>'])
+            self.currEnv = None
 
     def printException(self, err):
         msg = 'Unhandled exception: {}'.format(err)
@@ -309,8 +318,10 @@ class RLTest:
         """
         Adds a list of failures to the report
         :param name: The name of the test that has failures
-        :param failures: A list of strings describing the individual failures
+        :param failures: A string or of strings describing the individual failures
         """
+        if failures and not isinstance(failures, (list, tuple)):
+            failures = [failures]
         if not failures:
             failures = []
         self.testsFailed.append([name, failures])
@@ -321,16 +332,54 @@ class RLTest:
             ret += len(failures)
         return ret
 
+    def handleFailure(self, exception=None, prefix='', testname=None, env=None):
+        """
+        Failure omni-function.
+
+        This function handles failures given a set of input parameters.
+        At least one of these must not be empty
+        :param exception: The exception to report, of any
+        :param prefix: The prefix to use for logging.
+            This is usually the test name
+        :param testname: The test name, use for recording the failures
+        :param env: The environment, used for extracting failed assertions
+        """
+        if not testname and env:
+            testname = env.testNamePrintable
+        elif not testname:
+            if prefix:
+                testname = prefix
+            else:
+                testname = '<unknown>'
+
+        if exception:
+            self.printError(prefix=prefix)
+            self.printException(exception)
+        else:
+            self.printFail(prefix=prefix)
+
+        if env:
+            self.addFailuresFromEnv(testname, env)
+        elif exception:
+            self.addFailure(testname, str(exception))
+        else:
+            self.addFailure(testname, '<No exception or environment>')
+
     def _runTest(self, test, printTestName=False, numberOfAssertionFailed=0):
+        msgPrefix = test.name if not printTestName else ''
+
         if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
-            env = Env(testName=test.name)
+            try:
+                env = Env(testName=test.name)
+            except Exception as e:
+                self.handleFailure(exception=e, prefix=msgPrefix, testname=test.name)
+                return
+
             fn = lambda: test.target(env)
         else:
             fn = test.target
 
-        exceptionRaised = False
-        msgPrefix = test.name if not printTestName else ''
-
+        hasException = False
         if printTestName:
             print '\t' + Colors.Cyan(test.name)
         try:
@@ -338,30 +387,37 @@ class RLTest:
                 raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
             fn()
+            passed = True
         except unittest.SkipTest:
             self.printSkip(prefix=msgPrefix)
         except Exception as err:
-            self.printException(err)
-            exceptionRaised = True
+            self.handleFailure(exception=err, prefix=msgPrefix,
+                               testname=test.name, env=self.currEnv)
+            hasException = True
+            passed = False
 
-        isFailed = self.currEnv is None or self.currEnv.getNumberOfFailedAssertion() > numberOfAssertionFailed or exceptionRaised
+        numFailed = numberOfAssertionFailed
+        if self.currEnv:
+            numFailed = self.currEnv.getNumberOfFailedAssertion()
+            if numFailed > numberOfAssertionFailed:
+                self.handleFailure(prefix=msgPrefix,
+                                   testname=test.name, env=self.currEnv)
+                passed = False
+        elif not hasException:
+            self.addFailure(test.name, '<Environment destroyed>')
+            passed = False
 
-        if isFailed:
-            if exceptionRaised:
-                self.printError(prefix=msgPrefix)
-            else:
-                self.printFail(prefix=msgPrefix)
-            self.addFailuresFromEnv(test.name, self.currEnv)
-        else:
-            self.printPass()
-
-        if self.args.stop_on_failure and isFailed:
+        # Handle debugger, if needed
+        if self.args.stop_on_failure and not passed:
             if self.args.interactive_debugger:
                 while self.currEnv.isUp():
                     time.sleep(1)
             raw_input('press any button to move to the next test')
 
-        return self.currEnv.getNumberOfFailedAssertion()
+        if passed:
+            self.printPass(msgPrefix)
+
+        return numFailed
 
     def _fmtPrefix(self, prefix):
         return prefix + ': ' if prefix else ''
