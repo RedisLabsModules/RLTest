@@ -285,7 +285,8 @@ class RLTest:
                 self.currEnv.stop()
                 if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
                     print Colors.Bred('\tvalgrind check failure')
-                    self.testsFailed.add(self.currEnv)
+                    self.addFailure(self.currEnv.testNamePrintable,
+                                    ['<Valgrind Failure>'])
                 self.currEnv = None
 
     def printException(self, err):
@@ -294,12 +295,22 @@ class RLTest:
         traceback.print_exc(file=sys.stdout)
 
     def addFailuresFromEnv(self, name, env):
+        """
+        Extract the list of failures from the given test Env
+        :param name: The name of the test that failed
+        :param env: The Environment which contains the failures
+        """
         if not env:
-            self.addFailure('<unknown (environment destroyed)>')
+            self.addFailure(name, ['<unknown (environment destroyed)>'])
         else:
             self.addFailure(name, failures=env.assertionFailedSummary)
 
     def addFailure(self, name, failures=None):
+        """
+        Adds a list of failures to the report
+        :param name: The name of the test that has failures
+        :param failures: A list of strings describing the individual failures
+        """
         if not failures:
             failures = []
         self.testsFailed.append([name, failures])
