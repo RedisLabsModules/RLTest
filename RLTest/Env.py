@@ -348,21 +348,21 @@ class Env:
             self.skip()
 
 
-def addDepricatedMethod(cls, name, invoke):
+def addDeprecatedMethod(cls, name, invoke):
     def method(*argc, **nargs):
         warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
         return invoke(*argc, **nargs)
     cls.__dict__[name] = method
 
 
-addDepricatedMethod(Env, 'assertEquals', Env.assertEqual)
-addDepricatedMethod(Env, 'assertListEqual', Env.assertEqual)
-addDepricatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
-addDepricatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
-addDepricatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
-addDepricatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
-addDepricatedMethod(Env, 'is_cluster', Env.isCluster)
-addDepricatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
-addDepricatedMethod(Env, 'execute_command', Env.cmd)
-addDepricatedMethod(Env, 'assertIn', Env.assertContains)
-addDepricatedMethod(Env, 'assertNotIn', Env.assertNotContains)
+addDeprecatedMethod(Env, 'assertEquals', Env.assertEqual)
+addDeprecatedMethod(Env, 'assertListEqual', Env.assertEqual)
+addDeprecatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
+addDeprecatedMethod(Env, 'is_cluster', Env.isCluster)
+addDeprecatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
+addDeprecatedMethod(Env, 'execute_command', Env.cmd)
+addDeprecatedMethod(Env, 'assertIn', Env.assertContains)
+addDeprecatedMethod(Env, 'assertNotIn', Env.assertNotContains)
