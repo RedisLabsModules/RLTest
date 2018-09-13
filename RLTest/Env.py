@@ -109,6 +109,8 @@ class Env:
 
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
 
+    defaultDebug = False
+
     def compareEnvs(self, env):
         if env is None:
             return False
@@ -153,6 +155,9 @@ class Env:
             self.envRunner.printEnvData('\t\t')
 
         Env.RTestInstance.currEnv = self
+
+        if Env.defaultDebug:
+            raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
     def getEnvByName(self):
         if self.env == 'oss':

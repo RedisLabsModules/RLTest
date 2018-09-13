@@ -218,6 +218,7 @@ class RLTest:
         Env.defaultEnterpriseRedisBinaryPath = self.args.enterprise_redis_path
         Env.defaultEnterpriseLibsPath = self.args.enterprise_lib_path
         Env.defaultUseAof = self.args.use_aof
+        Env.defaultDebug = self.args.debug
         Env.defaultDebugPrints = self.args.debug_print
         Env.defaultUseValgrind = self.args.use_valgrind
         Env.defaultValgrindSuppressionsFile = self.args.valgrind_suppressions_file
@@ -383,8 +384,6 @@ class RLTest:
 
         hasException = False
         try:
-            if self.args.debug:
-                raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
             fn()
             passed = True
