@@ -3,6 +3,11 @@ setup(
     name='RLTest',
     version='0.1',
     packages=find_packages(),
+    install_requires=[
+        'redis>=2.10.5',
+        'redis-py-cluster',
+        'psutil'
+    ],
     entry_points='''
         [console_scripts]
         RLTest=RLTest.__main__:main
