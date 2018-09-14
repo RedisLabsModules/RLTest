@@ -128,18 +128,6 @@ parser.add_argument(
     '-t', '--test', help='Specify test to run, in the form of "file:test"')
 
 parser.add_argument(
-    '--tests-dir', default='.',
-    help='directory on which to run the tests')
-
-parser.add_argument(
-    '--test-name', default=None,
-    help='test name to run')
-
-parser.add_argument(
-    '--tests-file', default=None,
-    help='tests file to run (with out the .py extention)')
-
-parser.add_argument(
     '--env-only', action='store_const', const=True, default=False,
     help='start the env but do not run any tests')
 
@@ -276,16 +264,14 @@ class RLTest:
         Env.defaultInteractiveDebuggerArgs = self.args.debugger_args
         Env.defaultNoCatch = self.args.no_output_catch
 
-        sys.path.append(self.args.tests_dir)
-
         self.tests = []
         self.testsFailed = []
         self.currEnv = None
-        self.loader = TestLoader(filter=self.args.test_name)
+        self.loader = TestLoader()
         if self.args.test:
             self.loader.load_spec(self.args.test)
         else:
-            self.loader.scan_dir(self.args.tests_dir)
+            self.loader.scan_dir(os.getcwd())
 
         if self.args.collect_only:
             self.loader.print_tests()
