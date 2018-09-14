@@ -1,4 +1,4 @@
-from RLTest.OssEnv import OssEnv
+from RLTest.redis_std import StandardEnv
 from RLTest.utils import Colors, wait_for_conn
 from CcsMock import CcsMock
 from Dmc import Dmc
@@ -30,7 +30,7 @@ class EnterpriseClusterEnv():
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
-            shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.moduleSoFilePath, moduleArgs=self.moduleArgs,
+            shard = StandardEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.moduleSoFilePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
                            serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath, useAof=self.useAof, useValgrind=self.useValgrind,
                            valgrindSuppressionsFile=self.valgrindSuppressionsFile, noCatch=noCatch)

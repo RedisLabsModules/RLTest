@@ -1,11 +1,11 @@
-from OssEnv import OssEnv
+from redis_std import StandardEnv
 import redis
 import rediscluster
 import time
 from RLTest.utils import Colors
 
 
-class OssClusterEnv:
+class ClusterEnv(object):
     def __init__(self, redisBinaryPath, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, shardsCount=1, useAof=None, useValgrind=False, valgrindSuppressionsFile=None,
                  noCatch=False):
@@ -25,7 +25,7 @@ class OssClusterEnv:
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
-            shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.modulePath, moduleArgs=self.moduleArgs,
+            shard = StandardEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.modulePath, moduleArgs=self.moduleArgs,
                            outputFilesFormat=self.outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
                            serverId=(i + 1), clusterEnabled=True, useAof=self.useAof, useValgrind=self.useValgrind,
                            valgrindSuppressionsFile=self.valgrindSuppressionsFile, noCatch=noCatch)

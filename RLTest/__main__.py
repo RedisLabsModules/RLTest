@@ -10,7 +10,7 @@ import inspect
 import unittest
 import time
 import shlex
-from Env import Env
+from env import Env
 from utils import Colors
 from RLTest.loader import TestLoader
 

@@ -5,8 +5,8 @@ import unittest
 import inspect
 import contextlib
 import warnings
-from OssEnv import OssEnv
-from OssClusterEnv import OssClusterEnv
+from redis_std import StandardEnv
+from redis_cluster import ClusterEnv
 from utils import Colors
 from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
 
@@ -175,14 +175,14 @@ class Env:
 
     def getEnvByName(self):
         if self.env == 'oss':
-            return OssEnv(redisBinaryPath=Env.defaultOssRedisBinary, modulePath=self.module, moduleArgs=self.moduleArgs,
+            return StandardEnv(redisBinaryPath=Env.defaultOssRedisBinary, modulePath=self.module, moduleArgs=self.moduleArgs,
                           outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
                           valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
                           interactiveDebugger=Env.defaultInteractiveDebugger, interactiveDebuggerArgs=Env.defaultInteractiveDebuggerArgs,
                           noCatch=Env.defaultNoCatch)
         if self.env == 'enterprise':
-            return OssEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
+            return StandardEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
                           outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
                           dbDirPath=self.logDir, useSlaves=self.useSlaves, libPath=Env.defaultEnterpriseLibsPath,
                           useAof=self.useAof, useValgrind=Env.defaultUseValgrind, valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
@@ -196,7 +196,7 @@ class Env:
                                         libPath=Env.defaultEnterpriseLibsPath, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
                                         valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile, noCatch=Env.defaultNoCatch)
         if self.env == 'oss-cluster':
-            return OssClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
+            return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
                                  modulePath=self.module, moduleArgs=self.moduleArgs,
                                  outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
                                  dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,

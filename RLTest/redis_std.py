@@ -10,7 +10,7 @@ MASTER = 1
 SLAVE = 2
 
 
-class OssEnv:
+class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
                  useAof=False, useValgrind=False, valgrindSuppressionsFile=None, interactiveDebugger=False,
