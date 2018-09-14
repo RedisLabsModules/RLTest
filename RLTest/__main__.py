@@ -306,7 +306,7 @@ class RLTest:
             self.currEnv.stop()
             if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
                 print Colors.Bred('\tvalgrind check failure')
-                self.addFailure(self.currEnv.testNamePrintable,
+                self.addFailure(self.currEnv.testName,
                                 ['<Valgrind Failure>'])
             self.currEnv = None
 
@@ -357,7 +357,7 @@ class RLTest:
         :param env: The environment, used for extracting failed assertions
         """
         if not testname and env:
-            testname = env.testNamePrintable
+            testname = env.testName
         elif not testname:
             if prefix:
                 testname = prefix
