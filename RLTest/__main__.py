@@ -8,10 +8,12 @@ import inspect
 import unittest
 import time
 import shlex
-from env import Env
-from utils import Colors
+
+from RLTest.env import Env
+from RLTest.utils import Colors
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
+from RLTest import debuggers
 
 RLTest_CONFIG_FILE_PREFIX = '@'
 RLTest_CONFIG_FILE_NAME = 'config.txt'
@@ -84,7 +86,6 @@ parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
                               formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                               description='Test Framework for redis and redis module')
 
-parser.add_subparsers()
 parser.add_argument(
     '--module', default=None,
     help='path to the module file')
@@ -165,13 +166,17 @@ parser.add_argument(
     help='print debug messages')
 
 parser.add_argument(
-    '-V', '--use-valgrind', action='store_const', const=True, default=False,
+    '-V', '--vg', '--use-valgrind', action='store_const', const=True, default=False,
+    dest='use_valgrind',
     help='running redis under valgrind (assuming valgrind is install on the machine)')
 
 parser.add_argument(
-    '--valgrind-suppressions-file', default=None,
-    help='path valgrind suppressions file')
-
+    '--vg-suppressions', default=None, help='path valgrind suppressions file')
+parser.add_argument(
+    '--vg-no-leakcheck', action='store_true', help="Don't perform a leak check")
+parser.add_argument(
+    '--vg-verbose', action='store_true', help="Don't log valgrind output. "
+                                              "Output to screen directly")
 parser.add_argument(
     '-i', '--interactive-debugger', action='store_const', const=True, default=False,
     help='runs the redis on a debuger (gdb/lldb) interactivly.'
@@ -180,9 +185,7 @@ parser.add_argument(
          'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
          'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
 
-parser.add_argument(
-    '--debugger-args', default=None,
-    help='arguments to the interactive debugger')
+parser.add_argument('--debugger', help='Run specified command line as the debugger')
 
 parser.add_argument(
     '-s', '--no-output-catch', action='store_const', const=True, default=False,
@@ -212,6 +215,7 @@ class RLTest:
             args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
         else:
             args = sys.argv[1:]
+        print args
         self.args = parser.parse_args(args=args)
 
         if self.args.interactive_debugger:
@@ -238,6 +242,20 @@ class RLTest:
             except Exception as e:
                 print e
 
+        debugger = None
+        if self.args.use_valgrind:
+            vg_debugger = debuggers.Valgrind(self.args.vg_suppressions)
+            if self.args.vg_no_leakcheck:
+                vg_debugger.leakcheck = False
+            if self.args.no_output_catch or self.args.vg_verbose:
+                vg_debugger.verbose = True
+            debugger = vg_debugger
+        elif self.args.interactive_debugger:
+            debugger = debuggers.DefaultInteractiveDebugger()
+        elif self.args.debugger:
+            debugger = debuggers.GenericInteractiveDebugger(self.args.debugger)
+
+
         Env.defaultModule = self.args.module
         Env.defaultModuleArgs = self.args.module_args
         Env.defaultEnv = self.args.env
@@ -252,11 +270,8 @@ class RLTest:
         Env.defaultUseAof = self.args.use_aof
         Env.defaultDebug = self.args.debug
         Env.defaultDebugPrints = self.args.debug_print
-        Env.defaultUseValgrind = self.args.use_valgrind
-        Env.defaultValgrindSuppressionsFile = self.args.valgrind_suppressions_file
-        Env.defaultInteractiveDebugger = self.args.interactive_debugger
-        Env.defaultInteractiveDebuggerArgs = self.args.debugger_args
         Env.defaultNoCatch = self.args.no_output_catch
+        Env.defaultDebugger = debugger
 
         self.tests = []
         self.testsFailed = []

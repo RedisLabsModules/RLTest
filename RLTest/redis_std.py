@@ -13,8 +13,7 @@ SLAVE = 2
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
-                 useAof=False, useValgrind=False, valgrindSuppressionsFile=None, interactiveDebugger=False,
-                 interactiveDebuggerArgs=True, noCatch=False):
+                 useAof=False, debugger=None, noCatch=False):
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
         self.port = port
         self.modulePath = os.path.abspath(modulePath) if modulePath is not None else None
@@ -27,14 +26,11 @@ class StandardEnv(object):
         self.clusterEnabled = clusterEnabled
         self.useAof = useAof
         self.envIsUp = False
-        self.useValgrind = useValgrind
-        self.valgrindSuppressionsFile = os.path.abspath(valgrindSuppressionsFile) if valgrindSuppressionsFile is not None else None
-        self.interactiveDebugger = interactiveDebugger
-        self.interactiveDebuggerArgs = interactiveDebuggerArgs
+        self.debugger = debugger
         self.noCatch = noCatch
 
-        if self.interactiveDebugger:
-            assert self.noCatch and not self.useSlaves and not self.useValgrind and not self.clusterEnabled
+        if self.has_interactive_debugger:
+            assert self.noCatch and not self.useSlaves and not self.clusterEnabled
 
         if libPath:
             self.libPath = os.path.expanduser(libPath) if libPath.startswith('~/') else libPath
@@ -62,23 +58,15 @@ class StandardEnv(object):
     def getMasterPort(self):
         return self.port
 
+    @property
+    def has_interactive_debugger(self):
+        return self.debugger and self.debugger.is_interactive
+
     def createCmdArgs(self, role):
         cmdArgs = []
-        if self.useValgrind:
-            cmdArgs += ['valgrind']
-            if not self.noCatch:
-                cmdArgs += ['--log-file=%s' % self._getVlgrindFilePath(role)]
+        if self.debugger:
+            cmdArgs += self.debugger.generate_command(self._getVlgrindFilePath(role))
 
-            cmdArgs += ['--leak-check=full', '--errors-for-leak-kinds=definite',
-                        '--error-exitcode=1']
-
-            if self.valgrindSuppressionsFile:
-                cmdArgs += ['--suppressions=%s' % self.valgrindSuppressionsFile]
-        elif self.interactiveDebugger:
-            if platform.system() == 'Darwin':
-                cmdArgs += ['lldb', '--']
-            else:
-                cmdArgs += ['gdb', '-ex', 'run', '--args']
         cmdArgs += [self.redisBinaryPath]
         if role == MASTER:
             cmdArgs += ['--port', str(self.port)]
@@ -108,13 +96,10 @@ class StandardEnv(object):
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             cmdArgs += ['--aof-use-rdb-preamble', 'yes']
 
-        if self.interactiveDebugger and self.interactiveDebuggerArgs:
-            cmdArgs += self.interactiveDebuggerArgs.split(' ')
-
         return cmdArgs
 
     def waitForRedisToStart(self, con):
-        wait_for_conn(con, retries=1000 if self.useValgrind or self.interactiveDebugger else 20)
+        wait_for_conn(con, retries=1000 if self.debugger else 20)
 
     def getPid(self, role):
         return self.masterProcess.pid if role == MASTER else self.slaveProcess.pid
@@ -130,7 +115,7 @@ class StandardEnv(object):
         print Colors.Yellow(prefix + 'port: %d' % (self.getPort(role)))
         print Colors.Yellow(prefix + 'binary path: %s' % (self.redisBinaryPath))
         print Colors.Yellow(prefix + 'server id: %d' % (self.getServerId(role)))
-        print Colors.Yellow(prefix + 'using valgrind: %s' % str(self.useValgrind))
+        print Colors.Yellow(prefix + 'using debugger: {}'.format(bool(self.debugger)))
         if self.modulePath:
             print Colors.Yellow(prefix + 'module: %s' % (self.modulePath))
             if self.moduleArgs:
@@ -159,7 +144,8 @@ class StandardEnv(object):
         if self.noCatch:
             stdoutPipe = sys.stdout
             stderrPipe = sys.stderr
-        if self.interactiveDebugger:
+
+        if self.has_interactive_debugger:
             stdinPipe = sys.stdin
         self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, stdout=stdoutPipe, stderr=stderrPipe, stdin=stdinPipe, env=self.env)
         con = self.getConnection()
@@ -179,7 +165,7 @@ class StandardEnv(object):
         process = self.masterProcess if role == MASTER else self.slaveProcess
         serverId = self.masterServerId if role == MASTER else self.slaveServerId
         if not self._isAlive(process):
-            if not self.interactiveDebugger:
+            if not self.has_interactive_debugger:
                 # on interactive debugger its expected that then process will not be alive
                 print '\t' + Colors.Bred('process is not alive, might have crash durring test execution, check this out. server id : %s' % str(serverId))
             return
