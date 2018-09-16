@@ -32,6 +32,19 @@ class Query:
             self.errorRaised = True
         self.debugPrint(force=False)
 
+    def _prettyPrint(self, result, prefix='\t'):
+        if type(result) is list:
+            print prefix + '['
+            for r in result:
+                self._prettyPrint(r, prefix + '\t')
+            print prefix + ']'
+            return
+        print prefix + str(result)
+
+    def prettyPrint(self):
+        self._prettyPrint(self.res)
+        return self
+
     def debugPrint(self, force=True):
         self.env.debugPrint('query: %s, result: %s' % (self.query, self.res), force=force)
         return self
