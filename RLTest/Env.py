@@ -10,6 +10,7 @@ from OssClusterEnv import OssClusterEnv
 from utils import Colors
 from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
 
+
 def addDeprecatedMethod(cls, name, invoke):
     def method(*argc, **nargs):
         warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
@@ -26,7 +27,7 @@ class Query:
 
     def _evaluate(self):
         try:
-            self.res = self.env.con.execute_command(*self.query)
+            self.res = self.env.cmd(*self.query)
         except Exception as e:
             self.res = str(e)
             self.errorRaised = True
@@ -132,7 +133,8 @@ class Env:
                 return False
         return True
 
-    def __init__(self, testName=None, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, ):
+    def __init__(self, testName=None, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
+                 useAof=None):
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 

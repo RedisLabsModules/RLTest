@@ -1,6 +1,6 @@
 import argparse
 import os
-import imp
+import cmd
 import traceback
 import sys
 import subprocess
@@ -35,6 +35,56 @@ class CustomArgumentParser(argparse.ArgumentParser):
             if arg[0] == '#':
                 break
             yield arg
+
+
+class MyCmd(cmd.Cmd):
+
+    def __init__(self, env):
+        cmd.Cmd.__init__(self)
+        self.env = env
+        self.prompt = '> '
+        commands = [c[0] for c in env.cmd('command')]
+        for c in commands:
+            setattr(MyCmd, 'do_' + c, self._create_functio(c))
+
+    def _exec(self, command):
+        self.env.expect(*command).prettyPrint()
+
+    def _create_functio(self, command):
+        c = command
+        return lambda self, x: self._exec([c] + shlex.split(x))
+
+    def do_print(self, line):
+        '''
+        print
+        '''
+        print 'print'
+
+    def do_stop(self, line):
+        '''
+        print
+        '''
+        print 'BYE BYE'
+        return True
+
+    def do_cluster_conn(self, line):
+        '''
+        move to oss-cluster connection
+        '''
+        if self.env.env == 'oss-cluster':
+            self.env.con = self.env.envRunner.getClusterConnection()
+            print 'moved to cluster connection'
+        else:
+            print 'cluster connection only available on oss-cluster env'
+
+    def do_normal_conn(self, line):
+        '''
+        move to normal connection (will connect to the first shard on oss-cluster)
+        '''
+        self.env.con = self.env.envRunner.getConnection()
+        print 'moved to normal connection (first shard on oss-cluster)'
+
+    do_exit = do_stop
 
 
 parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
@@ -441,7 +491,9 @@ class RLTest:
             if self.args.interactive_debugger:
                 while env.isUp():
                     time.sleep(1)
-            raw_input('press any button to stop')
+            else:
+                cmd = MyCmd(env)
+                cmd.cmdloop()
             env.stop()
             return
         done = 0
