@@ -31,7 +31,6 @@ class Query:
         except Exception as e:
             self.res = str(e)
             self.errorRaised = True
-        self.debugPrint(force=False)
 
     def _prettyPrint(self, result, prefix='\t'):
         if type(result) is list:
@@ -46,8 +45,8 @@ class Query:
         self._prettyPrint(self.res)
         return self
 
-    def debugPrint(self, force=True):
-        self.env.debugPrint('query: %s, result: %s' % (self.query, self.res), force=force)
+    def debugPrint(self):
+        self.env.debugPrint('query: %s, result: %s' % (self.query, self.res), force=True)
         return self
 
     def equal(self, expected):
@@ -295,7 +294,9 @@ class Env:
         return Query(self, *query)
 
     def cmd(self, *query):
-        return self.con.execute_command(*query)
+        res = self.con.execute_command(*query)
+        self.debugPrint('query: %s, result: %s' % (str(query), str(res)))
+        return res
 
     def assertCmdOk(self, cmd, *args, **kwargs):
         self.assertOk(self.cmd(cmd, *args, **kwargs))
