@@ -43,7 +43,7 @@ class OssClusterEnv:
             print Colors.Yellow(prefix + 'shard: %d' % (i + 1))
             shard.printEnvData(prefix + '\t')
 
-    def waitCluster(self, timeout_sec=5):
+    def waitCluster(self, timeout_sec=40):
 
         st = time.time()
         ok = 0
