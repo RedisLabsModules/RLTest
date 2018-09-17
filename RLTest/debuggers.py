@@ -19,9 +19,6 @@ class Valgrind(object):
             cmd += ['--log-file' + logfile]
         return cmd
 
-    def is_interactive(self):
-        return False
-
 
 class GenericInteractiveDebugger(object):
     is_interactive = True
