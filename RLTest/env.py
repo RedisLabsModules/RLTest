@@ -1,3 +1,4 @@
+# coding=utf-8
 import os
 import sys
 import redis
@@ -9,6 +10,10 @@ from redis_std import StandardEnv
 from redis_cluster import ClusterEnv
 from utils import Colors
 from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
+
+
+class TestAssertionFailure(Exception):
+    pass
 
 
 def addDeprecatedMethod(cls, name, invoke):
@@ -108,6 +113,7 @@ class Env:
     defaultEnterpriseLibsPath = None
     defaultUseAof = None
     defaultDebugger = None
+    defaultExitOnFailure = False
 
     RTestInstance = None
 
@@ -231,11 +237,15 @@ class Env:
                 frame.f_lineno)
 
     def _assertion(self, checkStr, trueValue, depth=0):
+        basemsg = Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
         if trueValue and self.verbose:
-            print '\t' + Colors.Green('assertion success:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+            print '\t' + Colors.Green('✅  (OK):\t') + basemsg
         elif not trueValue:
-            failureSummary = Colors.Bred('assertion failed:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+            failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
             print '\t' + failureSummary
+            if self.defaultExitOnFailure:
+                raise TestAssertionFailure('Assertion Failed!')
+
             self.assertionFailedSummary.append(failureSummary)
 
     def getNumberOfFailedAssertion(self):

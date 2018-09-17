@@ -9,7 +9,7 @@ import unittest
 import time
 import shlex
 
-from RLTest.env import Env
+from RLTest.env import Env, TestAssertionFailure
 from RLTest.utils import Colors
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
@@ -109,6 +109,10 @@ parser.add_argument(
 parser.add_argument(
     '--stop-on-failure', action='store_const', const=True, default=False,
     help='stop running on failure')
+
+parser.add_argument(
+    '-x', '--exit-on-failure', action='store_true',
+    help='Stop test execution and exit on first assertion failure')
 
 parser.add_argument(
     '--verbose', '-v', action='count', default=0,
@@ -271,6 +275,7 @@ class RLTest:
         Env.defaultDebugPrints = self.args.debug_print
         Env.defaultNoCatch = self.args.no_output_catch
         Env.defaultDebugger = debugger
+        Env.defaultExitOnFailure = self.args.exit_on_failure
 
         self.tests = []
         self.testsFailed = []
@@ -400,7 +405,13 @@ class RLTest:
         except unittest.SkipTest:
             self.printSkip()
             return 0
+        except TestAssertionFailure:
+            # Don't fall-through
+            raise
         except Exception as err:
+            if self.args.exit_on_failure:
+                raise
+
             self.handleFailure(exception=err, prefix=msgPrefix,
                                testname=test.name, env=self.currEnv)
             hasException = True
