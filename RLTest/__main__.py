@@ -215,7 +215,6 @@ class RLTest:
             args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
         else:
             args = sys.argv[1:]
-        print args
         self.args = parser.parse_args(args=args)
 
         if self.args.interactive_debugger:
