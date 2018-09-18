@@ -28,6 +28,7 @@ class StandardEnv(object):
         self.envIsUp = False
         self.debugger = debugger
         self.noCatch = noCatch
+        self.environ = os.environ.copy()
 
         if self.has_interactive_debugger:
             assert self.noCatch and not self.useSlaves and not self.clusterEnabled
@@ -37,9 +38,7 @@ class StandardEnv(object):
         else:
             self.libPath = None
         if self.libPath:
-            self.env = {'LD_LIBRARY_PATH': self.libPath}
-        else:
-            self.env = None
+            self.environ['LD_LIBRARY_PATH'] = self.libPath
 
         self.masterCmdArgs = self.createCmdArgs(MASTER)
         if self.useSlaves:
@@ -147,11 +146,19 @@ class StandardEnv(object):
 
         if self.has_interactive_debugger:
             stdinPipe = sys.stdin
-        self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, stdout=stdoutPipe, stderr=stderrPipe, stdin=stdinPipe, env=self.env)
+
+        options = {
+            'stderr': stderrPipe,
+            'stdin': stdinPipe,
+            'stdout': stdoutPipe,
+            'env': self.environ
+        }
+
+        self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
         con = self.getConnection()
         self.waitForRedisToStart(con)
         if self.useSlaves:
-            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, stdout=stdoutPipe, stderr=stderrPipe, env=self.env)
+            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)
         self.envIsUp = True
