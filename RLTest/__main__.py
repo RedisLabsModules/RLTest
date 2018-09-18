@@ -417,6 +417,7 @@ class RLTest:
             hasException = True
             passed = False
 
+        numFailed = 0
         if self.currEnv:
             numFailed = self.currEnv.getNumberOfFailedAssertion()
             if numFailed > numberOfAssertionFailed:
