@@ -3,23 +3,18 @@ import os
 import cmd
 import traceback
 import sys
-import subprocess
-import platform
 import shutil
 import inspect
 import unittest
 import time
 import shlex
-from Env import Env
-from utils import Colors
-from RLTest.loader import TestLoader
 
-RLTest_WORKING_DIR = os.path.expanduser('~/.RLTest/')
-RLTest_ENTERPRISE_VERSION = '5.2.0'
-RLTest_ENTERPRISE_SUB_VERSION = '14'
-OS_NAME = platform.dist()[2]
-RLTest_ENTERPRISE_TAR_FILE_NAME = 'redislabs-%s-%s-%s-amd64.tar' % (RLTest_ENTERPRISE_VERSION, RLTest_ENTERPRISE_SUB_VERSION, OS_NAME)
-RLTest_ENTERPRISE_URL = 'https://s3.amazonaws.com/rlec-downloads/%s/%s' % (RLTest_ENTERPRISE_VERSION, RLTest_ENTERPRISE_TAR_FILE_NAME)
+from RLTest.env import Env, TestAssertionFailure
+from RLTest.utils import Colors
+from RLTest.loader import TestLoader
+from RLTest.Enterprise import binaryrepo
+from RLTest import debuggers
+
 RLTest_CONFIG_FILE_PREFIX = '@'
 RLTest_CONFIG_FILE_NAME = 'config.txt'
 
@@ -43,7 +38,11 @@ class MyCmd(cmd.Cmd):
         cmd.Cmd.__init__(self)
         self.env = env
         self.prompt = '> '
-        commands = [c[0] for c in env.cmd('command')]
+        try:
+            commands_reply = env.cmd('command')
+        except Exception:
+            return
+        commands = [c[0] for c in commands_reply]
         for c in commands:
             setattr(MyCmd, 'do_' + c, self._create_functio(c))
 
@@ -53,6 +52,9 @@ class MyCmd(cmd.Cmd):
     def _create_functio(self, command):
         c = command
         return lambda self, x: self._exec([c] + shlex.split(x))
+
+    def do_exec(self, line):
+        self.env.expect(*shlex.split(line)).prettyPrint()
 
     def do_print(self, line):
         '''
@@ -91,7 +93,6 @@ parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
                               formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                               description='Test Framework for redis and redis module')
 
-
 parser.add_argument(
     '--module', default=None,
     help='path to the module file')
@@ -109,12 +110,16 @@ parser.add_argument(
     help='path to the oss redis binary')
 
 parser.add_argument(
-    '--enterprise-redis-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/redis-server'),
+    '--enterprise-redis-path', default=os.path.join(binaryrepo.REPO_ROOT, 'opt/redislabs/bin/redis-server'),
     help='path to the entrprise redis binary')
 
 parser.add_argument(
     '--stop-on-failure', action='store_const', const=True, default=False,
     help='stop running on failure')
+
+parser.add_argument(
+    '-x', '--exit-on-failure', action='store_true',
+    help='Stop test execution and exit on first assertion failure')
 
 parser.add_argument(
     '--verbose', '-v', action='count', default=0,
@@ -126,18 +131,6 @@ parser.add_argument(
 
 parser.add_argument(
     '-t', '--test', help='Specify test to run, in the form of "file:test"')
-
-parser.add_argument(
-    '--tests-dir', default='.',
-    help='directory on which to run the tests')
-
-parser.add_argument(
-    '--test-name', default=None,
-    help='test name to run')
-
-parser.add_argument(
-    '--tests-file', default=None,
-    help='tests file to run (with out the .py extention)')
 
 parser.add_argument(
     '--env-only', action='store_const', const=True, default=False,
@@ -164,11 +157,11 @@ parser.add_argument(
     help='run env with slaves enabled')
 
 parser.add_argument(
-    '--proxy-binary-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/bin/dmcproxy'),
+    '--proxy-binary-path', default=os.path.join(binaryrepo.REPO_ROOT, 'opt/redislabs/bin/dmcproxy'),
     help='dmc proxy binary path')
 
 parser.add_argument(
-    '--enterprise-lib-path', default=os.path.join(RLTest_WORKING_DIR, 'opt/redislabs/lib/'),
+    '--enterprise-lib-path', default=os.path.join(binaryrepo.REPO_ROOT, 'opt/redislabs/lib/'),
     help='path of needed libraries to run enterprise binaries')
 
 parser.add_argument(
@@ -184,13 +177,17 @@ parser.add_argument(
     help='print debug messages')
 
 parser.add_argument(
-    '-V', '--use-valgrind', action='store_const', const=True, default=False,
+    '-V', '--vg', '--use-valgrind', action='store_const', const=True, default=False,
+    dest='use_valgrind',
     help='running redis under valgrind (assuming valgrind is install on the machine)')
 
 parser.add_argument(
-    '--valgrind-suppressions-file', default=None,
-    help='path valgrind suppressions file')
-
+    '--vg-suppressions', default=None, help='path valgrind suppressions file')
+parser.add_argument(
+    '--vg-no-leakcheck', action='store_true', help="Don't perform a leak check")
+parser.add_argument(
+    '--vg-verbose', action='store_true', help="Don't log valgrind output. "
+                                              "Output to screen directly")
 parser.add_argument(
     '-i', '--interactive-debugger', action='store_const', const=True, default=False,
     help='runs the redis on a debuger (gdb/lldb) interactivly.'
@@ -199,9 +196,7 @@ parser.add_argument(
          'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
          'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
 
-parser.add_argument(
-    '--debugger-args', default=None,
-    help='arguments to the interactive debugger')
+parser.add_argument('--debugger', help='Run specified command line as the debugger')
 
 parser.add_argument(
     '-s', '--no-output-catch', action='store_const', const=True, default=False,
@@ -226,6 +221,10 @@ class EnvScopeGuard:
 class RLTest:
 
     def __init__(self):
+
+        # adding the current path to sys.path for test import puspused
+        sys.path.append(os.getcwd())
+
         configFilePath = './%s' % RLTest_CONFIG_FILE_NAME
         if os.path.exists(configFilePath):
             args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
@@ -248,13 +247,27 @@ class RLTest:
             self.args.stop_on_failure = True
 
         if self.args.download_enterprise_binaries:
-            self._downloadEnterpriseBinaries()
+            br = binaryrepo.BinaryRepository()
+            br.download_binaries()
 
         if self.args.clear_logs:
             try:
                 shutil.rmtree(self.args.log_dir)
             except Exception as e:
                 print e
+
+        debugger = None
+        if self.args.use_valgrind:
+            vg_debugger = debuggers.Valgrind(self.args.vg_suppressions)
+            if self.args.vg_no_leakcheck:
+                vg_debugger.leakcheck = False
+            if self.args.no_output_catch or self.args.vg_verbose:
+                vg_debugger.verbose = True
+            debugger = vg_debugger
+        elif self.args.interactive_debugger:
+            debugger = debuggers.DefaultInteractiveDebugger()
+        elif self.args.debugger:
+            debugger = debuggers.GenericInteractiveDebugger(self.args.debugger)
 
         Env.defaultModule = self.args.module
         Env.defaultModuleArgs = self.args.module_args
@@ -270,22 +283,18 @@ class RLTest:
         Env.defaultUseAof = self.args.use_aof
         Env.defaultDebug = self.args.debug
         Env.defaultDebugPrints = self.args.debug_print
-        Env.defaultUseValgrind = self.args.use_valgrind
-        Env.defaultValgrindSuppressionsFile = self.args.valgrind_suppressions_file
-        Env.defaultInteractiveDebugger = self.args.interactive_debugger
-        Env.defaultInteractiveDebuggerArgs = self.args.debugger_args
         Env.defaultNoCatch = self.args.no_output_catch
-
-        sys.path.append(self.args.tests_dir)
+        Env.defaultDebugger = debugger
+        Env.defaultExitOnFailure = self.args.exit_on_failure
 
         self.tests = []
         self.testsFailed = []
         self.currEnv = None
-        self.loader = TestLoader(filter=self.args.test_name)
+        self.loader = TestLoader()
         if self.args.test:
             self.loader.load_spec(self.args.test)
         else:
-            self.loader.scan_dir(self.args.tests_dir)
+            self.loader.scan_dir(os.getcwd())
 
         if self.args.collect_only:
             self.loader.print_tests()
@@ -293,40 +302,6 @@ class RLTest:
 
     def _convertArgsType(self):
         pass
-
-    def _downloadEnterpriseBinaries(self):
-        binariesName = 'binaries.tar'
-        print Colors.Yellow('installing enterprise binaries')
-        print Colors.Yellow('creating RLTest working dir: %s' % RLTest_WORKING_DIR)
-        try:
-            shutil.rmtree(RLTest_WORKING_DIR)
-            os.makedirs(RLTest_WORKING_DIR)
-        except Exception:
-            pass
-
-        print Colors.Yellow('download binaries')
-        args = ['wget', RLTest_ENTERPRISE_URL, '-O', os.path.join(RLTest_WORKING_DIR, binariesName)]
-        self.process = subprocess.Popen(args=args, stdout=sys.stdout, stderr=sys.stdout)
-        self.process.wait()
-        if self.process.poll() != 0:
-            raise Exception('failed to download enterprise binaries from s3')
-
-        print Colors.Yellow('extracting binaries')
-        debFileName = 'redislabs_%s-%s~%s_amd64.deb' % (RLTest_ENTERPRISE_VERSION, RLTest_ENTERPRISE_SUB_VERSION, OS_NAME)
-        args = ['tar', '-xvf', os.path.join(RLTest_WORKING_DIR, binariesName), '--directory', RLTest_WORKING_DIR, debFileName]
-        self.process = subprocess.Popen(args=args, stdout=sys.stdout, stderr=sys.stdout)
-        self.process.wait()
-        if self.process.poll() != 0:
-            raise Exception('failed to extract binaries to %s' % self.RLTest_WORKING_DIR)
-
-        # TODO: Support centos that does not have dpkg command
-        args = ['dpkg', '-x', os.path.join(RLTest_WORKING_DIR, debFileName), RLTest_WORKING_DIR]
-        self.process = subprocess.Popen(args=args, stdout=sys.stdout, stderr=sys.stdout)
-        self.process.wait()
-        if self.process.poll() != 0:
-            raise Exception('failed to extract binaries to %s' % self.RLTest_WORKING_DIR)
-
-        print Colors.Yellow('finished installing enterprise binaries')
 
     def takeEnvDown(self, fullShutDown=False):
         if not self.currEnv:
@@ -345,7 +320,7 @@ class RLTest:
             self.currEnv.stop()
             if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
                 print Colors.Bred('\tvalgrind check failure')
-                self.addFailure(self.currEnv.testNamePrintable,
+                self.addFailure(self.currEnv.testName,
                                 ['<Valgrind Failure>'])
             self.currEnv = None
 
@@ -396,7 +371,7 @@ class RLTest:
         :param env: The environment, used for extracting failed assertions
         """
         if not testname and env:
-            testname = env.testNamePrintable
+            testname = env.testName
         elif not testname:
             if prefix:
                 testname = prefix
@@ -440,12 +415,19 @@ class RLTest:
         except unittest.SkipTest:
             self.printSkip()
             return 0
+        except TestAssertionFailure:
+            # Don't fall-through
+            raise
         except Exception as err:
+            if self.args.exit_on_failure:
+                raise
+
             self.handleFailure(exception=err, prefix=msgPrefix,
                                testname=test.name, env=self.currEnv)
             hasException = True
             passed = False
 
+        numFailed = 0
         if self.currEnv:
             numFailed = self.currEnv.getNumberOfFailedAssertion()
             if numFailed > numberOfAssertionFailed:
@@ -498,8 +480,9 @@ class RLTest:
             return
         done = 0
         startTime = time.time()
-        if self.args.interactive_debugger and len(self.tests) != 1:
-            print Colors.Bred('only one test can be run on interactive-debugger use --test-name')
+        if self.args.interactive_debugger and len(self.loader.tests) != 1:
+            print self.tests
+            print Colors.Bred('only one test can be run on interactive-debugger use -t')
             sys.exit(1)
 
         for test in self.loader:

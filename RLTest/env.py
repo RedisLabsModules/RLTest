@@ -1,3 +1,4 @@
+# coding=utf-8
 import os
 import sys
 import redis
@@ -5,10 +6,14 @@ import unittest
 import inspect
 import contextlib
 import warnings
-from OssEnv import OssEnv
-from OssClusterEnv import OssClusterEnv
+from redis_std import StandardEnv
+from redis_cluster import ClusterEnv
 from utils import Colors
 from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
+
+
+class TestAssertionFailure(Exception):
+    pass
 
 
 def addDeprecatedMethod(cls, name, invoke):
@@ -107,17 +112,12 @@ class Env:
     defaultEnterpriseRedisBinaryPath = None
     defaultEnterpriseLibsPath = None
     defaultUseAof = None
+    defaultDebugger = None
+    defaultExitOnFailure = False
 
     RTestInstance = None
 
     defaultDebugPrints = False
-
-    defaultUseValgrind = False
-    defaultValgrindSuppressionsFile = None
-
-    defaultInteractiveDebugger = False
-    defaultInteractiveDebuggerArgs = None
-
     defaultNoCatch = False
 
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
@@ -174,33 +174,35 @@ class Env:
             raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
     def getEnvByName(self):
+        kwargs = {
+            'modulePath': self.module,
+            'moduleArgs': self.moduleArgs,
+            'useSlaves': self.useSlaves,
+            'useAof': self.useAof,
+            'dbDirPath': self.logDir,
+            'debugger': Env.defaultDebugger,
+            'noCatch': Env.defaultNoCatch,
+            'libPath': Env.defaultEnterpriseLibsPath
+        }
+
         if self.env == 'oss':
-            return OssEnv(redisBinaryPath=Env.defaultOssRedisBinary, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
-                          dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                          valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
-                          interactiveDebugger=Env.defaultInteractiveDebugger, interactiveDebuggerArgs=Env.defaultInteractiveDebuggerArgs,
-                          noCatch=Env.defaultNoCatch)
+            return StandardEnv(redisBinaryPath=Env.defaultOssRedisBinary,
+                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+                               **kwargs)
         if self.env == 'enterprise':
-            return OssEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
-                          dbDirPath=self.logDir, useSlaves=self.useSlaves, libPath=Env.defaultEnterpriseLibsPath,
-                          useAof=self.useAof, useValgrind=Env.defaultUseValgrind, valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
-                          interactiveDebugger=Env.defaultInteractiveDebugger, interactiveDebuggerArgs=Env.defaultInteractiveDebuggerArgs,
-                          noCatch=Env.defaultNoCatch)
+            return StandardEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
+                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+                               **kwargs)
         if self.env == 'enterprise-cluster':
-            return EnterpriseClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
-                                        modulePath=self.module, moduleArgs=self.moduleArgs,
+            return EnterpriseClusterEnv(shardsCount=self.shardsCount,
+                                        redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                         outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
-                                        dbDirPath=self.logDir, useSlaves=self.useSlaves, dmcBinaryPath=Env.defaultProxyBinaryPath,
-                                        libPath=Env.defaultEnterpriseLibsPath, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                                        valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile, noCatch=Env.defaultNoCatch)
+                                        dmcBinaryPath=Env.defaultProxyBinaryPath,
+                                        **kwargs)
         if self.env == 'oss-cluster':
-            return OssClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
-                                 modulePath=self.module, moduleArgs=self.moduleArgs,
-                                 outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
-                                 dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                                 valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile, noCatch=Env.defaultNoCatch)
+            return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
+                              outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
+                              **kwargs)
 
     def start(self):
         self.envRunner.startEnv()
@@ -235,11 +237,15 @@ class Env:
                 frame.f_lineno)
 
     def _assertion(self, checkStr, trueValue, depth=0):
+        basemsg = Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
         if trueValue and self.verbose:
-            print '\t' + Colors.Green('assertion success:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+            print '\t' + Colors.Green('✅  (OK):\t') + basemsg
         elif not trueValue:
-            failureSummary = Colors.Bred('assertion failed:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+            failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
             print '\t' + failureSummary
+            if self.defaultExitOnFailure:
+                raise TestAssertionFailure('Assertion Failed!')
+
             self.assertionFailedSummary.append(failureSummary)
 
     def getNumberOfFailedAssertion(self):
