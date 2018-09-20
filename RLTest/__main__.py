@@ -214,6 +214,10 @@ class EnvScopeGuard:
 class RLTest:
 
     def __init__(self):
+
+        # adding the current path to sys.path for test import puspused
+        sys.path.append(os.getcwd())
+
         configFilePath = './%s' % RLTest_CONFIG_FILE_NAME
         if os.path.exists(configFilePath):
             args = ['%s%s' % (RLTest_CONFIG_FILE_PREFIX, RLTest_CONFIG_FILE_NAME)] + sys.argv[1:]
