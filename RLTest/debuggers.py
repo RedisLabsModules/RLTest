@@ -16,7 +16,7 @@ class Valgrind(object):
         if self.suppressions:
             cmd += ['--suppressions=' + self.suppressions]
         if logfile:
-            cmd += ['--log-file' + logfile]
+            cmd += ['--log-file=' + logfile]
         return cmd
 
 
@@ -26,21 +26,21 @@ class GenericInteractiveDebugger(object):
     def __init__(self, cmdline):
         self.args = cmdline.split()
 
-    def generate_command(self, **kw):
+    def generate_command(self, *argc, **kw):
         return [self.args]
 
 
 class GDB(object):
     is_interactive = True
 
-    def generate_command(self, **kw):
+    def generate_command(self, *argc, **kw):
         return ['gdb', '-ex', 'run', '--args']
 
 
 class LLDB(object):
     is_interactive = True
 
-    def generate_command(self, **kw):
+    def generate_command(self, *argc, **kw):
         return ['lldb', '--']
 
 

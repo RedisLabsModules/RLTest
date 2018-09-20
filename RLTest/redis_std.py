@@ -64,7 +64,7 @@ class StandardEnv(object):
     def createCmdArgs(self, role):
         cmdArgs = []
         if self.debugger:
-            cmdArgs += self.debugger.generate_command(self._getVlgrindFilePath(role))
+            cmdArgs += self.debugger.generate_command(self._getVlgrindFilePath(role) if not self.noCatch else None)
 
         cmdArgs += [self.redisBinaryPath]
         if role == MASTER:

@@ -15,31 +15,27 @@ class EnterpriseClusterEnv():
     DMC_PORT = 10000
     MODULE_WORKING_DIR = '/tmp/'
 
-    def __init__(self, redisBinaryPath, dmcBinaryPath, libPath, shardsCount=1, modulePath=None, moduleArgs=None,
-                 outputFilesFormat=None, dbDirPath=None, useSlaves=False, useAof=None, useValgrind=False, valgrindSuppressionsFile=None,
-                 noCatch=False):
-        self.shardsCount = shardsCount
+    def __init__(self, **kwargs):
+
         self.shards = []
-        self.modulePath = modulePath
-        self.moduleArgs = moduleArgs
-        self.useAof = useAof
-        self.useSlaves = useSlaves
-        self.useValgrind = useValgrind
-        self.valgrindSuppressionsFile = valgrindSuppressionsFile
+        self.envIsUp = False
+        self.modulePath = kwargs['modulePath']
+        self.moduleArgs = kwargs['moduleArgs']
+        self.shardsCount = kwargs.pop('shardsCount')
+        self.dmcBinaryPath = kwargs.pop('dmcBinaryPath')
+        useSlaves = kwargs.get('useSlaves', False)
+
         self.preperModule()
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
-            shard = StandardEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.moduleSoFilePath, moduleArgs=self.moduleArgs,
-                           outputFilesFormat=outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
-                           serverId=(i + 1), password=SHARD_PASSWORD, libPath=libPath, useAof=self.useAof, useValgrind=self.useValgrind,
-                           valgrindSuppressionsFile=self.valgrindSuppressionsFile, noCatch=noCatch)
+            shard = StandardEnv(port=startPort, serverId=(i + 1), password=SHARD_PASSWORD, **kwargs)
             self.shards.append(shard)
             startPort += 2
 
-        self.ccs = CcsMock(redisBinaryPath=redisBinaryPath, directory=dbDirPath, useSlaves=useSlaves,
-                           password=SHARD_PASSWORD, proxyPort=self.DMC_PORT, libPath=libPath)
-        self.dmc = Dmc(directory=dbDirPath, dmcBinaryPath=dmcBinaryPath, libPath=libPath)
+        self.ccs = CcsMock(redisBinaryPath=kwargs['redisBinaryPath'], directory=kwargs['dbDirPath'], useSlaves=kwargs['useSlaves'],
+                           password=SHARD_PASSWORD, proxyPort=self.DMC_PORT, libPath=kwargs['libPath'])
+        self.dmc = Dmc(directory=kwargs['dbDirPath'], dmcBinaryPath=self.dmcBinaryPath, libPath=kwargs['libPath'])
         self.envIsUp = False
 
     def preperModule(self):

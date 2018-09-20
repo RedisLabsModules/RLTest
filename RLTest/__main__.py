@@ -38,7 +38,11 @@ class MyCmd(cmd.Cmd):
         cmd.Cmd.__init__(self)
         self.env = env
         self.prompt = '> '
-        commands = [c[0] for c in env.cmd('command')]
+        try:
+            commands_reply = env.cmd('command')
+        except Exception:
+            return
+        commands = [c[0] for c in commands_reply]
         for c in commands:
             setattr(MyCmd, 'do_' + c, self._create_functio(c))
 
@@ -48,6 +52,9 @@ class MyCmd(cmd.Cmd):
     def _create_functio(self, command):
         c = command
         return lambda self, x: self._exec([c] + shlex.split(x))
+
+    def do_exec(self, line):
+        self.env.expect(*shlex.split(line)).prettyPrint()
 
     def do_print(self, line):
         '''
@@ -262,7 +269,6 @@ class RLTest:
         elif self.args.debugger:
             debugger = debuggers.GenericInteractiveDebugger(self.args.debugger)
 
-
         Env.defaultModule = self.args.module
         Env.defaultModuleArgs = self.args.module_args
         Env.defaultEnv = self.args.env
@@ -474,8 +480,9 @@ class RLTest:
             return
         done = 0
         startTime = time.time()
-        if self.args.interactive_debugger and len(self.tests) != 1:
-            print Colors.Bred('only one test can be run on interactive-debugger use --test-name')
+        if self.args.interactive_debugger and len(self.loader.tests) != 1:
+            print self.tests
+            print Colors.Bred('only one test can be run on interactive-debugger use -t')
             sys.exit(1)
 
         for test in self.loader:
