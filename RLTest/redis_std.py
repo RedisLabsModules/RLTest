@@ -3,7 +3,7 @@ import subprocess
 import sys
 import os
 import platform
-from utils import Colors, wait_for_conn
+from RLTest.utils import Colors, wait_for_conn
 
 
 MASTER = 1
@@ -110,28 +110,28 @@ class StandardEnv(object):
         return self.masterServerId if role == MASTER else self.slaveServerId
 
     def _printEnvData(self, prefix='', role=MASTER):
-        print Colors.Yellow(prefix + 'pid: %d' % (self.getPid(role)))
-        print Colors.Yellow(prefix + 'port: %d' % (self.getPort(role)))
-        print Colors.Yellow(prefix + 'binary path: %s' % (self.redisBinaryPath))
-        print Colors.Yellow(prefix + 'server id: %d' % (self.getServerId(role)))
-        print Colors.Yellow(prefix + 'using debugger: {}'.format(bool(self.debugger)))
+        print(Colors.Yellow(prefix + 'pid: %d' % (self.getPid(role))))
+        print(Colors.Yellow(prefix + 'port: %d' % (self.getPort(role))))
+        print(Colors.Yellow(prefix + 'binary path: %s' % (self.redisBinaryPath)))
+        print(Colors.Yellow(prefix + 'server id: %d' % (self.getServerId(role))))
+        print(Colors.Yellow(prefix + 'using debugger: {}'.format(bool(self.debugger))))
         if self.modulePath:
-            print Colors.Yellow(prefix + 'module: %s' % (self.modulePath))
+            print(Colors.Yellow(prefix + 'module: %s' % (self.modulePath)))
             if self.moduleArgs:
-                print Colors.Yellow(prefix + 'module args: %s' % (self.moduleArgs))
+                print(Colors.Yellow(prefix + 'module args: %s' % (self.moduleArgs)))
         if self.outputFilesFormat:
-            print Colors.Yellow(prefix + 'log file: %s' % (self._getFileName(role, '.log')))
-            print Colors.Yellow(prefix + 'db file name: %s' % self._getFileName(role, '.rdb'))
+            print(Colors.Yellow(prefix + 'log file: %s' % (self._getFileName(role, '.log'))))
+            print(Colors.Yellow(prefix + 'db file name: %s' % self._getFileName(role, '.rdb')))
         if self.dbDirPath:
-            print Colors.Yellow(prefix + 'db dir path: %s' % (self.dbDirPath))
+            print(Colors.Yellow(prefix + 'db dir path: %s' % (self.dbDirPath)))
         if self.libPath:
-            print Colors.Yellow(prefix + 'library path: %s' % (self.libPath))
+            print(Colors.Yellow(prefix + 'library path: %s' % (self.libPath)))
 
     def printEnvData(self, prefix=''):
-        print Colors.Yellow(prefix + 'master:')
+        print(Colors.Yellow(prefix + 'master:'))
         self._printEnvData(prefix + '\t', MASTER)
         if self.useSlaves:
-            print Colors.Yellow(prefix + 'slave:')
+            print(Colors.Yellow(prefix + 'slave:'))
             self._printEnvData(prefix + '\t', SLAVE)
 
     def startEnv(self):
@@ -174,7 +174,7 @@ class StandardEnv(object):
         if not self._isAlive(process):
             if not self.has_interactive_debugger:
                 # on interactive debugger its expected that then process will not be alive
-                print '\t' + Colors.Bred('process is not alive, might have crash durring test execution, check this out. server id : %s' % str(serverId))
+                print('\t' + Colors.Bred('process is not alive, might have crash durring test execution, check this out. server id : %s' % str(serverId)))
             return
         try:
             process.terminate()
@@ -239,15 +239,15 @@ class StandardEnv(object):
         try:
             self.getConnection().execute_command(*cmd)
         except Exception as e:
-            print e
+            print(e)
 
     def checkExitCode(self):
         ret = True
         if self.masterExitCode != 0:
-            print '\t' + Colors.Bred('bad exit code for serverId %s' % str(self.masterServerId))
+            print('\t' + Colors.Bred('bad exit code for serverId %s' % str(self.masterServerId)))
             ret = False
         if self.useSlaves and self.slaveExitCode != 0:
-            print '\t' + Colors.Bred('bad exit code for serverId %s' % str(self.slaveServerId))
+            print('\t' + Colors.Bred('bad exit code for serverId %s' % str(self.slaveServerId)))
             ret = False
         return ret
 

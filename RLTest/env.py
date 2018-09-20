@@ -6,10 +6,10 @@ import unittest
 import inspect
 import contextlib
 import warnings
-from redis_std import StandardEnv
-from redis_cluster import ClusterEnv
-from utils import Colors
-from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
+from RLTest.redis_std import StandardEnv
+from RLTest.redis_cluster import ClusterEnv
+from RLTest.utils import Colors
+from RLTest.Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
 
 
 class TestAssertionFailure(Exception):
@@ -20,7 +20,7 @@ def addDeprecatedMethod(cls, name, invoke):
     def method(*argc, **nargs):
         warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
         return invoke(*argc, **nargs)
-    cls.__dict__[name] = method
+    setattr(cls, name, method)
 
 
 class Query:
@@ -39,12 +39,12 @@ class Query:
 
     def _prettyPrint(self, result, prefix='\t'):
         if type(result) is list:
-            print prefix + '['
+            print(prefix + '[')
             for r in result:
                 self._prettyPrint(r, prefix + '\t')
-            print prefix + ']'
+            print(prefix + ']')
             return
-        print prefix + str(result)
+        print(prefix + str(result))
 
     def prettyPrint(self):
         self._prettyPrint(self.res)
@@ -138,7 +138,7 @@ class Env:
         self.testName = self.testName.replace(' ', '_')
 
         if testDescription:
-            print Colors.Gray('\tdescription: ' + testDescription)
+            print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
@@ -165,7 +165,7 @@ class Env:
 
         self.start()
         if self.verbose >= 2:
-            print Colors.Blue('\tenv data:')
+            print(Colors.Blue('\tenv data:'))
             self.envRunner.printEnvData('\t\t')
 
         Env.RTestInstance.currEnv = self
@@ -239,10 +239,10 @@ class Env:
     def _assertion(self, checkStr, trueValue, depth=0):
         basemsg = Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
         if trueValue and self.verbose:
-            print '\t' + Colors.Green('✅  (OK):\t') + basemsg
+            print('\t' + Colors.Green('✅  (OK):\t') + basemsg)
         elif not trueValue:
             failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
-            print '\t' + failureSummary
+            print('\t' + failureSummary)
             if self.defaultExitOnFailure:
                 raise TestAssertionFailure('Assertion Failed!')
 
@@ -369,7 +369,7 @@ class Env:
 
     def debugPrint(self, msg, force=False):
         if Env.defaultDebugPrints or force:
-            print '\t' + Colors.Bold('debug:\t') + Colors.Gray(msg)
+            print('\t' + Colors.Bold('debug:\t') + Colors.Gray(msg))
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()

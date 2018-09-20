@@ -1,7 +1,7 @@
 from RLTest.redis_std import StandardEnv
 from RLTest.utils import Colors, wait_for_conn
-from CcsMock import CcsMock
-from Dmc import Dmc
+from RLTest.Enterprise.CcsMock import CcsMock
+from RLTest.Enterprise.Dmc import Dmc
 import redis
 import os
 import json
@@ -19,10 +19,10 @@ class EnterpriseClusterEnv():
 
         self.shards = []
         self.envIsUp = False
-        self.modulePath = kwargs['modulePath']
-        self.moduleArgs = kwargs['moduleArgs']
-        self.shardsCount = kwargs.pop('shardsCount')
-        self.dmcBinaryPath = kwargs.pop('dmcBinaryPath')
+        self.modulePath = kwargs.get('modulePath', None)
+        self.moduleArgs = kwargs.get('moduleArgs', None)
+        self.shardsCount = kwargs.pop('shardsCount', 0)
+        self.dmcBinaryPath = kwargs.pop('dmcBinaryPath', '')
         useSlaves = kwargs.get('useSlaves', False)
 
         self.preperModule()
@@ -33,9 +33,9 @@ class EnterpriseClusterEnv():
             self.shards.append(shard)
             startPort += 2
 
-        self.ccs = CcsMock(redisBinaryPath=kwargs['redisBinaryPath'], directory=kwargs['dbDirPath'], useSlaves=kwargs['useSlaves'],
-                           password=SHARD_PASSWORD, proxyPort=self.DMC_PORT, libPath=kwargs['libPath'])
-        self.dmc = Dmc(directory=kwargs['dbDirPath'], dmcBinaryPath=self.dmcBinaryPath, libPath=kwargs['libPath'])
+        self.ccs = CcsMock(redisBinaryPath=kwargs.get('redisBinaryPath', ''), directory=kwargs.get('dbDirPath', ''), useSlaves=kwargs.get('useSlaves', False),
+                           password=SHARD_PASSWORD, proxyPort=self.DMC_PORT, libPath=kwargs.get('libPath', ''))
+        self.dmc = Dmc(directory=kwargs.get('dbDirPath', ''), dmcBinaryPath=self.dmcBinaryPath, libPath=kwargs.get('libPath', ''))
         self.envIsUp = False
 
     def preperModule(self):
@@ -60,21 +60,21 @@ class EnterpriseClusterEnv():
                 self.moduleArgs = self.moduleConfig['command_line_args']
 
     def printEnvData(self, prefix=''):
-        print Colors.Yellow(prefix + 'bdb info:')
-        print Colors.Yellow(prefix + '\tlistening port:%d' % self.DMC_PORT)
-        print Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards))
+        print(Colors.Yellow(prefix + 'bdb info:'))
+        print(Colors.Yellow(prefix + '\tlistening port:%d' % self.DMC_PORT))
+        print(Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards)))
         if self.modulePath:
-            print Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath)
+            print(Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath))
         if self.moduleSoFilePath:
-            print Colors.Yellow(prefix + '\tso module path:%s' % self.moduleSoFilePath)
+            print(Colors.Yellow(prefix + '\tso module path:%s' % self.moduleSoFilePath))
         if self.moduleArgs:
-            print Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs)
+            print(Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs))
         for i, shard in enumerate(self.shards):
-            print Colors.Yellow(prefix + 'shard: %d' % (i + 1))
+            print(Colors.Yellow(prefix + 'shard: %d' % (i + 1)))
             shard.printEnvData(prefix + '\t')
-        print Colors.Yellow(prefix + 'ccs:')
+        print(Colors.Yellow(prefix + 'ccs:'))
         self.ccs.PrintEnvData(prefix + '\t')
-        print Colors.Yellow(prefix + 'dmc:')
+        print(Colors.Yellow(prefix + 'dmc:'))
         self.dmc.PrintEnvData(prefix + '\t')
 
     def startEnv(self):
