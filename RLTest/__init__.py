@@ -1,7 +1,7 @@
-from RLTest.Env import Env
-from RLTest.OssEnv import OssEnv
+from RLTest.env import Env
+from RLTest.redis_std import StandardEnv
 
 __all__ = [
     'Env',
-    'OssEnv'
+    'StandardEnv'
 ]

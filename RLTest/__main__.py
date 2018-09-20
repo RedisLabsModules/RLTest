@@ -10,8 +10,8 @@ import inspect
 import unittest
 import time
 import shlex
-from Env import Env
-from utils import Colors
+from RLTest.Env import Env
+from RLTest.utils import Colors
 
 
 RLTest_WORKING_DIR = os.path.expanduser('~/.RLTest/')
@@ -406,7 +406,7 @@ class RLTest:
         print(Colors.Bold('Test Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, len(self.testsFailed), done - len(self.testsFailed))))
         if len(self.testsFailed) > 0:
-            print(Colors.Bold('Faild Tests Summery:'))
+            print(Colors.Bold('Failed Tests Summary:'))
             for testFaild in self.testsFailed:
                 print('\t' + Colors.Bold(testFaild.testNamePrintable))
                 testFaild.printFailuresSummery('\t\t')

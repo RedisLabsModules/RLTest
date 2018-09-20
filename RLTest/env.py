@@ -1,3 +1,4 @@
+# coding=utf-8
 import os
 import sys
 import redis
@@ -5,10 +6,21 @@ import unittest
 import inspect
 import contextlib
 import warnings
-from RLTest.OssEnv import OssEnv
-from RLTest.OssClusterEnv import OssClusterEnv
+from RLTest.redis_std import StandardEnv
+from RLTest.redis_cluster import ClusterEnv
 from RLTest.utils import Colors
 from RLTest.Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
+
+
+class TestAssertionFailure(Exception):
+    pass
+
+
+def addDeprecatedMethod(cls, name, invoke):
+    def method(*argc, **nargs):
+        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
+        return invoke(*argc, **nargs)
+    setattr(cls, name, method)
 
 
 class Query:
@@ -20,14 +32,26 @@ class Query:
 
     def _evaluate(self):
         try:
-            self.res = self.env.con.execute_command(*self.query)
+            self.res = self.env.cmd(*self.query)
         except Exception as e:
             self.res = str(e)
             self.errorRaised = True
-        self.debugPrint(force=False)
 
-    def debugPrint(self, force=True):
-        self.env.debugPrint('query: %s, result: %s' % (self.query, self.res), force=force)
+    def _prettyPrint(self, result, prefix='\t'):
+        if type(result) is list:
+            print(prefix + '[')
+            for r in result:
+                self._prettyPrint(r, prefix + '\t')
+            print(prefix + ']')
+            return
+        print(prefix + str(result))
+
+    def prettyPrint(self):
+        self._prettyPrint(self.res)
+        return self
+
+    def debugPrint(self):
+        self.env.debugPrint('query: %s, result: %s' % (self.query, self.res), force=True)
         return self
 
     def equal(self, expected):
@@ -58,13 +82,20 @@ class Query:
         self.env.assertNotContains(val, self.res, 1)
         return self
 
-    def raiseError(self):
+    def error(self):
         self.env.assertTrue(self.errorRaised, 1)
         return self
 
-    def notRaiseError(self):
+    def noError(self):
         self.env.assertFalse(self.errorRaised, 1)
         return self
+
+    raiseError = error
+    notRaiseError = noError
+
+
+addDeprecatedMethod(Query, 'raiseError', Query.error)
+addDeprecatedMethod(Query, 'notRaiseError', Query.noError)
 
 
 class Env:
@@ -81,20 +112,17 @@ class Env:
     defaultEnterpriseRedisBinaryPath = None
     defaultEnterpriseLibsPath = None
     defaultUseAof = None
+    defaultDebugger = None
+    defaultExitOnFailure = False
 
     RTestInstance = None
 
     defaultDebugPrints = False
-
-    defaultUseValgrind = False
-    defaultValgrindSuppressionsFile = None
-
-    defaultInteractiveDebugger = False
-    defaultInteractiveDebuggerArgs = None
-
     defaultNoCatch = False
 
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
+
+    defaultDebug = False
 
     def compareEnvs(self, env):
         if env is None:
@@ -104,12 +132,13 @@ class Env:
                 return False
         return True
 
-    def __init__(self, testName=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, ):
+    def __init__(self, testName=None, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
+                 useAof=None):
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
-        self.testNamePrintable = self.testName
         self.testName = self.testName.replace(' ', '_')
 
-        print(Colors.Cyan(self.testNamePrintable + ':'))
+        if testDescription:
+            print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
@@ -120,7 +149,7 @@ class Env:
         self.verbose = Env.defaultVerbose
         self.logDir = Env.defaultLogDir
 
-        self.assertionFailedSummery = []
+        self.assertionFailedSummary = []
 
         if Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
@@ -141,34 +170,39 @@ class Env:
 
         Env.RTestInstance.currEnv = self
 
+        if Env.defaultDebug:
+            raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
+
     def getEnvByName(self):
+        kwargs = {
+            'modulePath': self.module,
+            'moduleArgs': self.moduleArgs,
+            'useSlaves': self.useSlaves,
+            'useAof': self.useAof,
+            'dbDirPath': self.logDir,
+            'debugger': Env.defaultDebugger,
+            'noCatch': Env.defaultNoCatch,
+            'libPath': Env.defaultEnterpriseLibsPath
+        }
+
         if self.env == 'oss':
-            return OssEnv(redisBinaryPath=Env.defaultOssRedisBinary, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
-                          dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                          valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
-                          interactiveDebugger=Env.defaultInteractiveDebugger, interactiveDebuggerArgs=Env.defaultInteractiveDebuggerArgs,
-                          noCatch=Env.defaultNoCatch)
+            return StandardEnv(redisBinaryPath=Env.defaultOssRedisBinary,
+                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+                               **kwargs)
         if self.env == 'enterprise':
-            return OssEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath, modulePath=self.module, moduleArgs=self.moduleArgs,
-                          outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
-                          dbDirPath=self.logDir, useSlaves=self.useSlaves, libPath=Env.defaultEnterpriseLibsPath,
-                          useAof=self.useAof, useValgrind=Env.defaultUseValgrind, valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile,
-                          interactiveDebugger=Env.defaultInteractiveDebugger, interactiveDebuggerArgs=Env.defaultInteractiveDebuggerArgs,
-                          noCatch=Env.defaultNoCatch)
+            return StandardEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
+                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+                               **kwargs)
         if self.env == 'enterprise-cluster':
-            return EnterpriseClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
-                                        modulePath=self.module, moduleArgs=self.moduleArgs,
+            return EnterpriseClusterEnv(shardsCount=self.shardsCount,
+                                        redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                         outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
-                                        dbDirPath=self.logDir, useSlaves=self.useSlaves, dmcBinaryPath=Env.defaultProxyBinaryPath,
-                                        libPath=Env.defaultEnterpriseLibsPath, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                                        valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile, noCatch=Env.defaultNoCatch)
+                                        dmcBinaryPath=Env.defaultProxyBinaryPath,
+                                        **kwargs)
         if self.env == 'oss-cluster':
-            return OssClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
-                                 modulePath=self.module, moduleArgs=self.moduleArgs,
-                                 outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
-                                 dbDirPath=self.logDir, useSlaves=self.useSlaves, useAof=self.useAof, useValgrind=Env.defaultUseValgrind,
-                                 valgrindSuppressionsFile=Env.defaultValgrindSuppressionsFile, noCatch=Env.defaultNoCatch)
+            return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
+                              outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
+                              **kwargs)
 
     def start(self):
         self.envRunner.startEnv()
@@ -203,19 +237,19 @@ class Env:
                 frame.f_lineno)
 
     def _assertion(self, checkStr, trueValue, depth=0):
+        basemsg = Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
         if trueValue and self.verbose:
-            print('\t' + Colors.Green('assertion success:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth)))
+            print('\t' + Colors.Green('✅  (OK):\t') + basemsg)
         elif not trueValue:
-            FailureSummery = Colors.Bred('assertion faild:\t') + Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
-            print('\t' + FailureSummery)
-            self.assertionFailedSummery.append(FailureSummery)
+            failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
+            print('\t' + failureSummary)
+            if self.defaultExitOnFailure:
+                raise TestAssertionFailure('Assertion Failed!')
+
+            self.assertionFailedSummary.append(failureSummary)
 
     def getNumberOfFailedAssertion(self):
-        return len(self.assertionFailedSummery)
-
-    def printFailuresSummery(self, prefix=''):
-        for failure in self.assertionFailedSummery:
-            print(prefix + failure)
+        return len(self.assertionFailedSummary)
 
     def assertEqual(self, first, second, depth=0):
         self._assertion('%s == %s' % (first, second), first == second, depth)
@@ -266,7 +300,9 @@ class Env:
         return Query(self, *query)
 
     def cmd(self, *query):
-        return self.con.execute_command(*query)
+        res = self.con.execute_command(*query)
+        self.debugPrint('query: %s, result: %s' % (str(query), str(res)))
+        return res
 
     def assertCmdOk(self, cmd, *args, **kwargs):
         self.assertOk(self.cmd(cmd, *args, **kwargs))
@@ -349,21 +385,14 @@ class Env:
             self.skip()
 
 
-def addDepricatedMethod(cls, name, invoke):
-    def method(*argc, **nargs):
-        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
-        return invoke(*argc, **nargs)
-    setattr(cls, name, method)
-
-
-addDepricatedMethod(Env, 'assertEquals', Env.assertEqual)
-addDepricatedMethod(Env, 'assertListEqual', Env.assertEqual)
-addDepricatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
-addDepricatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
-addDepricatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
-addDepricatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
-addDepricatedMethod(Env, 'is_cluster', Env.isCluster)
-addDepricatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
-addDepricatedMethod(Env, 'execute_command', Env.cmd)
-addDepricatedMethod(Env, 'assertIn', Env.assertContains)
-addDepricatedMethod(Env, 'assertNotIn', Env.assertNotContains)
+addDeprecatedMethod(Env, 'assertEquals', Env.assertEqual)
+addDeprecatedMethod(Env, 'assertListEqual', Env.assertEqual)
+addDeprecatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
+addDeprecatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
+addDeprecatedMethod(Env, 'is_cluster', Env.isCluster)
+addDeprecatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
+addDeprecatedMethod(Env, 'execute_command', Env.cmd)
+addDeprecatedMethod(Env, 'assertIn', Env.assertContains)
+addDeprecatedMethod(Env, 'assertNotIn', Env.assertNotContains)

@@ -1,40 +1,39 @@
-from RLTest.OssEnv import OssEnv
 import redis
 import rediscluster
 import time
+from RLTest.utils import Colors
+from RLTest.redis_std import StandardEnv
 
 
-class OssClusterEnv:
-    def __init__(self, redisBinaryPath, modulePath=None, moduleArgs=None, outputFilesFormat=None,
-                 dbDirPath=None, useSlaves=False, shardsCount=1, useAof=None, useValgrind=False, valgrindSuppressionsFile=None,
-                 noCatch=False):
-        self.redisBinaryPath = redisBinaryPath
-        self.modulePath = modulePath
-        self.moduleArgs = moduleArgs
-        self.outputFilesFormat = outputFilesFormat
-        self.dbDirPath = dbDirPath
-        self.useSlaves = useSlaves
-        self.shardsCount = shardsCount
+class ClusterEnv(object):
+    def __init__(self, **kwargs):
         self.shards = []
         self.envIsUp = False
-        self.useAof = useAof
-        self.useValgrind = useValgrind
-        self.valgrindSuppressionsFile = valgrindSuppressionsFile
+        self.modulePath = kwargs['modulePath']
+        self.moduleArgs = kwargs['moduleArgs']
+        self.shardsCount = kwargs.pop('shardsCount')
+        useSlaves = kwargs.get('useSlaves', False)
 
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
-            shard = OssEnv(redisBinaryPath=redisBinaryPath, port=startPort, modulePath=self.modulePath, moduleArgs=self.moduleArgs,
-                           outputFilesFormat=self.outputFilesFormat, dbDirPath=dbDirPath, useSlaves=useSlaves,
-                           serverId=(i + 1), clusterEnabled=True, useAof=self.useAof, useValgrind=self.useValgrind,
-                           valgrindSuppressionsFile=self.valgrindSuppressionsFile, noCatch=noCatch)
+            shard = StandardEnv(port=startPort, serverId=(i + 1),
+                                clusterEnabled=True, **kwargs)
             self.shards.append(shard)
             startPort += 2
 
     def printEnvData(self, prefix=''):
-        pass
+        print(Colors.Yellow(prefix + 'info:'))
+        print(Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards)))
+        if self.modulePath:
+            print(Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath))
+        if self.moduleArgs:
+            print(Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs))
+        for i, shard in enumerate(self.shards):
+            print(Colors.Yellow(prefix + 'shard: %d' % (i + 1)))
+            shard.printEnvData(prefix + '\t')
 
-    def waitCluster(self, timeout_sec=5):
+    def waitCluster(self, timeout_sec=40):
 
         st = time.time()
         ok = 0
