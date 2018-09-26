@@ -149,6 +149,10 @@ parser.add_argument(
     help='run env with slaves enabled')
 
 parser.add_argument(
+    '--decode-responses', action='store_const', const=True, default=False,
+    help='decode all responses from Redis to Unicode strings (utf-8)')
+
+parser.add_argument(
     '--shards-count', default=1, type=int,
     help='Number shards in bdb')
 
@@ -276,6 +280,7 @@ class RLTest:
         Env.defaultVerbose = self.args.verbose
         Env.defaultLogDir = self.args.log_dir
         Env.defaultUseSlaves = self.args.use_slaves
+        Env.defaultDecodeResponses = self.args.decode_responses
         Env.defaultShardsCount = self.args.shards_count
         Env.defaultProxyBinaryPath = self.args.proxy_binary_path
         Env.defaultEnterpriseRedisBinaryPath = self.args.enterprise_redis_path
