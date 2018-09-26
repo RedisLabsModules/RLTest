@@ -23,14 +23,14 @@ class ClusterEnv(object):
             startPort += 2
 
     def printEnvData(self, prefix=''):
-        print Colors.Yellow(prefix + 'info:')
-        print Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards))
+        print(Colors.Yellow(prefix + 'info:'))
+        print(Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards)))
         if self.modulePath:
-            print Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath)
+            print(Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath))
         if self.moduleArgs:
-            print Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs)
+            print(Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs))
         for i, shard in enumerate(self.shards):
-            print Colors.Yellow(prefix + 'shard: %d' % (i + 1))
+            print(Colors.Yellow(prefix + 'shard: %d' % (i + 1)))
             shard.printEnvData(prefix + '\t')
 
     def waitCluster(self, timeout_sec=40):

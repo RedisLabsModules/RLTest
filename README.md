@@ -1,9 +1,9 @@
 # RLTest
-Redis Labs Test Framework, allow to run tests on redis and modules on verity of environments.
+Redis Labs Test Framework, runs tests on redis and modules on a variety of environments.
 
 Supported Environment: oss, oss-cluster, enterprise, enterprise-cluster
 
-The framework allow you to write a test without environment specification and then run the test on all supported environment.
+The framework allows you to write a test without environment specification and then run the test on all supported environments.
 
 # Install
 ```
@@ -31,7 +31,7 @@ usage: RLTest [-h] [--module MODULE] [--module-args MODULE_ARGS]
 ```
 
 ### module
-Load a spacific module to the environment, notice that on enterprise the file should be a zip file packed with [RAMP](https://github.com/RedisLabs/RAMP). might override by the test.
+Load a specific module to the environment, notice that on enterprise the file should be a zip file packed with [RAMP](https://github.com/RedisLabs/RAMP). might override by the test.
 
 ### module-args
 Pass arguments to the loaded module. might override by the test.
@@ -43,7 +43,7 @@ The environment on which to run the tests (oss,oss-cluster,enterprise,enterprise
 Path to the oss redis binary (default - redis-server)
 
 ### enterprise-redis-path
-Path to the enterprise redis binarty (default - ~/.RLTest/opt/redislabs/bin/redis-server).
+Path to the enterprise redis binary (default - ~/.RLTest/opt/redislabs/bin/redis-server).
 
 ### stop-on-failure
 Stop the tests run on failure, allows you to check what went wrong.
@@ -58,7 +58,7 @@ Stop before each test execution and allow you to attach to any process with debu
 Directory to search for tests (default - current directory).
 
 ### test-name
-Name of spacific test function to run.
+Name of specific test function to run.
 
 ### tests-file
 File inside the test_dir to search for tests (if not specified the framework searches in all files)
@@ -97,10 +97,10 @@ Run redis under valgrind (assuming valgrind is installed on the machine).
 Path to valgrind suppressions (not mandatory).
 
 ### interactive-debugger
-runs the redis on a debugger (gdb/lldb) interactivly.
-debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.
+runs the redis on a debugger (gdb/lldb) interactively.
+debugger interactive mode is only possible on a single process and so unsupported on cluster or with slaves.
 it is also not possible to use valgrind on interactive debugger.
-interactive debugger direcly applies: --no-output-catch and --stop-on-failure.
+interactive debugger directly applies: --no-output-catch and --stop-on-failure.
 it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.
 
 ### debugger-args
@@ -117,7 +117,7 @@ RLTest @myConfig.txt # search for myConfig.txt configuration file
 ```
 The configuration file format is the same as the command line argument, i.e : '--< param_name > < param_val >'.
 
-It is also possible to comment a spacific lines in the configuration file using '#'.
+It is also possible to comment a specific lines in the configuration file using '#'.
 
 Example:
 ```

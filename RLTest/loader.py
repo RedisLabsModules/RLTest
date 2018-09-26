@@ -120,11 +120,11 @@ class TestLoader(object):
 
     def print_tests(self):
         for t in self.tests:
-            print "Test: ", t.name
+            print("Test: ", t.name)
             if t.is_class:
-                print "\tClass"
-                print "\tFunctions"
+                print("\tClass")
+                print("\tFunctions")
                 for m in t.methnames:
-                    print "\t\t", m
+                    print("\t\t", m)
             else:
-                print "\tFunction"
+                print("\tFunction")

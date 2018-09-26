@@ -20,7 +20,7 @@ def addDeprecatedMethod(cls, name, invoke):
     def method(*argc, **nargs):
         warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
         return invoke(*argc, **nargs)
-    cls.__dict__[name] = method
+    setattr(cls, name, method)
 
 
 class Query:
@@ -39,12 +39,12 @@ class Query:
 
     def _prettyPrint(self, result, prefix='\t'):
         if type(result) is list:
-            print prefix + '['
+            print(prefix + '[')
             for r in result:
                 self._prettyPrint(r, prefix + '\t')
-            print prefix + ']'
+            print(prefix + ']')
             return
-        print prefix + str(result)
+        print(prefix + str(result))
 
     def prettyPrint(self):
         self._prettyPrint(self.res)
@@ -114,13 +114,14 @@ class Env:
     defaultUseAof = None
     defaultDebugger = None
     defaultExitOnFailure = False
+    defaultDecodeResponses = True if (sys.version >= '3') else False
 
     RTestInstance = None
 
     defaultDebugPrints = False
     defaultNoCatch = False
 
-    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
+    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof', 'decode_responses']
 
     defaultDebug = False
 
@@ -132,13 +133,12 @@ class Env:
                 return False
         return True
 
-    def __init__(self, testName=None, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
-                 useAof=None):
+    def __init__(self, testName=None, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None, useAof=None, decode_responses=False):
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 
         if testDescription:
-            print Colors.Gray('\tdescription: ' + testDescription)
+            print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
@@ -146,6 +146,7 @@ class Env:
         self.useSlaves = useSlaves if useSlaves else Env.defaultUseSlaves
         self.shardsCount = shardsCount if shardsCount else Env.defaultShardsCount
         self.useAof = useAof if useAof else Env.defaultUseAof
+        self.decode_responses = decode_responses if decode_responses else Env.defaultDecodeResponses
         self.verbose = Env.defaultVerbose
         self.logDir = Env.defaultLogDir
 
@@ -165,7 +166,7 @@ class Env:
 
         self.start()
         if self.verbose >= 2:
-            print Colors.Blue('\tenv data:')
+            print(Colors.Blue('\tenv data:'))
             self.envRunner.printEnvData('\t\t')
 
         Env.RTestInstance.currEnv = self
@@ -179,6 +180,7 @@ class Env:
             'moduleArgs': self.moduleArgs,
             'useSlaves': self.useSlaves,
             'useAof': self.useAof,
+            'decode_responses': self.decode_responses,
             'dbDirPath': self.logDir,
             'debugger': Env.defaultDebugger,
             'noCatch': Env.defaultNoCatch,
@@ -239,10 +241,10 @@ class Env:
     def _assertion(self, checkStr, trueValue, depth=0):
         basemsg = Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
         if trueValue and self.verbose:
-            print '\t' + Colors.Green('✅  (OK):\t') + basemsg
+            print('\t' + Colors.Green('✅  (OK):\t') + basemsg)
         elif not trueValue:
             failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
-            print '\t' + failureSummary
+            print('\t' + failureSummary)
             if self.defaultExitOnFailure:
                 raise TestAssertionFailure('Assertion Failed!')
 
@@ -258,7 +260,10 @@ class Env:
         self._assertion('%s != %s' % (first, second), first != second, depth)
 
     def assertOk(self, val, depth=0):
-        self.assertEqual(val, 'OK', depth + 1)
+        if isinstance(val, (bytes, bytearray)):
+            self.assertEqual(val, b'OK', depth + 1)
+        else:
+            self.assertEqual(val, 'OK', depth + 1)
 
     def assertTrue(self, val, depth=0):
         self.assertEqual(val, True, depth + 1)
@@ -369,7 +374,7 @@ class Env:
 
     def debugPrint(self, msg, force=False):
         if Env.defaultDebugPrints or force:
-            print '\t' + Colors.Bold('debug:\t') + Colors.Gray(msg)
+            print('\t' + Colors.Bold('debug:\t') + Colors.Gray(msg))
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()
