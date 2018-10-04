@@ -19,7 +19,7 @@ class EnterpriseClusterEnv():
 
         self.shards = []
         self.envIsUp = False
-        self.modulePath = kwargs['modulePath']
+        self.modulePath = kwargs.pop('modulePath')
         self.moduleArgs = kwargs['moduleArgs']
         self.shardsCount = kwargs.pop('shardsCount')
         self.dmcBinaryPath = kwargs.pop('dmcBinaryPath')
@@ -29,7 +29,7 @@ class EnterpriseClusterEnv():
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
-            shard = StandardEnv(port=startPort, serverId=(i + 1), password=SHARD_PASSWORD, **kwargs)
+            shard = StandardEnv(port=startPort, serverId=(i + 1), password=SHARD_PASSWORD, modulePath=self.moduleSoFilePath, **kwargs)
             self.shards.append(shard)
             startPort += 2
 
