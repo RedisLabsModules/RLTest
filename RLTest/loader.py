@@ -60,6 +60,7 @@ class TestLoader(object):
             filename = arg
             varname = None
             if os.path.isdir(filename):
+                sys.path.append(filename)
                 self.scan_dir(filename)
                 return
 
