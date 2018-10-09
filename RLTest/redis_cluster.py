@@ -48,7 +48,7 @@ class ClusterEnv(object):
             if ok == len(self.shards):
                 return
 
-            time.sleep(0.0001)
+            time.sleep(0.1)
         raise RuntimeError("Cluster OK wait loop timed out after %s seconds" % timeout_sec)
 
     def startEnv(self):
