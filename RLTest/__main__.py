@@ -258,7 +258,7 @@ class RLTest:
 
         debugger = None
         if self.args.use_valgrind:
-            vg_debugger = debuggers.Valgrind(self.args.vg_suppressions)
+            vg_debugger = debuggers.Valgrind(suppressions=self.args.vg_suppressions)
             if self.args.vg_no_leakcheck:
                 vg_debugger.leakcheck = False
             if self.args.no_output_catch or self.args.vg_verbose:
