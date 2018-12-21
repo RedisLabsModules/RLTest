@@ -236,8 +236,11 @@ class Env:
                 os.path.basename(frame.f_code.co_filename),
                 frame.f_lineno)
 
-    def _assertion(self, checkStr, trueValue, depth=0):
+    def _assertion(self, checkStr, trueValue, depth=0, message=None):
         basemsg = Colors.Yellow(checkStr) + '\t' + Colors.Gray(self._getCallerPosition(3 + depth))
+        if message:
+            basemsg += ' [{}]'.format(message)
+
         if trueValue and self.verbose:
             print '\t' + Colors.Green('✅  (OK):\t') + basemsg
         elif not trueValue:
@@ -251,20 +254,20 @@ class Env:
     def getNumberOfFailedAssertion(self):
         return len(self.assertionFailedSummary)
 
-    def assertEqual(self, first, second, depth=0):
-        self._assertion('%s == %s' % (first, second), first == second, depth)
+    def assertEqual(self, first, second, depth=0, message=None):
+        self._assertion('%s == %s' % (first, second), first == second, depth, message=message)
 
-    def assertNotEqual(self, first, second, depth=0):
-        self._assertion('%s != %s' % (first, second), first != second, depth)
+    def assertNotEqual(self, first, second, depth=0, message=None):
+        self._assertion('%s != %s' % (first, second), first != second, depth, message=message)
 
-    def assertOk(self, val, depth=0):
-        self.assertEqual(val, 'OK', depth + 1)
+    def assertOk(self, val, depth=0, message=None):
+        self.assertEqual(val, 'OK', depth + 1, message=message)
 
-    def assertTrue(self, val, depth=0):
-        self.assertEqual(val, True, depth + 1)
+    def assertTrue(self, val, depth=0, message=None):
+        self.assertEqual(val, True, depth + 1, message=message)
 
-    def assertFalse(self, val, depth=0):
-        self.assertEqual(val, False, depth + 1)
+    def assertFalse(self, val, depth=0, message=None):
+        self.assertEqual(val, False, depth + 1, message=message)
 
     def assertContains(self, value, holder, depth=0):
         self._assertion('%s should contains %s' % (str(holder), str(value)), value in holder, depth)
