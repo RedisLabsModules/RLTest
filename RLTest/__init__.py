@@ -1,5 +1,5 @@
-from RLTest.env import Env
-from RLTest.redis_std import StandardEnv
+from .env import Env
+from .redis_std import StandardEnv
 
 __all__ = [
     'Env',

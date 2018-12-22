@@ -1,8 +1,9 @@
-from redis_std import StandardEnv
+from __future__ import print_function
+from .redis_std import StandardEnv
 import redis
 import rediscluster
 import time
-from RLTest.utils import Colors
+from .utils import Colors
 
 
 class ClusterEnv(object):
@@ -23,14 +24,14 @@ class ClusterEnv(object):
             startPort += 2
 
     def printEnvData(self, prefix=''):
-        print Colors.Yellow(prefix + 'info:')
-        print Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards))
+        print(Colors.Yellow(prefix + 'info:'))
+        print(Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards)))
         if self.modulePath:
-            print Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath)
+            print(Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath))
         if self.moduleArgs:
-            print Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs)
+            print(Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs))
         for i, shard in enumerate(self.shards):
-            print Colors.Yellow(prefix + 'shard: %d' % (i + 1))
+            print(Colors.Yellow(prefix + 'shard: %d' % (i + 1)))
             shard.printEnvData(prefix + '\t')
 
     def waitCluster(self, timeout_sec=40):

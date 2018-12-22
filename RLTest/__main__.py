@@ -1,3 +1,4 @@
+from __future__ import print_function
 import argparse
 import os
 import cmd
@@ -9,11 +10,11 @@ import unittest
 import time
 import shlex
 
-from RLTest.env import Env, TestAssertionFailure
-from RLTest.utils import Colors
-from RLTest.loader import TestLoader
-from RLTest.Enterprise import binaryrepo
-from RLTest import debuggers
+from .env import Env, TestAssertionFailure
+from .utils import Colors
+from .loader import TestLoader
+from .Enterprise import binaryrepo
+from . import debuggers
 
 RLTest_CONFIG_FILE_PREFIX = '@'
 RLTest_CONFIG_FILE_NAME = 'config.txt'
@@ -60,13 +61,13 @@ class MyCmd(cmd.Cmd):
         '''
         print
         '''
-        print 'print'
+        print('print')
 
     def do_stop(self, line):
         '''
         print
         '''
-        print 'BYE BYE'
+        print('BYE BYE')
         return True
 
     def do_cluster_conn(self, line):
@@ -75,16 +76,16 @@ class MyCmd(cmd.Cmd):
         '''
         if self.env.env == 'oss-cluster':
             self.env.con = self.env.envRunner.getClusterConnection()
-            print 'moved to cluster connection'
+            print('moved to cluster connection')
         else:
-            print 'cluster connection only available on oss-cluster env'
+            print('cluster connection only available on oss-cluster env')
 
     def do_normal_conn(self, line):
         '''
         move to normal connection (will connect to the first shard on oss-cluster)
         '''
         self.env.con = self.env.envRunner.getConnection()
-        print 'moved to normal connection (first shard on oss-cluster)'
+        print('moved to normal connection (first shard on oss-cluster)')
 
     do_exit = do_stop
 
@@ -234,13 +235,13 @@ class RLTest:
 
         if self.args.interactive_debugger:
             if self.args.env != 'oss' and self.args.env != 'enterprise':
-                print Colors.Bred('interactive debugger can only be used on non cluster env')
+                print(Colors.Bred('interactive debugger can only be used on non cluster env'))
                 sys.exit(1)
             if self.args.use_valgrind:
-                print Colors.Bred('can not use valgrind with interactive debugger')
+                print(Colors.Bred('can not use valgrind with interactive debugger'))
                 sys.exit(1)
             if self.args.use_slaves:
-                print Colors.Bred('can not use slaves with interactive debugger')
+                print(Colors.Bred('can not use slaves with interactive debugger'))
                 sys.exit(1)
 
             self.args.no_output_catch = True
@@ -254,7 +255,7 @@ class RLTest:
             try:
                 shutil.rmtree(self.args.log_dir)
             except Exception as e:
-                print e
+                print(e)
 
         debugger = None
         if self.args.use_valgrind:
@@ -319,14 +320,14 @@ class RLTest:
         if needShutdown:
             self.currEnv.stop()
             if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
-                print Colors.Bred('\tvalgrind check failure')
+                print(Colors.Bred('\tvalgrind check failure'))
                 self.addFailure(self.currEnv.testName,
                                 ['<Valgrind Failure>'])
             self.currEnv = None
 
     def printException(self, err):
         msg = 'Unhandled exception: {}'.format(err)
-        print '\t' + Colors.Bred(msg)
+        print('\t' + Colors.Bred(msg))
         traceback.print_exc(file=sys.stdout)
 
     def addFailuresFromEnv(self, name, env):
@@ -394,9 +395,12 @@ class RLTest:
     def _runTest(self, test, numberOfAssertionFailed=0, prefix=''):
         msgPrefix = test.name
 
-        print Colors.Cyan(prefix + test.name)
-
-        if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
+        print(Colors.Cyan(prefix + test.name))
+        try:
+            argspec = inspect.getfullargspec(test.target)
+        except AttributeError:
+            argspec = inspect.getargspec(test.target)
+        if len(argspec.args) > 0 and not test.is_method:
             try:
                 env = Env(testName=test.name)
             except Exception as e:
@@ -451,16 +455,16 @@ class RLTest:
         return numFailed
 
     def printSkip(self):
-        print '\t' + Colors.Green('[SKIP]')
+        print('\t' + Colors.Green('[SKIP]'))
 
     def printFail(self):
-        print '\t' + Colors.Bred('[FAIL]')
+        print('\t' + Colors.Bred('[FAIL]'))
 
     def printError(self):
-        print '\t' + Colors.Yellow('[ERROR]')
+        print('\t' + Colors.Yellow('[ERROR]'))
 
     def printPass(self):
-        print '\t' + Colors.Green('[PASS]')
+        print('\t' + Colors.Green('[PASS]'))
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
@@ -481,8 +485,8 @@ class RLTest:
         done = 0
         startTime = time.time()
         if self.args.interactive_debugger and len(self.loader.tests) != 1:
-            print self.tests
-            print Colors.Bred('only one test can be run on interactive-debugger use -t')
+            print(self.tests)
+            print(Colors.Bred('only one test can be run on interactive-debugger use -t'))
             sys.exit(1)
 
         for test in self.loader:
@@ -500,7 +504,7 @@ class RLTest:
                         self.addFailure(test.name + " [__init__]")
                         continue
 
-                    print Colors.Cyan(test.name)
+                    print(Colors.Cyan(test.name))
 
                     failures = 0
                     for subtest in test.get_functions(obj):
@@ -514,16 +518,16 @@ class RLTest:
         self.takeEnvDown(fullShutDown=True)
         endTime = time.time()
 
-        print Colors.Bold('Test Took: %d sec' % (endTime - startTime))
-        print Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount()))
+        print(Colors.Bold('Test Took: %d sec' % (endTime - startTime)))
+        print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount())))
         if self.testsFailed:
-            print Colors.Bold('Failed Tests Summary:')
+            print(Colors.Bold('Failed Tests Summary:'))
             for group, failures in self.testsFailed:
-                print '\t' + Colors.Bold(group)
+                print('\t' + Colors.Bold(group))
                 if not failures:
-                    print '\t\t' + Colors.Bred('Exception raised during test execution. See logs')
+                    print('\t\t' + Colors.Bred('Exception raised during test execution. See logs'))
                 for failure in failures:
-                    print '\t\t' + failure
+                    print('\t\t' + failure)
             sys.exit(1)
 
 

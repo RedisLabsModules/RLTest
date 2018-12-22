@@ -1,7 +1,8 @@
-from RLTest.redis_std import StandardEnv
-from RLTest.utils import Colors, wait_for_conn
-from CcsMock import CcsMock
-from Dmc import Dmc
+from __future__ import print_function
+from ..redis_std import StandardEnv
+from ..utils import Colors, wait_for_conn
+from .CcsMock import CcsMock
+from .Dmc import Dmc
 import redis
 import os
 import json
@@ -60,21 +61,21 @@ class EnterpriseClusterEnv():
                 self.moduleArgs = self.moduleConfig['command_line_args']
 
     def printEnvData(self, prefix=''):
-        print Colors.Yellow(prefix + 'bdb info:')
-        print Colors.Yellow(prefix + '\tlistening port:%d' % self.DMC_PORT)
-        print Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards))
+        print(Colors.Yellow(prefix + 'bdb info:'))
+        print(Colors.Yellow(prefix + '\tlistening port:%d' % self.DMC_PORT))
+        print(Colors.Yellow(prefix + '\tshards count:%d' % len(self.shards)))
         if self.modulePath:
-            print Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath)
+            print(Colors.Yellow(prefix + '\tzip module path:%s' % self.modulePath))
         if self.moduleSoFilePath:
-            print Colors.Yellow(prefix + '\tso module path:%s' % self.moduleSoFilePath)
+            print(Colors.Yellow(prefix + '\tso module path:%s' % self.moduleSoFilePath))
         if self.moduleArgs:
-            print Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs)
+            print(Colors.Yellow(prefix + '\tmodule args:%s' % self.moduleArgs))
         for i, shard in enumerate(self.shards):
-            print Colors.Yellow(prefix + 'shard: %d' % (i + 1))
+            print(Colors.Yellow(prefix + 'shard: %d' % (i + 1)))
             shard.printEnvData(prefix + '\t')
-        print Colors.Yellow(prefix + 'ccs:')
+        print(Colors.Yellow(prefix + 'ccs:'))
         self.ccs.PrintEnvData(prefix + '\t')
-        print Colors.Yellow(prefix + 'dmc:')
+        print(Colors.Yellow(prefix + 'dmc:'))
         self.dmc.PrintEnvData(prefix + '\t')
 
     def startEnv(self):

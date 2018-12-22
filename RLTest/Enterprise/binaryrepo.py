@@ -1,10 +1,11 @@
+from __future__ import print_function
 import os.path
 import shutil
 import platform
 import subprocess
 import sys
 
-from RLTest.utils import Colors
+from ..utils import Colors
 
 
 OS_NAME = platform.dist()[2]
@@ -31,15 +32,15 @@ class BinaryRepository(object):
         self.debname = debname
 
     def download_binaries(self, binariesName='binaries.tar'):
-        print Colors.Yellow('installing enterprise binaries')
-        print Colors.Yellow('creating RLTest working dir: %s' % self.root)
+        print(Colors.Yellow('installing enterprise binaries'))
+        print(Colors.Yellow('creating RLTest working dir: %s' % self.root))
         try:
             shutil.rmtree(self.root)
             os.makedirs(self.root)
         except Exception:
             pass
 
-        print Colors.Yellow('download binaries')
+        print(Colors.Yellow('download binaries'))
         args = ['wget', self.url, '-O', os.path.join(self.root, binariesName)]
         process = subprocess.Popen(args=args, stdout=sys.stdout,
                                         stderr=sys.stdout)
@@ -47,7 +48,7 @@ class BinaryRepository(object):
         if process.poll() != 0:
             raise Exception('failed to download enterprise binaries from s3')
 
-        print Colors.Yellow('extracting binaries')
+        print(Colors.Yellow('extracting binaries'))
 
         args = ['tar', '-xvf', os.path.join(self.root, binariesName),
                 '--directory', self.root, self.debname]
@@ -67,4 +68,4 @@ class BinaryRepository(object):
             raise Exception(
                 'failed to extract binaries to %s' % self.self.root)
 
-        print Colors.Yellow('finished installing enterprise binaries')
+        print(Colors.Yellow('finished installing enterprise binaries'))
