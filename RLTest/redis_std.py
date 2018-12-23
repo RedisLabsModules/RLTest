@@ -175,7 +175,7 @@ class StandardEnv(object):
         if not self._isAlive(process):
             if not self.has_interactive_debugger:
                 # on interactive debugger its expected that then process will not be alive
-                print('\t' + Colors.Bred('process is not alive, might have crash durring test execution, check this out. server id : %s' % str(serverId)))
+                print('\t' + Colors.Bred('process is not alive, might have crashed during test execution, check this out. server id : %s' % str(serverId)))
             return
         try:
             process.terminate()
@@ -196,12 +196,20 @@ class StandardEnv(object):
             self.slaveProcess = None
         self.envIsUp = False
 
-    def getConnection(self):
-        return redis.Redis('localhost', self.port, password=self.password, decode_responses=True)
+    def getConnection(self, decode_responses=True):
+        return redis.Redis('localhost', self.port, password=self.password, decode_responses=decode_responses)
 
-    def getSlaveConnection(self):
+    def getConnectionArgs(self, decode_responses=True):
+        return {
+            'host': 'localhost',
+            'port': self.port,
+            'password': self.password,
+            'decode_responses': decode_responses
+        }
+
+    def getSlaveConnection(self, decode_responses=True):
         if self.useSlaves:
-            return redis.Redis('localhost', self.getSlavePort(), password=self.password, decode_responses=True)
+            return redis.Redis('localhost', self.getSlavePort(), password=self.password, decode_responses=decode_responses)
         raise Exception('asked for slave connection but no slave exists')
 
     def flush(self):

@@ -215,11 +215,14 @@ class Env:
     def getEnvStr(self):
         return self.env
 
-    def getConnection(self):
-        return self.envRunner.getConnection()
+    def getConnection(self, decode_responses=True):
+        return self.envRunner.getConnection(decode_responses=decode_responses)
 
-    def getSlaveConnection(self):
-        return self.envRunner.getSlaveConnection()
+    def getConnectionArgs(self, decode_responses=True):
+        return self.envRunner.getConnectionArgs(decode_responses=decode_responses)
+
+    def getSlaveConnection(self, decode_responses=True):
+        return self.envRunner.getSlaveConnection(decode_responses=decode_responses)
 
     def flush(self):
         self.envRunner.flush()

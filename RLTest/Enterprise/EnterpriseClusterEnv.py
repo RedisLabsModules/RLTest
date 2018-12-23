@@ -111,10 +111,10 @@ class EnterpriseClusterEnv():
         self.dmc.Stop()
         self.envIsUp = False
 
-    def getConnection(self):
-        return redis.Redis('localhost', self.DMC_PORT)
+    def getConnection(self, decode_responses=True):
+        return redis.Redis('localhost', self.DMC_PORT, decode_responses=decode_responses)
 
-    def getSlaveConnection(self):
+    def getSlaveConnection(self, decode_responses=True):
         raise Exception('unsupported')
 
     def flush(self):
