@@ -1,5 +1,5 @@
 from __future__ import print_function
-from ..redis_std import StandardEnv
+from ..redis_std import StandardEnv, get_decode_responses
 from ..utils import Colors, wait_for_conn
 from .CcsMock import CcsMock
 from .Dmc import Dmc
@@ -111,10 +111,11 @@ class EnterpriseClusterEnv():
         self.dmc.Stop()
         self.envIsUp = False
 
-    def getConnection(self, decode_responses=True):
-        return redis.Redis('localhost', self.DMC_PORT, decode_responses=decode_responses)
+    def getConnection(self, decode_responses=None):
+        do_decode = get_decode_responses(decode_responses)
+        return redis.Redis('localhost', self.DMC_PORT, decode_responses=do_decode)
 
-    def getSlaveConnection(self, decode_responses=True):
+    def getSlaveConnection(self, decode_responses=None):
         raise Exception('unsupported')
 
     def flush(self):

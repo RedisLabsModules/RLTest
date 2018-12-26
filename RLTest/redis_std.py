@@ -9,6 +9,11 @@ from .utils import Colors, wait_for_conn
 
 MASTER = 1
 SLAVE = 2
+DECODE_DEFAULT = sys.version_info[0] == 3
+
+
+def get_decode_responses(decode_responses):
+    return DECODE_DEFAULT if decode_responses is None else decode_responses
 
 
 class StandardEnv(object):
@@ -196,20 +201,23 @@ class StandardEnv(object):
             self.slaveProcess = None
         self.envIsUp = False
 
-    def getConnection(self, decode_responses=True):
-        return redis.Redis('localhost', self.port, password=self.password, decode_responses=decode_responses)
+    def getConnection(self, decode_responses=None):
+        do_decode = get_decode_responses(decode_responses)
+        return redis.Redis('localhost', self.port, password=self.password, decode_responses=do_decode)
 
-    def getConnectionArgs(self, decode_responses=True):
+    def getConnectionArgs(self, decode_responses=None):
+        do_decode = get_decode_responses(decode_responses)
         return {
             'host': 'localhost',
             'port': self.port,
             'password': self.password,
-            'decode_responses': decode_responses
+            'decode_responses': do_decode
         }
 
-    def getSlaveConnection(self, decode_responses=True):
+    def getSlaveConnection(self, decode_responses=None):
         if self.useSlaves:
-            return redis.Redis('localhost', self.getSlavePort(), password=self.password, decode_responses=decode_responses)
+            do_decode = get_decode_responses(decode_responses)
+            return redis.Redis('localhost', self.getSlavePort(), password=self.password, decode_responses=do_decode)
         raise Exception('asked for slave connection but no slave exists')
 
     def flush(self):

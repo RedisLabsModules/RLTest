@@ -87,14 +87,15 @@ class ClusterEnv(object):
             shard.stopEnv()
         self.envIsUp = False
 
-    def getConnection(self, decode_responses=True):
+    def getConnection(self, decode_responses=None):
         return self.shards[0].getConnection(decode_responses=decode_responses)
 
-    def getClusterConnection(self, decode_responses=True):
+    def getClusterConnection(self, decode_responses=None):
+        do_decode = get_decode_responses(decode_responses)
         return rediscluster.StrictRedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
-                                               decode_responses=decode_responses)
+                                               decode_responses=do_decode)
 
-    def getSlaveConnection(self, decode_responses=True):
+    def getSlaveConnection(self, decode_responses=None):
         raise Exception('unsupported')
 
     def flush(self):
