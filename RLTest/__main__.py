@@ -405,15 +405,13 @@ class RLTest:
                 return 0
 
             fn = lambda: test.target(env)
-            before = (lambda: before(env)) if before else None
-            after = (lambda: after(env)) if after else None
         else:
             fn = test.target
 
         hasException = False
         try:
             if before:
-                before()
+                before(env)
             fn()
             passed = True
         except unittest.SkipTest:
@@ -437,7 +435,7 @@ class RLTest:
             passed = False
         finally:
             if after:
-                after()
+                after(env)
 
         numFailed = 0
         if self.currEnv:
