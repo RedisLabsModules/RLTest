@@ -317,6 +317,7 @@ class RLTest:
                                    env=self.currEnv)
 
         if needShutdown:
+            self.currEnv.flush()
             self.currEnv.stop()
             if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
                 print Colors.Bred('\tvalgrind check failure')
@@ -391,7 +392,7 @@ class RLTest:
         else:
             self.addFailure(testname, '<No exception or environment>')
 
-    def _runTest(self, test, numberOfAssertionFailed=0, prefix=''):
+    def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
         msgPrefix = test.name
 
         print Colors.Cyan(prefix + test.name)
@@ -409,23 +410,32 @@ class RLTest:
 
         hasException = False
         try:
-
+            if before:
+                before(env)
             fn()
             passed = True
         except unittest.SkipTest:
             self.printSkip()
             return 0
         except TestAssertionFailure:
+            if self.args.exit_on_failure:
+                self.takeEnvDown(fullShutDown=True)
+
             # Don't fall-through
             raise
         except Exception as err:
             if self.args.exit_on_failure:
+                self.takeEnvDown(fullShutDown=True)
+                after = None
                 raise
 
             self.handleFailure(exception=err, prefix=msgPrefix,
                                testname=test.name, env=self.currEnv)
             hasException = True
             passed = False
+        finally:
+            if after:
+                after(env)
 
         numFailed = 0
         if self.currEnv:
@@ -503,8 +513,12 @@ class RLTest:
                     print Colors.Cyan(test.name)
 
                     failures = 0
+                    before = getattr(obj, 'setUp', None)
+                    after = getattr(obj, 'tearDown', None)
                     for subtest in test.get_functions(obj):
-                        failures += self._runTest(subtest, prefix='\t', numberOfAssertionFailed=failures)
+                        failures += self._runTest(subtest, prefix='\t',
+                                                numberOfAssertionFailed=failures,
+                                                before=before, after=after)
                         done += 1
 
                 else:
