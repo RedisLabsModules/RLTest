@@ -98,7 +98,7 @@ class StandardEnv(object):
         return cmdArgs
 
     def waitForRedisToStart(self, con):
-        wait_for_conn(con, retries=1000 if self.debugger else 20)
+        wait_for_conn(con, retries=1000 if self.debugger else 200)
 
     def getPid(self, role):
         return self.masterProcess.pid if role == MASTER else self.slaveProcess.pid

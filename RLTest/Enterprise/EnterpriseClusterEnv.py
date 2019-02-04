@@ -97,7 +97,7 @@ class EnterpriseClusterEnv():
                 for key, val in c.items():
                     extra_keys[key_name][key] = val
 
-        self.ccs.Start(self.shards, bdb_fields=ccs_bdb_config, legacy_hash_slots=True, extra_keys=extra_keys)
+        self.ccs.Start(self.shards, bdb_fields=ccs_bdb_config, legacy_hash_slots=False, extra_keys=extra_keys)
         self.dmc.Start()
         con = self.getConnection()
         wait_for_conn(con, command='sping', shouldBe=['SPONG 0' for i in self.shards])
