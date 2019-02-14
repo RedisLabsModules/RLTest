@@ -42,8 +42,8 @@ class ClusterEnv(object):
             ok = 0
             for shard in self.shards:
                 con = shard.getConnection()
-                status = con.cluster('INFO')
-                if status.get('cluster_state') == 'ok':
+                status = con.execute_command('CLUSTER', 'INFO')
+                if 'cluster_state:ok' in status:
                     ok += 1
             if ok == len(self.shards):
                 return
@@ -61,7 +61,7 @@ class ClusterEnv(object):
         for i, shard in enumerate(self.shards):
             con = shard.getConnection()
             for s in self.shards:
-                con.cluster('MEET', '127.0.0.1', s.getMasterPort())
+                con.execute_command('CLUSTER', 'MEET', '127.0.0.1', s.getMasterPort())
 
             start_slot = i * slots_per_node
             end_slot = start_slot + slots_per_node
@@ -69,7 +69,7 @@ class ClusterEnv(object):
                 end_slot = 16384
 
             try:
-                con.cluster('ADDSLOTS', *(str(x) for x in range(start_slot, end_slot)))
+                con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x) for x in range(start_slot, end_slot)))
             except Exception:
                 pass
 

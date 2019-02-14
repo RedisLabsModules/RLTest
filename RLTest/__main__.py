@@ -194,7 +194,7 @@ parser.add_argument(
          'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
          'it is also not possible to use valgrind on interactive mode.'
          'interactive mode direcly applies: --no-output-catch and --stop-on-failure.'
-         'it is also implies that only one test will be run (if --inv-only was not specify), an error will be raise otherwise.')
+         'it is also implies that only one test will be run (if --env-only was not specify), an error will be raise otherwise.')
 
 parser.add_argument('--debugger', help='Run specified command line as the debugger')
 
