@@ -255,10 +255,10 @@ class Env:
         return len(self.assertionFailedSummary)
 
     def assertEqual(self, first, second, depth=0, message=None):
-        self._assertion('%s == %s' % (first, second), first == second, depth, message=message)
+        self._assertion('%s == %s' % (repr(first), repr(second)), first == second, depth, message=message)
 
     def assertNotEqual(self, first, second, depth=0, message=None):
-        self._assertion('%s != %s' % (first, second), first != second, depth, message=message)
+        self._assertion('%s != %s' % (repr(first), repr(second)), first != second, depth, message=message)
 
     def assertOk(self, val, depth=0, message=None):
         self.assertEqual(val, 'OK', depth + 1, message=message)
@@ -270,41 +270,41 @@ class Env:
         self.assertEqual(val, False, depth + 1, message=message)
 
     def assertContains(self, value, holder, depth=0):
-        self._assertion('%s should contains %s' % (str(holder), str(value)), value in holder, depth)
+        self._assertion('%s should contains %s' % (repr(holder), repr(value)), value in holder, depth)
 
     def assertNotContains(self, value, holder, depth=0):
-        self._assertion('%s should not contains %s' % (str(holder), str(value)), value not in holder, depth)
+        self._assertion('%s should not contains %s' % (repr(holder), repr(value)), value not in holder, depth)
 
     def assertGreaterEqual(self, value1, value2, depth=0):
-        self._assertion('%s >= %s' % (str(value1), str(value2)), value1 >= value2, depth)
+        self._assertion('%s >= %s' % (repr(value1), repr(value2)), value1 >= value2, depth)
 
     def assertGreater(self, value1, value2, depth=0):
-        self._assertion('%s > %s' % (str(value1), str(value2)), value1 > value2, depth)
+        self._assertion('%s > %s' % (repr(value1), repr(value2)), value1 > value2, depth)
 
     def assertLessEqual(self, value1, value2, depth=0):
-        self._assertion('%s <= %s' % (str(value1), str(value2)), value1 <= value2, depth)
+        self._assertion('%s <= %s' % (repr(value1), repr(value2)), value1 <= value2, depth)
 
     def assertLess(self, value1, value2, depth=0):
-        self._assertion('%s < %s' % (str(value1), str(value2)), value1 < value2, depth)
+        self._assertion('%s < %s' % (repr(value1), repr(value2)), value1 < value2, depth)
 
     def assertIsNotNone(self, value, depth=0):
-        self._assertion('%s is not None' % (str(value)), value is not None, depth)
+        self._assertion('%s is not None' % (repr(value)), value is not None, depth)
 
     def assertIsNone(self, value, depth=0):
-        self._assertion('%s is None' % (str(value)), value is None, depth)
+        self._assertion('%s is None' % (repr(value)), value is None, depth)
 
     def assertIsInstance(self, value, instance, depth=0):
-        self._assertion('%s instance of %s' % (str(value), str(instance)), isinstance(value, instance), depth)
+        self._assertion('%s instance of %s' % (repr(value), repr(instance)), isinstance(value, instance), depth)
 
     def assertAlmostEqual(self, value1, value2, delta, depth=0):
-        self._assertion('%s almost equels %s (delta %s)' % (str(value1), str(value2), str(delta)), abs(value1 - value2) <= delta, depth)
+        self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth)
 
     def expect(self, *query):
         return Query(self, *query)
 
     def cmd(self, *query):
         res = self.con.execute_command(*query)
-        self.debugPrint('query: %s, result: %s' % (str(query), str(res)))
+        self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 
     def assertCmdOk(self, cmd, *args, **kwargs):
@@ -316,7 +316,7 @@ class Env:
 
     def assertExists(self, val, depth=0):
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
-        self._assertion('%s exists in db' % str(val), self.con.exists(val), depth=0)
+        self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
 
     def executeCommand(self, *query):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
