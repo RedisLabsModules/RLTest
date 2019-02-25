@@ -1,4 +1,4 @@
-from EnterpriseClusterEnv import EnterpriseClusterEnv
+from .EnterpriseClusterEnv import EnterpriseClusterEnv
 
 __all__ = [
     'EnterpriseClusterEnv'

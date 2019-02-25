@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import print_function
 import os
 import sys
 import redis
@@ -6,21 +7,21 @@ import unittest
 import inspect
 import contextlib
 import warnings
-from redis_std import StandardEnv
-from redis_cluster import ClusterEnv
-from utils import Colors
-from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
+from .redis_std import StandardEnv
+from .redis_cluster import ClusterEnv
+from .utils import Colors
+from .Enterprise import EnterpriseClusterEnv
 
 
 class TestAssertionFailure(Exception):
     pass
 
 
-def addDeprecatedMethod(cls, name, invoke):
+def genDeprecated(name, target):
     def method(*argc, **nargs):
-        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
-        return invoke(*argc, **nargs)
-    cls.__dict__[name] = method
+        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(target)), DeprecationWarning)
+        return target(*argc, **nargs)
+    return method
 
 
 class Query:
@@ -39,12 +40,12 @@ class Query:
 
     def _prettyPrint(self, result, prefix='\t'):
         if type(result) is list:
-            print prefix + '['
+            print(prefix + '[')
             for r in result:
                 self._prettyPrint(r, prefix + '\t')
-            print prefix + ']'
+            print(prefix + ']')
             return
-        print prefix + str(result)
+        print(prefix + str(result))
 
     def prettyPrint(self):
         self._prettyPrint(self.res)
@@ -90,16 +91,11 @@ class Query:
         self.env.assertFalse(self.errorRaised, 1)
         return self
 
-    raiseError = error
-    notRaiseError = noError
-
-
-addDeprecatedMethod(Query, 'raiseError', Query.error)
-addDeprecatedMethod(Query, 'notRaiseError', Query.noError)
+    raiseError = genDeprecated('raiseError', error)
+    notRaiseError = genDeprecated('notRaiseError', noError)
 
 
 class Env:
-
     defaultModule = None
     defaultEnv = 'oss'
     defaultOssRedisBinary = None
@@ -138,7 +134,7 @@ class Env:
         self.testName = self.testName.replace(' ', '_')
 
         if testDescription:
-            print Colors.Gray('\tdescription: ' + testDescription)
+            print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
@@ -165,7 +161,7 @@ class Env:
 
         self.start()
         if self.verbose >= 2:
-            print Colors.Blue('\tenv data:')
+            print(Colors.Blue('\tenv data:'))
             self.envRunner.printEnvData('\t\t')
 
         Env.RTestInstance.currEnv = self
@@ -242,10 +238,10 @@ class Env:
             basemsg += ' [{}]'.format(message)
 
         if trueValue and self.verbose:
-            print '\t' + Colors.Green('✅  (OK):\t') + basemsg
+            print('\t' + Colors.Green('✅  (OK):\t') + basemsg)
         elif not trueValue:
             failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
-            print '\t' + failureSummary
+            print('\t' + failureSummary)
             if self.defaultExitOnFailure:
                 raise TestAssertionFailure('Assertion Failed!')
 
@@ -372,7 +368,7 @@ class Env:
 
     def debugPrint(self, msg, force=False):
         if Env.defaultDebugPrints or force:
-            print '\t' + Colors.Bold('debug:\t') + Colors.Gray(msg)
+            print('\t' + Colors.Bold('debug:\t') + Colors.Gray(msg))
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()
@@ -387,15 +383,18 @@ class Env:
         if self.isCluster():
             self.skip()
 
-
-addDeprecatedMethod(Env, 'assertEquals', Env.assertEqual)
-addDeprecatedMethod(Env, 'assertListEqual', Env.assertEqual)
-addDeprecatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
-addDeprecatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
-addDeprecatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
-addDeprecatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
-addDeprecatedMethod(Env, 'is_cluster', Env.isCluster)
-addDeprecatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
-addDeprecatedMethod(Env, 'execute_command', Env.cmd)
-addDeprecatedMethod(Env, 'assertIn', Env.assertContains)
-addDeprecatedMethod(Env, 'assertNotIn', Env.assertNotContains)
+    _mm = {
+        'assertEquals': assertEqual,
+        'assertListEqual': assertEqual,
+        'retry_with_reload': reloadingIterator,
+        'retry_with_rdb_reload': reloadingIterator,
+        'reloading_iterator': reloadingIterator,
+        'dump_and_reload': dumpAndReload,
+        'restart_and_reload': restartAndReload,
+        'execute_command': cmd,
+        'assertIn': assertContains,
+        'assertNotIn': assertNotContains,
+        'is_cluster': isCluster
+    }
+    for k, v in _mm.items():
+        locals().update({k:genDeprecated(k, v)})

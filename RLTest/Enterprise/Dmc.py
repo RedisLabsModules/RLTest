@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import psutil
 import subprocess
@@ -37,9 +39,9 @@ class Dmc():
         self.process = None
 
     def PrintEnvData(self, prefix=''):
-        print Colors.Yellow(prefix + 'dmc binary path: %s' % self.dmcBinaryPath)
-        print Colors.Yellow(prefix + 'dmc env: %s' % str(self.env))
-        print Colors.Yellow(prefix + 'dir path: %s' % str(self.directory))
-        print Colors.Yellow(prefix + 'log file name: %s' % str(self.DMC_LOG_FILE_NAME))
+        print(Colors.Yellow(prefix + 'dmc binary path: %s' % self.dmcBinaryPath))
+        print(Colors.Yellow(prefix + 'dmc env: %s' % str(self.env)))
+        print(Colors.Yellow(prefix + 'dir path: %s' % str(self.directory)))
+        print(Colors.Yellow(prefix + 'log file name: %s' % str(self.DMC_LOG_FILE_NAME)))
         if self.libPath:
-            print Colors.Yellow(prefix + 'lib path: %s' % str(self.libPath))
+            print(Colors.Yellow(prefix + 'lib path: %s' % str(self.libPath)))
