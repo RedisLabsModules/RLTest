@@ -1,3 +1,4 @@
+from __future__ import print_function
 import subprocess
 import redis
 import os
@@ -40,15 +41,15 @@ class CcsMock():
             self.process = None
 
     def PrintEnvData(self, prefix=''):
-        print Colors.Yellow(prefix + 'pid: %d' % self.process.pid)
-        print Colors.Yellow(prefix + 'unix socket: %s' % self.CCS_UNIX_SOCKET_DEFAULT_PATH)
-        print Colors.Yellow(prefix + 'binary path: %s' % self.redisBinaryPath)
+        print(Colors.Yellow(prefix + 'pid: %d' % self.process.pid))
+        print(Colors.Yellow(prefix + 'unix socket: %s' % self.CCS_UNIX_SOCKET_DEFAULT_PATH))
+        print(Colors.Yellow(prefix + 'binary path: %s' % self.redisBinaryPath))
         if self.directory:
-            print Colors.Yellow(prefix + 'db dir path: %s' % (self.directory))
-        print Colors.Yellow(prefix + 'rdb file name: %s' % (self.CCS_DB_RDB_FILE_NAME))
-        print Colors.Yellow(prefix + 'log file name: %s' % (self.CCS_LOG_FILE_NAME))
+            print(Colors.Yellow(prefix + 'db dir path: %s' % (self.directory)))
+        print(Colors.Yellow(prefix + 'rdb file name: %s' % (self.CCS_DB_RDB_FILE_NAME)))
+        print(Colors.Yellow(prefix + 'log file name: %s' % (self.CCS_LOG_FILE_NAME)))
         if self.libPath:
-            print Colors.Yellow(prefix + 'lib path: %s' % (self.libPath))
+            print(Colors.Yellow(prefix + 'lib path: %s' % (self.libPath)))
 
     def setup(self, shards, bdb_fields=None, endpoint_ccs_params=None, legacy_hash_slots=True, extra_keys=None):
 

@@ -1,4 +1,5 @@
 # coding=utf-8
+from __future__ import print_function
 import os
 import sys
 import redis
@@ -6,21 +7,21 @@ import unittest
 import inspect
 import contextlib
 import warnings
-from redis_std import StandardEnv
-from redis_cluster import ClusterEnv
-from utils import Colors
-from Enterprise.EnterpriseClusterEnv import EnterpriseClusterEnv
+from .redis_std import StandardEnv
+from .redis_cluster import ClusterEnv
+from .utils import Colors
+from .Enterprise import EnterpriseClusterEnv
 
 
 class TestAssertionFailure(Exception):
     pass
 
 
-def addDeprecatedMethod(cls, name, invoke):
+def genDeprecated(name, target):
     def method(*argc, **nargs):
-        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(invoke)), DeprecationWarning)
-        return invoke(*argc, **nargs)
-    cls.__dict__[name] = method
+        warnings.warn('%s is deprecated, use %s instead' % (str(name), str(target)), DeprecationWarning)
+        return target(*argc, **nargs)
+    return method
 
 
 class Query:
@@ -39,12 +40,12 @@ class Query:
 
     def _prettyPrint(self, result, prefix='\t'):
         if type(result) is list:
-            print prefix + '['
+            print(prefix + '[')
             for r in result:
                 self._prettyPrint(r, prefix + '\t')
-            print prefix + ']'
+            print(prefix + ']')
             return
-        print prefix + str(result)
+        print(prefix + str(result))
 
     def prettyPrint(self):
         self._prettyPrint(self.res)
@@ -90,16 +91,11 @@ class Query:
         self.env.assertFalse(self.errorRaised, 1)
         return self
 
-    raiseError = error
-    notRaiseError = noError
-
-
-addDeprecatedMethod(Query, 'raiseError', Query.error)
-addDeprecatedMethod(Query, 'notRaiseError', Query.noError)
+    raiseError = genDeprecated('raiseError', error)
+    notRaiseError = genDeprecated('notRaiseError', noError)
 
 
 class Env:
-
     defaultModule = None
     defaultEnv = 'oss'
     defaultOssRedisBinary = None
@@ -138,7 +134,7 @@ class Env:
         self.testName = self.testName.replace(' ', '_')
 
         if testDescription:
-            print Colors.Gray('\tdescription: ' + testDescription)
+            print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Env.defaultModule
         self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
@@ -165,7 +161,7 @@ class Env:
 
         self.start()
         if self.verbose >= 2:
-            print Colors.Blue('\tenv data:')
+            print(Colors.Blue('\tenv data:'))
             self.envRunner.printEnvData('\t\t')
 
         Env.RTestInstance.currEnv = self
@@ -242,10 +238,10 @@ class Env:
             basemsg += ' [{}]'.format(message)
 
         if trueValue and self.verbose:
-            print '\t' + Colors.Green('✅  (OK):\t') + basemsg
+            print('\t' + Colors.Green('✅  (OK):\t') + basemsg)
         elif not trueValue:
             failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
-            print '\t' + failureSummary
+            print('\t' + failureSummary)
             if self.defaultExitOnFailure:
                 raise TestAssertionFailure('Assertion Failed!')
 
@@ -255,10 +251,10 @@ class Env:
         return len(self.assertionFailedSummary)
 
     def assertEqual(self, first, second, depth=0, message=None):
-        self._assertion('%s == %s' % (first, second), first == second, depth, message=message)
+        self._assertion('%s == %s' % (repr(first), repr(second)), first == second, depth, message=message)
 
     def assertNotEqual(self, first, second, depth=0, message=None):
-        self._assertion('%s != %s' % (first, second), first != second, depth, message=message)
+        self._assertion('%s != %s' % (repr(first), repr(second)), first != second, depth, message=message)
 
     def assertOk(self, val, depth=0, message=None):
         self.assertEqual(val, 'OK', depth + 1, message=message)
@@ -270,41 +266,41 @@ class Env:
         self.assertEqual(val, False, depth + 1, message=message)
 
     def assertContains(self, value, holder, depth=0):
-        self._assertion('%s should contains %s' % (str(holder), str(value)), value in holder, depth)
+        self._assertion('%s should contains %s' % (repr(holder), repr(value)), value in holder, depth)
 
     def assertNotContains(self, value, holder, depth=0):
-        self._assertion('%s should not contains %s' % (str(holder), str(value)), value not in holder, depth)
+        self._assertion('%s should not contains %s' % (repr(holder), repr(value)), value not in holder, depth)
 
     def assertGreaterEqual(self, value1, value2, depth=0):
-        self._assertion('%s >= %s' % (str(value1), str(value2)), value1 >= value2, depth)
+        self._assertion('%s >= %s' % (repr(value1), repr(value2)), value1 >= value2, depth)
 
     def assertGreater(self, value1, value2, depth=0):
-        self._assertion('%s > %s' % (str(value1), str(value2)), value1 > value2, depth)
+        self._assertion('%s > %s' % (repr(value1), repr(value2)), value1 > value2, depth)
 
     def assertLessEqual(self, value1, value2, depth=0):
-        self._assertion('%s <= %s' % (str(value1), str(value2)), value1 <= value2, depth)
+        self._assertion('%s <= %s' % (repr(value1), repr(value2)), value1 <= value2, depth)
 
     def assertLess(self, value1, value2, depth=0):
-        self._assertion('%s < %s' % (str(value1), str(value2)), value1 < value2, depth)
+        self._assertion('%s < %s' % (repr(value1), repr(value2)), value1 < value2, depth)
 
     def assertIsNotNone(self, value, depth=0):
-        self._assertion('%s is not None' % (str(value)), value is not None, depth)
+        self._assertion('%s is not None' % (repr(value)), value is not None, depth)
 
     def assertIsNone(self, value, depth=0):
-        self._assertion('%s is None' % (str(value)), value is None, depth)
+        self._assertion('%s is None' % (repr(value)), value is None, depth)
 
     def assertIsInstance(self, value, instance, depth=0):
-        self._assertion('%s instance of %s' % (str(value), str(instance)), isinstance(value, instance), depth)
+        self._assertion('%s instance of %s' % (repr(value), repr(instance)), isinstance(value, instance), depth)
 
     def assertAlmostEqual(self, value1, value2, delta, depth=0):
-        self._assertion('%s almost equels %s (delta %s)' % (str(value1), str(value2), str(delta)), abs(value1 - value2) <= delta, depth)
+        self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth)
 
     def expect(self, *query):
         return Query(self, *query)
 
     def cmd(self, *query):
         res = self.con.execute_command(*query)
-        self.debugPrint('query: %s, result: %s' % (str(query), str(res)))
+        self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 
     def assertCmdOk(self, cmd, *args, **kwargs):
@@ -316,7 +312,7 @@ class Env:
 
     def assertExists(self, val, depth=0):
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
-        self._assertion('%s exists in db' % str(val), self.con.exists(val), depth=0)
+        self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
 
     def executeCommand(self, *query):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
@@ -372,7 +368,7 @@ class Env:
 
     def debugPrint(self, msg, force=False):
         if Env.defaultDebugPrints or force:
-            print '\t' + Colors.Bold('debug:\t') + Colors.Gray(msg)
+            print('\t' + Colors.Bold('debug:\t') + Colors.Gray(msg))
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()
@@ -387,15 +383,18 @@ class Env:
         if self.isCluster():
             self.skip()
 
-
-addDeprecatedMethod(Env, 'assertEquals', Env.assertEqual)
-addDeprecatedMethod(Env, 'assertListEqual', Env.assertEqual)
-addDeprecatedMethod(Env, 'retry_with_reload', Env.reloadingIterator)
-addDeprecatedMethod(Env, 'retry_with_rdb_reload', Env.reloadingIterator)
-addDeprecatedMethod(Env, 'reloading_iterator', Env.reloadingIterator)
-addDeprecatedMethod(Env, 'dump_and_reload', Env.dumpAndReload)
-addDeprecatedMethod(Env, 'is_cluster', Env.isCluster)
-addDeprecatedMethod(Env, 'restart_and_reload', Env.restartAndReload)
-addDeprecatedMethod(Env, 'execute_command', Env.cmd)
-addDeprecatedMethod(Env, 'assertIn', Env.assertContains)
-addDeprecatedMethod(Env, 'assertNotIn', Env.assertNotContains)
+    _mm = {
+        'assertEquals': assertEqual,
+        'assertListEqual': assertEqual,
+        'retry_with_reload': reloadingIterator,
+        'retry_with_rdb_reload': reloadingIterator,
+        'reloading_iterator': reloadingIterator,
+        'dump_and_reload': dumpAndReload,
+        'restart_and_reload': restartAndReload,
+        'execute_command': cmd,
+        'assertIn': assertContains,
+        'assertNotIn': assertNotContains,
+        'is_cluster': isCluster
+    }
+    for k, v in _mm.items():
+        locals().update({k:genDeprecated(k, v)})
