@@ -177,8 +177,7 @@ class Env:
             'useAof': self.useAof,
             'dbDirPath': self.logDir,
             'debugger': Env.defaultDebugger,
-            'noCatch': Env.defaultNoCatch,
-            'libPath': Env.defaultEnterpriseLibsPath
+            'noCatch': Env.defaultNoCatch
         }
 
         if self.env == 'oss':
@@ -186,10 +185,12 @@ class Env:
                                outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
                                **kwargs)
         if self.env == 'enterprise':
+            kwargs['libPath'] = Env.defaultEnterpriseLibsPath
             return StandardEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
                                **kwargs)
         if self.env == 'enterprise-cluster':
+            kwargs['libPath'] = Env.defaultEnterpriseLibsPath
             return EnterpriseClusterEnv(shardsCount=self.shardsCount,
                                         redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
                                         outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
