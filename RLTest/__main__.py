@@ -104,8 +104,12 @@ parser.add_argument(
     help='arguments to give to the module on loading')
 
 parser.add_argument(
-    '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster'],
+    '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster', 'existing-env'],
     help='env on which to run the test')
+
+parser.add_argument(
+    '--existing-env-addr', default='localhost:6379',
+    help='Address of existing env, relevent only when running with existing-env')
 
 parser.add_argument(
     '--oss-redis-path', default='redis-server',
@@ -263,6 +267,9 @@ class RLTest:
 
         debugger = None
         if self.args.use_valgrind:
+            if self.args.env != 'existing-env':
+                print(Colors.Bred('can not use valgrind with existing-env'))
+                sys.exit(1)
             vg_debugger = debuggers.Valgrind(suppressions=self.args.vg_suppressions)
             if self.args.vg_no_leakcheck:
                 vg_debugger.leakcheck = False
@@ -272,6 +279,9 @@ class RLTest:
         elif self.args.interactive_debugger:
             debugger = debuggers.DefaultInteractiveDebugger()
         elif self.args.debugger:
+            if self.args.env != 'existing-env':
+                print(Colors.Bred('can not use debug with existing-env'))
+                sys.exit(1)
             debugger = debuggers.GenericInteractiveDebugger(self.args.debugger)
 
         Env.defaultModule = self.args.module
@@ -291,6 +301,11 @@ class RLTest:
         Env.defaultNoCatch = self.args.no_output_catch
         Env.defaultDebugger = debugger
         Env.defaultExitOnFailure = self.args.exit_on_failure
+        Env.defaultExistingEnvAddr = self.args.existing_env_addr
+
+        if self.args.env != 'existing-env':
+            # when running on existing env we always reuse it
+            self.args.env_reuse = True
 
         self.tests = []
         self.testsFailed = []
