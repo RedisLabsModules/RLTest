@@ -121,13 +121,16 @@ class EnterpriseClusterEnv():
     def flush(self):
         self.getConnection().flushall()
 
-    def dumpAndReload(self, restart=False):
-        for shard in self.shards:
-            shard.dumpAndReload(restart=restart)
-        self.dmc.Stop()
-        self.dmc.Start()
-        con = self.getConnection()
-        wait_for_conn(con, command='sping', shouldBe=['SPONG 0' for i in self.shards])
+    def dumpAndReload(self, restart=False, shardId=None):
+        if shardId is None:
+            for shard in self.shards:
+                shard.dumpAndReload(restart=restart)
+            self.dmc.Stop()
+            self.dmc.Start()
+            con = self.getConnection()
+            wait_for_conn(con, command='sping', shouldBe=['SPONG 0' for i in self.shards])
+        else:
+            self.shards[shardId - 1].dumpAndReload(restart=restart, shardId=None)
 
     def broadcast(self, *cmd):
         for shard in self.shards:

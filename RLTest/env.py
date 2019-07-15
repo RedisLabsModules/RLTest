@@ -211,8 +211,8 @@ class Env:
     def getEnvStr(self):
         return self.env
 
-    def getConnection(self):
-        return self.envRunner.getConnection()
+    def getConnection(self, shardId=1):
+        return self.envRunner.getConnection(shardId)
 
     def getSlaveConnection(self):
         return self.envRunner.getSlaveConnection()
@@ -324,8 +324,8 @@ class Env:
         self.dumpAndReload()
         yield 2
 
-    def dumpAndReload(self, restart=False):
-        self.envRunner.dumpAndReload(restart=restart)
+    def dumpAndReload(self, restart=False, shardId=None):
+        self.envRunner.dumpAndReload(restart=restart, shardId=shardId)
 
     def hmset(self, *args):
         warnings.warn("hmset is deprecated, use Cmd instead", DeprecationWarning)
@@ -361,8 +361,8 @@ class Env:
         else:
             self._assertion('Expected Response Error', False, depth=1)
 
-    def restartAndReload(self):
-        self.dumpAndReload(restart=True)
+    def restartAndReload(self, shardId=None):
+        self.dumpAndReload(restart=True, shardId=shardId)
 
     def broadcast(self, *cmd):
         self.envRunner.broadcast(*cmd)

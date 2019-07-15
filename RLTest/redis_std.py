@@ -197,7 +197,7 @@ class StandardEnv(object):
             self.slaveProcess = None
         self.envIsUp = False
 
-    def getConnection(self):
+    def getConnection(self, shardId=1):
         return redis.StrictRedis('localhost', self.port, password=self.password)
 
     def getSlaveConnection(self):
@@ -219,7 +219,7 @@ class StandardEnv(object):
                 else:
                     break
 
-    def dumpAndReload(self, restart=False):
+    def dumpAndReload(self, restart=False, shardId=None):
         conns = []
         conns.append(self.getConnection())
         if self.useSlaves:
