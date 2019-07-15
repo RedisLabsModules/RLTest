@@ -9,6 +9,15 @@ class testExample():
     '''
     def __init__(self):
         self.env = Env()
+        
+    def setUp(self):
+        self.env.debugPrint('setUp', True)
+        self.env.cmd('set', 'foo', 'bar')
+
+    def tearDown(self):
+        self.env.debugPrint('tearDown', True)
+        self.env.expect('get', 'foo').equal('bar')
+        self.env.cmd('flushall')
 
     def testExample(self):
         con = self.env.getConnection()

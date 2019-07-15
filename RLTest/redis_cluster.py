@@ -87,8 +87,8 @@ class ClusterEnv(object):
             shard.stopEnv()
         self.envIsUp = False
 
-    def getConnection(self):
-        return self.shards[0].getConnection()
+    def getConnection(self, shardId=1):
+        return self.shards[shardId - 1].getConnection()
 
     def getClusterConnection(self):
         return rediscluster.StrictRedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
@@ -100,10 +100,13 @@ class ClusterEnv(object):
     def flush(self):
         self.getClusterConnection().flushall()
 
-    def dumpAndReload(self, restart=False):
-        for shard in self.shards:
-            shard.dumpAndReload(restart=restart)
-        self.waitCluster()
+    def dumpAndReload(self, restart=False, shardId=None):
+        if shardId is None:
+            for shard in self.shards:
+                shard.dumpAndReload(restart=restart)
+            self.waitCluster()
+        else:
+            self.shards[shardId - 1].dumpAndReload(restart=restart, shardId=None)
 
     def broadcast(self, *cmd):
         for shard in self.shards:
