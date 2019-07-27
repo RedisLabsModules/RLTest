@@ -11,7 +11,7 @@ import unittest
 import time
 import shlex
 
-from RLTest.env import Env, TestAssertionFailure
+from RLTest.env import Env, TestAssertionFailure, Defaults
 from RLTest.utils import Colors
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
@@ -284,28 +284,27 @@ class RLTest:
                 sys.exit(1)
             debugger = debuggers.GenericInteractiveDebugger(self.args.debugger)
 
-        Env.defaultModule = self.args.module
-        Env.defaultModuleArgs = self.args.module_args
-        Env.defaultEnv = self.args.env
-        Env.defaultOssRedisBinary = self.args.oss_redis_path
-        Env.defaultVerbose = self.args.verbose
-        Env.defaultLogDir = self.args.log_dir
-        Env.defaultUseSlaves = self.args.use_slaves
-        Env.defaultShardsCount = self.args.shards_count
-        Env.defaultProxyBinaryPath = self.args.proxy_binary_path
-        Env.defaultEnterpriseRedisBinaryPath = self.args.enterprise_redis_path
-        Env.defaultEnterpriseLibsPath = self.args.enterprise_lib_path
-        Env.defaultUseAof = self.args.use_aof
-        Env.defaultDebug = self.args.debug
-        Env.defaultDebugPrints = self.args.debug_print
-        Env.defaultNoCatch = self.args.no_output_catch
-        Env.defaultDebugger = debugger
-        Env.defaultExitOnFailure = self.args.exit_on_failure
-        Env.defaultExistingEnvAddr = self.args.existing_env_addr
-
         if self.args.env == 'existing-env':
             # when running on existing env we always reuse it
             self.args.env_reuse = True
+        Defaults.module = self.args.__module__
+        Defaults.module_args = self.args.module_args
+        Defaults.env = self.args.env
+        Defaults.binary = self.args.oss_redis_path
+        Defaults.verbose = self.args.verbose
+        Defaults.logdir = self.args.log_dir
+        Defaults.use_slaves = self.args.use_slaves
+        Defaults.num_shards = self.args.shards_count
+        Defaults.proxy_binary = self.args.proxy_binary_path
+        Defaults.re_binary = self.args.enterprise_redis_path
+        Defaults.re_libdir = self.args.enterprise_lib_path
+        Defaults.use_aof = self.args.use_aof
+        Defaults.debug_pause = self.args.debug
+        Defaults.debug_pause = self.args.debug_print
+        Defaults.no_capture_output = self.args.no_output_catch
+        Defaults.debugger = debugger
+        Defaults.exit_on_failure = self.args.exit_on_failure
+        Defaults.external_addr = self.args.existing_env_addr
 
         self.tests = []
         self.testsFailed = []
@@ -508,7 +507,7 @@ class RLTest:
     def execute(self):
         Env.RTestInstance = self
         if self.args.env_only:
-            Env.defaultVerbose = 2
+            Defaults.verbose = 2
             env = Env(testName='manual test env')
             if self.args.interactive_debugger:
                 while env.isUp():
@@ -575,5 +574,5 @@ def main():
     RLTest().execute()
 
 
-if __name__ == '__main__':
+if __name__ == 'self.root':
     main()
