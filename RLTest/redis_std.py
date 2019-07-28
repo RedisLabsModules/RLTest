@@ -3,21 +3,39 @@ import redis
 import subprocess
 import sys
 import os
-import platform
+import uuid
 from .utils import Colors, wait_for_conn
 
 
-MASTER = 1
-SLAVE = 2
+MASTER = 'master'
+SLAVE = 'slave'
+
+
+def _get_random_port():
+    import random
+    import socket
+    import struct
+
+    for _ in range(10000):
+        p = random.randint(10000, 65535)
+        # Try to open and bind the socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
+        try:
+            s.bind(('', p))
+            s.close()
+            return p
+        except OSError:
+            pass
 
 
 class StandardEnv(object):
-    def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
+    def __init__(self, redisBinaryPath, port=0, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
-                 useAof=False, debugger=None, noCatch=False):
+                 useAof=False, debugger=None, noCatch=False, unix=False):
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
-        self.port = port
-        self.modulePath = os.path.abspath(modulePath) if modulePath is not None else None
+        self.modulePath = os.path.abspath(modulePath) if modulePath else None
         self.moduleArgs = moduleArgs
         self.outputFilesFormat = outputFilesFormat
         self.dbDirPath = dbDirPath
@@ -30,6 +48,22 @@ class StandardEnv(object):
         self.debugger = debugger
         self.noCatch = noCatch
         self.environ = os.environ.copy()
+        self.useUnix = unix
+        self.uuid = uuid.uuid4().hex
+        if port > 0:
+            self.port = port
+            self.slavePort = port + 1 if self.useSlaves else 0
+        elif port == 0:
+            self.port = _get_random_port()
+            self.slavePort = _get_random_port() if self.useSlaves else 0
+        else:
+            self.port = -1
+            self.slavePort = -1
+
+        if self.useUnix:
+            if self.clusterEnabled:
+                raise ValueError('Unix sockets cannot be used with cluster mode')
+            self.port = -1
 
         if self.has_interactive_debugger:
             assert self.noCatch and not self.useSlaves and not self.clusterEnabled
@@ -55,11 +89,12 @@ class StandardEnv(object):
     def _getVlgrindFilePath(self, role):
         return os.path.join(self.dbDirPath, self._getFileName(role, '.valgrind.log'))
 
-    def getSlavePort(self):
-        return self.port + 1
-
     def getMasterPort(self):
         return self.port
+
+    def getUnixPath(self, role):
+        basename = '{}-{}.sock'.format(self.uuid, role)
+        return os.path.abspath(os.path.join(self.dbDirPath, basename))
 
     @property
     def has_interactive_debugger(self):
@@ -71,10 +106,11 @@ class StandardEnv(object):
             cmdArgs += self.debugger.generate_command(self._getVlgrindFilePath(role) if not self.noCatch else None)
 
         cmdArgs += [self.redisBinaryPath]
-        if role == MASTER:
-            cmdArgs += ['--port', str(self.port)]
+        if self.port > -1:
+            cmdArgs += ['--port', str(self.getPort(role))]
         else:
-            cmdArgs += ['--port', str(self.getSlavePort())]
+            cmdArgs += ['--port', str(0), '--unixsocket', self.getUnixPath(role)]
+            print('socket path is {}'.format(self.getUnixPath(role)))
         if self.modulePath:
             cmdArgs += ['--loadmodule', self.modulePath]
             if self.moduleArgs:
@@ -99,6 +135,7 @@ class StandardEnv(object):
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             cmdArgs += ['--aof-use-rdb-preamble', 'yes']
 
+        print(cmdArgs)
         return cmdArgs
 
     def waitForRedisToStart(self, con):
@@ -108,7 +145,7 @@ class StandardEnv(object):
         return self.masterProcess.pid if role == MASTER else self.slaveProcess.pid
 
     def getPort(self, role):
-        return self.port if role == MASTER else self.getSlavePort()
+        return self.port if role == MASTER else self.slavePort
 
     def getServerId(self, role):
         return self.masterServerId if role == MASTER else self.slaveServerId
@@ -200,12 +237,20 @@ class StandardEnv(object):
             self.slaveProcess = None
         self.envIsUp = False
 
+    def _getConnection(self, role):
+        if self.useUnix:
+            return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
+                                     password=self.password)
+        else:
+            return redis.StrictRedis('localhost', self.getPort(role),
+                                     password=self.password)
+
     def getConnection(self, shardId=1):
-        return redis.StrictRedis('localhost', self.port, password=self.password)
+        return self._getConnection(MASTER)
 
     def getSlaveConnection(self):
         if self.useSlaves:
-            return redis.StrictRedis('localhost', self.getSlavePort(), password=self.password)
+            return self._getConnection(SLAVE)
         raise Exception('asked for slave connection but no slave exists')
 
     def flush(self):

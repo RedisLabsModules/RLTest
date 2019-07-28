@@ -211,6 +211,9 @@ parser.add_argument(
 parser.add_argument('--check-exitcode', help='Check redis process exit code',
                     default=False, action='store_true')
 
+parser.add_argument('--unix', help='Use Unix domain sockets instead of TCP',
+                    default=False, action='store_true')
+
 parser.add_argument(
     '--collect-only', action='store_true',
     help='Collect the tests and exit')
@@ -287,7 +290,8 @@ class RLTest:
         if self.args.env == 'existing-env':
             # when running on existing env we always reuse it
             self.args.env_reuse = True
-        Defaults.module = self.args.__module__
+        Defaults.module = self.args.module
+
         Defaults.module_args = self.args.module_args
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
@@ -305,6 +309,7 @@ class RLTest:
         Defaults.debugger = debugger
         Defaults.exit_on_failure = self.args.exit_on_failure
         Defaults.external_addr = self.args.existing_env_addr
+        Defaults.use_unix = self.args.unix
 
         self.tests = []
         self.testsFailed = []
@@ -574,5 +579,5 @@ def main():
     RLTest().execute()
 
 
-if __name__ == 'self.root':
+if __name__ == '__main__':
     main()

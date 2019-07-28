@@ -116,6 +116,7 @@ class Defaults:
     use_slaves = False
     num_shards = 1
     external_addr = 'localhost:6379'
+    use_unix = False
 
 
 class Env:
@@ -184,23 +185,24 @@ class Env:
 
         if self.env == 'oss':
             return StandardEnv(redisBinaryPath=Defaults.binary,
-                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+                               outputFilesFormat='%s-' + '%s-oss' % self.testName,
+                               unix=Defaults.use_unix,
                                **kwargs)
         if self.env == 'enterprise':
             kwargs['libPath'] = Defaults.re_libdir
             return StandardEnv(redisBinaryPath=Defaults.re_binary,
-                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+                               outputFilesFormat='%s-' + '%s-oss' % self.testName,
                                **kwargs)
         if self.env == 'enterprise-cluster':
             kwargs['libPath'] = Defaults.re_libdir
             return EnterpriseClusterEnv(shardsCount=self.shardsCount,
                                         redisBinaryPath=Defaults.re_binary,
-                                        outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
+                                        outputFilesFormat='%s-' + '%s-re-cluster' % self.testName,
                                         dmcBinaryPath=Defaults.proxy_binary,
                                         **kwargs)
         if self.env == 'oss-cluster':
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Defaults.binary,
-                              outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
+                              outputFilesFormat='%s-' + '%s-oss-cluster' % self.testName,
                               **kwargs)
 
         if self.env == 'existing-env':
