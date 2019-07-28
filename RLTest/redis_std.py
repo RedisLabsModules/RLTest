@@ -38,7 +38,6 @@ class StandardEnv(object):
         self.modulePath = os.path.abspath(modulePath) if modulePath else None
         self.moduleArgs = moduleArgs
         self.outputFilesFormat = outputFilesFormat
-        self.dbDirPath = dbDirPath
         self.useSlaves = useSlaves
         self.masterServerId = serverId
         self.password = password
@@ -50,6 +49,9 @@ class StandardEnv(object):
         self.environ = os.environ.copy()
         self.useUnix = unix
         self.uuid = uuid.uuid4().hex
+        self.dbDirPath = dbDirPath + '/' + self.uuid
+        os.makedirs(self.dbDirPath)
+
         if port > 0:
             self.port = port
             self.slavePort = port + 1 if self.useSlaves else 0
