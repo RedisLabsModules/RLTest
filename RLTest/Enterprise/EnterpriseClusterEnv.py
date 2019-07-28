@@ -112,7 +112,7 @@ class EnterpriseClusterEnv():
         self.dmc.Stop()
         self.envIsUp = False
 
-    def getConnection(self):
+    def getConnection(self, shardId=1):
         return redis.Redis('localhost', self.DMC_PORT)
 
     def getSlaveConnection(self):
