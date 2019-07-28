@@ -39,7 +39,7 @@ class StandardEnv(object):
         else:
             self.libPath = None
         if self.libPath:
-            self.environ['LD_LIBRARY_PATH'] = self.libPath
+            self.environ['LD_LIBRARY_PATH'] = self.libPath + ":" + self.environ['LD_LIBRARY_PATH']
 
         self.masterCmdArgs = self.createCmdArgs(MASTER)
         if self.useSlaves:
