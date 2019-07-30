@@ -204,6 +204,9 @@ parser.add_argument(
     '-s', '--no-output-catch', action='store_const', const=True, default=False,
     help='all output will be written to the stdout, no log files.')
 
+parser.add_argument('--check-exitcode', help='Check redis process exit code',
+                    default=False, action='store_true')
+
 parser.add_argument(
     '--collect-only', action='store_true',
     help='Collect the tests and exit')
@@ -302,6 +305,11 @@ class RLTest:
             self.loader.print_tests()
             sys.exit(0)
 
+        if self.args.use_valgrind or self.args.check_exitcode:
+            self.require_clean_exit = True
+        else:
+            self.require_clean_exit = False
+
     def _convertArgsType(self):
         pass
 
@@ -321,10 +329,11 @@ class RLTest:
         if needShutdown:
             self.currEnv.flush()
             self.currEnv.stop()
-            if self.args.use_valgrind and self.currEnv and not self.currEnv.checkExitCode():
-                print(Colors.Bred('\tvalgrind check failure'))
-                self.addFailure(self.currEnv.testName,
-                                ['<Valgrind Failure>'])
+            if self.require_clean_exit and self.currEnv and not self.currEnv.checkExitCode():
+                print(Colors.Bred('\tRedis did not exit cleanly'))
+                self.addFailure(self.currEnv.testName, ['redis process failure'])
+                if self.args.check_exitcode:
+                    raise Exception('Process exited dirty')
             self.currEnv = None
 
     def printException(self, err):
