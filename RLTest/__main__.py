@@ -408,7 +408,7 @@ class RLTest:
 
         print(Colors.Cyan(prefix + test.name))
 
-        if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
+        if len(inspect.getfullargspec(test.target).args) > 0 and not test.is_method:
             try:
                 env = Env(testName=test.name)
             except Exception as e:
