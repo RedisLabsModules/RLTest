@@ -11,6 +11,7 @@ from .redis_std import StandardEnv
 from .redis_cluster import ClusterEnv
 from .utils import Colors
 from .Enterprise import EnterpriseClusterEnv
+from .exists_redis import ExistsRedisEnv
 
 
 class TestAssertionFailure(Exception):
@@ -119,6 +120,7 @@ class Env:
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
 
     defaultDebug = False
+    defaultExistingEnvAddr = 'localhost:6379'
 
     def compareEnvs(self, env):
         if env is None:
@@ -200,6 +202,9 @@ class Env:
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
                               outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
                               **kwargs)
+
+        if self.env == 'existing-env':
+            return ExistsRedisEnv(addr = self.defaultExistingEnvAddr, **kwargs)
 
     def start(self):
         self.envRunner.startEnv()
