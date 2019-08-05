@@ -268,10 +268,10 @@ class Env:
         self.assertEqual(val, 'OK', depth + 1, message=message)
 
     def assertTrue(self, val, depth=0, message=None):
-        self.assertEqual(val, True, depth + 1, message=message)
+        self.assertEqual(bool(val), True, depth + 1, message=message)
 
     def assertFalse(self, val, depth=0, message=None):
-        self.assertEqual(val, False, depth + 1, message=message)
+        self.assertEqual(bool(val), False, depth + 1, message=message)
 
     def assertContains(self, value, holder, depth=0):
         self._assertion('%s should contains %s' % (repr(holder), repr(value)), value in holder, depth)
