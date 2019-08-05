@@ -33,7 +33,7 @@ def _get_random_port():
 
 
 class StandardEnv(object):
-    def __init__(self, redisBinaryPath, port=0, modulePath=None, moduleArgs=None, outputFilesFormat=None,
+    def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
                  useAof=False, debugger=None, noCatch=False, unix=False):
         self.uuid = uuid.uuid4().hex

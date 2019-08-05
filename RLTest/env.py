@@ -117,6 +117,7 @@ class Defaults:
     num_shards = 1
     external_addr = 'localhost:6379'
     use_unix = False
+    randomize_ports = False
 
 
 class Env:
@@ -184,6 +185,8 @@ class Env:
         }
 
         if self.env == 'oss':
+            if Defaults.randomize_ports:
+                kwargs['port'] = 0
             return StandardEnv(redisBinaryPath=Defaults.binary,
                                outputFilesFormat='%s-' + '%s-oss' % self.testName,
                                unix=Defaults.use_unix,

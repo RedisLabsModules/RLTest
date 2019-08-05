@@ -214,6 +214,11 @@ parser.add_argument('--check-exitcode', help='Check redis process exit code',
 parser.add_argument('--unix', help='Use Unix domain sockets instead of TCP',
                     default=False, action='store_true')
 
+parser.add_argument('--randomize-ports',
+                    help='Randomize Redis listening port assignment rather than'
+                    'using default port',
+                    default=False, action='store_true')
+
 parser.add_argument(
     '--collect-only', action='store_true',
     help='Collect the tests and exit')
@@ -310,6 +315,7 @@ class RLTest:
         Defaults.exit_on_failure = self.args.exit_on_failure
         Defaults.external_addr = self.args.existing_env_addr
         Defaults.use_unix = self.args.unix
+        Defaults.randomize_ports = self.args.randomize_ports
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 
