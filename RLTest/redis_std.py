@@ -136,7 +136,6 @@ class StandardEnv(object):
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             cmdArgs += ['--aof-use-rdb-preamble', 'yes']
 
-        print(cmdArgs)
         return cmdArgs
 
     def waitForRedisToStart(self, con):
