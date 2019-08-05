@@ -34,10 +34,11 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=0, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
                  useAof=False, debugger=None, noCatch=False, unix=False):
+        self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
         self.modulePath = os.path.abspath(modulePath) if modulePath else None
         self.moduleArgs = moduleArgs
-        self.outputFilesFormat = outputFilesFormat
+        self.outputFilesFormat = self.uuid + '.' + outputFilesFormat
         self.useSlaves = useSlaves
         self.masterServerId = serverId
         self.password = password
@@ -48,9 +49,7 @@ class StandardEnv(object):
         self.noCatch = noCatch
         self.environ = os.environ.copy()
         self.useUnix = unix
-        self.uuid = uuid.uuid4().hex
-        self.dbDirPath = dbDirPath + '/' + self.uuid
-        os.makedirs(self.dbDirPath)
+        self.dbDirPath = dbDirPath
 
         if port > 0:
             self.port = port
