@@ -303,7 +303,7 @@ class RLTest:
         Env.defaultExitOnFailure = self.args.exit_on_failure
         Env.defaultExistingEnvAddr = self.args.existing_env_addr
 
-        if self.args.env != 'existing-env':
+        if self.args.env == 'existing-env':
             # when running on existing env we always reuse it
             self.args.env_reuse = True
 
