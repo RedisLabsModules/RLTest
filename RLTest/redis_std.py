@@ -29,6 +29,8 @@ def _get_random_port():
         except OSError:
             pass
 
+    raise Exception('Could not find open port to listen on!')
+
 
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=0, modulePath=None, moduleArgs=None, outputFilesFormat=None,
@@ -111,7 +113,6 @@ class StandardEnv(object):
             cmdArgs += ['--port', str(self.getPort(role))]
         else:
             cmdArgs += ['--port', str(0), '--unixsocket', self.getUnixPath(role)]
-            print('socket path is {}'.format(self.getUnixPath(role)))
         if self.modulePath:
             cmdArgs += ['--loadmodule', self.modulePath]
             if self.moduleArgs:

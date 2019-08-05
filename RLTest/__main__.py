@@ -310,6 +310,8 @@ class RLTest:
         Defaults.exit_on_failure = self.args.exit_on_failure
         Defaults.external_addr = self.args.existing_env_addr
         Defaults.use_unix = self.args.unix
+        if Defaults.use_unix and Defaults.use_slaves:
+            raise Exception('Cannot use unix sockets with slaves')
 
         self.tests = []
         self.testsFailed = []
