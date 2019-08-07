@@ -184,14 +184,19 @@ class Env:
             'noCatch': Defaults.no_capture_output
         }
 
+        single_args = {}
+        if Defaults.randomize_ports:
+            single_args['port'] = 0
+        if Defaults.use_unix:
+            single_args['unix'] = True
+
         if self.env == 'oss':
-            if Defaults.randomize_ports:
-                kwargs['port'] = 0
+            kwargs.update(single_args)
             return StandardEnv(redisBinaryPath=Defaults.binary,
                                outputFilesFormat='%s-' + '%s-oss' % self.testName,
-                               unix=Defaults.use_unix,
                                **kwargs)
         if self.env == 'enterprise':
+            kwargs.update(single_args)
             kwargs['libPath'] = Defaults.re_libdir
             return StandardEnv(redisBinaryPath=Defaults.re_binary,
                                outputFilesFormat='%s-' + '%s-oss' % self.testName,
