@@ -267,7 +267,7 @@ class RLTest:
 
         debugger = None
         if self.args.use_valgrind:
-            if self.args.env != 'existing-env':
+            if self.args.env == 'existing-env':
                 print(Colors.Bred('can not use valgrind with existing-env'))
                 sys.exit(1)
             vg_debugger = debuggers.Valgrind(suppressions=self.args.vg_suppressions)
