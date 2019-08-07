@@ -96,31 +96,33 @@ class Query:
     notRaiseError = genDeprecated('notRaiseError', noError)
 
 
+class Defaults:
+    module = None
+    module_args = []
+
+    env = 'oss'
+    binary = 'redis-server'
+    proxy_binary = None
+    re_binary = None
+    re_libdir = None
+    use_aof = False
+    debugger = None
+    debug_print = False
+    debug_pause = False
+    no_capture_output = False
+    exit_on_failure = False
+    verbose = 0
+    logdir = None
+    use_slaves = False
+    num_shards = 1
+    external_addr = 'localhost:6379'
+    use_unix = False
+    randomize_ports = False
+
+
 class Env:
-    defaultModule = None
-    defaultEnv = 'oss'
-    defaultOssRedisBinary = None
-    defaultVerbose = False
-    defaultLogDir = None
-    defaultUseSlaves = False
-    defaultShardsCount = 1
-    defaultModuleArgs = None
-    defaultProxyBinaryPath = None
-    defaultEnterpriseRedisBinaryPath = None
-    defaultEnterpriseLibsPath = None
-    defaultUseAof = None
-    defaultDebugger = None
-    defaultExitOnFailure = False
-
     RTestInstance = None
-
-    defaultDebugPrints = False
-    defaultNoCatch = False
-
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
-
-    defaultDebug = False
-    defaultExistingEnvAddr = 'localhost:6379'
 
     def compareEnvs(self, env):
         if env is None:
@@ -138,14 +140,14 @@ class Env:
         if testDescription:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
-        self.module = module if module else Env.defaultModule
-        self.moduleArgs = moduleArgs if moduleArgs else Env.defaultModuleArgs
-        self.env = env if env else Env.defaultEnv
-        self.useSlaves = useSlaves if useSlaves else Env.defaultUseSlaves
-        self.shardsCount = shardsCount if shardsCount else Env.defaultShardsCount
-        self.useAof = useAof if useAof else Env.defaultUseAof
-        self.verbose = Env.defaultVerbose
-        self.logDir = Env.defaultLogDir
+        self.module = module if module else Defaults.module
+        self.moduleArgs = moduleArgs if moduleArgs else Defaults.module_args
+        self.env = env if env else Defaults.env
+        self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
+        self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
+        self.useAof = useAof if useAof else Defaults.use_aof
+        self.verbose = Defaults.verbose
+        self.logDir = Defaults.logdir
 
         self.assertionFailedSummary = []
 
@@ -168,7 +170,7 @@ class Env:
 
         Env.RTestInstance.currEnv = self
 
-        if Env.defaultDebug:
+        if Defaults.debug_pause:
             raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
     def getEnvByName(self):
@@ -178,33 +180,41 @@ class Env:
             'useSlaves': self.useSlaves,
             'useAof': self.useAof,
             'dbDirPath': self.logDir,
-            'debugger': Env.defaultDebugger,
-            'noCatch': Env.defaultNoCatch
+            'debugger': Defaults.debugger,
+            'noCatch': Defaults.no_capture_output
         }
 
+        single_args = {}
+        if Defaults.randomize_ports:
+            single_args['port'] = 0
+        if Defaults.use_unix:
+            single_args['unix'] = True
+
         if self.env == 'oss':
-            return StandardEnv(redisBinaryPath=Env.defaultOssRedisBinary,
-                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+            kwargs.update(single_args)
+            return StandardEnv(redisBinaryPath=Defaults.binary,
+                               outputFilesFormat='%s-' + '%s-oss' % self.testName,
                                **kwargs)
         if self.env == 'enterprise':
-            kwargs['libPath'] = Env.defaultEnterpriseLibsPath
-            return StandardEnv(redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
-                               outputFilesFormat='%s-' + '%s-oss-redis' % self.testName,
+            kwargs.update(single_args)
+            kwargs['libPath'] = Defaults.re_libdir
+            return StandardEnv(redisBinaryPath=Defaults.re_binary,
+                               outputFilesFormat='%s-' + '%s-oss' % self.testName,
                                **kwargs)
         if self.env == 'enterprise-cluster':
-            kwargs['libPath'] = Env.defaultEnterpriseLibsPath
+            kwargs['libPath'] = Defaults.re_libdir
             return EnterpriseClusterEnv(shardsCount=self.shardsCount,
-                                        redisBinaryPath=Env.defaultEnterpriseRedisBinaryPath,
-                                        outputFilesFormat='%s-' + '%s-enterprise-cluster-redis' % self.testName,
-                                        dmcBinaryPath=Env.defaultProxyBinaryPath,
+                                        redisBinaryPath=Defaults.re_binary,
+                                        outputFilesFormat='%s-' + '%s-re-cluster' % self.testName,
+                                        dmcBinaryPath=Defaults.proxy_binary,
                                         **kwargs)
         if self.env == 'oss-cluster':
-            return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Env.defaultOssRedisBinary,
-                              outputFilesFormat='%s-' + '%s-oss-cluster-redis' % self.testName,
+            return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Defaults.binary,
+                              outputFilesFormat='%s-' + '%s-oss-cluster' % self.testName,
                               **kwargs)
 
         if self.env == 'existing-env':
-            return ExistsRedisEnv(addr = self.defaultExistingEnvAddr, **kwargs)
+            return ExistsRedisEnv(addr=Defaults.external_addr, **kwargs)
 
     def start(self):
         self.envRunner.startEnv()
@@ -248,7 +258,7 @@ class Env:
         elif not trueValue:
             failureSummary = Colors.Bred('❌  (FAIL):\t') + basemsg
             print('\t' + failureSummary)
-            if self.defaultExitOnFailure:
+            if Defaults.exit_on_failure:
                 raise TestAssertionFailure('Assertion Failed!')
 
             self.assertionFailedSummary.append(failureSummary)
@@ -266,10 +276,10 @@ class Env:
         self.assertEqual(val, 'OK', depth + 1, message=message)
 
     def assertTrue(self, val, depth=0, message=None):
-        self.assertEqual(val, True, depth + 1, message=message)
+        self.assertEqual(bool(val), True, depth + 1, message=message)
 
     def assertFalse(self, val, depth=0, message=None):
-        self.assertEqual(val, False, depth + 1, message=message)
+        self.assertEqual(bool(val), False, depth + 1, message=message)
 
     def assertContains(self, value, holder, depth=0):
         self._assertion('%s should contains %s' % (repr(holder), repr(value)), value in holder, depth)
@@ -373,7 +383,7 @@ class Env:
         self.envRunner.broadcast(*cmd)
 
     def debugPrint(self, msg, force=False):
-        if Env.defaultDebugPrints or force:
+        if Defaults.debug_print or force:
             print('\t' + Colors.Bold('debug:\t') + Colors.Gray(msg))
 
     def checkExitCode(self):
