@@ -354,7 +354,8 @@ class RLTest:
                                    env=self.currEnv)
 
         if needShutdown:
-            self.currEnv.flush()
+            if self.currEnv.isUp():
+                self.currEnv.flush()
             self.currEnv.stop()
             if self.require_clean_exit and self.currEnv and not self.currEnv.checkExitCode():
                 print(Colors.Bred('\tRedis did not exit cleanly'))
