@@ -206,6 +206,8 @@ class StandardEnv(object):
         self.envIsUp = True
 
     def _isAlive(self, process):
+        if not process:
+            return False
         if process.poll() is None:
             return True
         return False
