@@ -309,7 +309,7 @@ class RLTest:
         Defaults.re_libdir = self.args.enterprise_lib_path
         Defaults.use_aof = self.args.use_aof
         Defaults.debug_pause = self.args.debug
-        Defaults.debug_pause = self.args.debug_print
+        Defaults.debug_print = self.args.debug_print
         Defaults.no_capture_output = self.args.no_output_catch
         Defaults.debugger = debugger
         Defaults.exit_on_failure = self.args.exit_on_failure
