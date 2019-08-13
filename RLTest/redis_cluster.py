@@ -120,6 +120,7 @@ class ClusterEnv(object):
 
     def isUp(self):
         self.waitCluster()
+        return True
 
     def exists(self, val):
         return self.getClusterConnection().exists(val)
