@@ -17,9 +17,11 @@ from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 RLTest_CONFIG_FILE_PREFIX = '@'
 RLTest_CONFIG_FILE_NAME = 'config.txt'
-
 
 class CustomArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwrags):
