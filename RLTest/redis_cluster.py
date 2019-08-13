@@ -119,7 +119,8 @@ class ClusterEnv(object):
         return True
 
     def isUp(self):
-        raise Exception('unsupported operation')
+        self.waitCluster()
+        return True
 
     def exists(self, val):
         return self.getClusterConnection().exists(val)
