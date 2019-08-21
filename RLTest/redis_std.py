@@ -5,31 +5,13 @@ import sys
 import os
 import uuid
 from .utils import Colors, wait_for_conn
+from .random_port import get_random_port
 
 
 MASTER = 'master'
 SLAVE = 'slave'
 
 
-def _get_random_port():
-    import random
-    import socket
-    import struct
-
-    for _ in range(10000):
-        p = random.randint(10000, 65535)
-        # Try to open and bind the socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
-        try:
-            s.bind(('', p))
-            s.close()
-            return p
-        except OSError:
-            pass
-
-    raise Exception('Could not find open port to listen on!')
 
 
 class StandardEnv(object):
@@ -57,8 +39,8 @@ class StandardEnv(object):
             self.port = port
             self.slavePort = port + 1 if self.useSlaves else 0
         elif port == 0:
-            self.port = _get_random_port()
-            self.slavePort = _get_random_port() if self.useSlaves else 0
+            self.port = get_random_port()
+            self.slavePort = get_random_port() if self.useSlaves else 0
         else:
             self.port = -1
             self.slavePort = -1
