@@ -103,7 +103,7 @@ parser.add_argument(
 
 parser.add_argument(
     '--module-args', default=None,
-    help='arguments to give to the module on loading')
+    help='arguments to give to the module on loading', action='append')
 
 parser.add_argument(
     '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster', 'existing-env'],
@@ -299,7 +299,7 @@ class RLTest:
             self.args.env_reuse = True
         Defaults.module = self.args.module
 
-        Defaults.module_args = self.args.module_args
+        Defaults.module_args = ' '.join(self.args.module_args)
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose
