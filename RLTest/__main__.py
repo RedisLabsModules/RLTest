@@ -352,6 +352,7 @@ class RLTest:
                 self.currEnv.flush()
                 needShutdown = False
             except Exception as e:
+                self.currEnv.stop()
                 self.handleFailure(exception=e, testname='[env dtor]',
                                    env=self.currEnv)
 
