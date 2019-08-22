@@ -12,8 +12,6 @@ MASTER = 'master'
 SLAVE = 'slave'
 
 
-
-
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
@@ -34,6 +32,8 @@ class StandardEnv(object):
         self.environ = os.environ.copy()
         self.useUnix = unix
         self.dbDirPath = dbDirPath
+        self.masterProcess = None
+        self.slaveProcess = None
 
         if port > 0:
             self.port = port

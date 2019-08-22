@@ -56,8 +56,13 @@ class ClusterEnv(object):
     def startEnv(self):
         if self.envIsUp:
             return  # env is already up
-        for shard in self.shards:
-            shard.startEnv()
+        try:
+            for shard in self.shards:
+                shard.startEnv()
+        except Exception:
+            for shard in self.shards:
+                shard.stopEnv()
+            raise
 
         slots_per_node = int(16384 / len(self.shards)) + 1
         for i, shard in enumerate(self.shards):
