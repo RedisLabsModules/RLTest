@@ -102,7 +102,7 @@ parser.add_argument(
     help='path to the module file')
 
 parser.add_argument(
-    '--module-args', default=None,
+    '--module-args', default=[],
     help='arguments to give to the module on loading', action='append')
 
 parser.add_argument(
