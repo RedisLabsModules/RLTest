@@ -211,6 +211,7 @@ class Env:
         if self.env == 'oss-cluster':
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Defaults.binary,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % self.testName,
+                              randomizePorts=Defaults.randomize_ports,
                               **kwargs)
 
         if self.env == 'existing-env':

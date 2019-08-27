@@ -14,11 +14,12 @@ class ClusterEnv(object):
         self.moduleArgs = kwargs['moduleArgs']
         self.shardsCount = kwargs.pop('shardsCount')
         useSlaves = kwargs.get('useSlaves', False)
-
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
+        randomizePorts = kwargs.pop('randomizePorts', False)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):
-            shard = StandardEnv(port=startPort, serverId=(i + 1),
+            port = 0 if randomizePorts else startPort
+            shard = StandardEnv(port=port, serverId=(i + 1),
                                 clusterEnabled=True, **kwargs)
             self.shards.append(shard)
             startPort += 2
@@ -55,8 +56,13 @@ class ClusterEnv(object):
     def startEnv(self):
         if self.envIsUp:
             return  # env is already up
-        for shard in self.shards:
-            shard.startEnv()
+        try:
+            for shard in self.shards:
+                shard.startEnv()
+        except Exception:
+            for shard in self.shards:
+                shard.stopEnv()
+            raise
 
         slots_per_node = int(16384 / len(self.shards)) + 1
         for i, shard in enumerate(self.shards):
