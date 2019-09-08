@@ -106,12 +106,20 @@ parser.add_argument(
     help='arguments to give to the module on loading', action='append')
 
 parser.add_argument(
-    '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster', 'existing-env'],
+    '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster', 'existing-env', 'cluster_existing-env'],
     help='env on which to run the test')
 
 parser.add_argument(
     '--existing-env-addr', default='localhost:6379',
-    help='Address of existing env, relevent only when running with existing-env')
+    help='Address of existing env, relevent only when running with existing-env, cluster_existing-env')
+
+parser.add_argument(
+    '--shards_ports',
+    help=' list of ports, the shards are listening to, relevent only when running with cluster_existing-env')
+
+parser.add_argument(
+    '--internal_password', default='',
+    help='Give an ability to execute commands on shards directly, relevent only when running with cluster_existing-env')
 
 parser.add_argument(
     '--oss-redis-path', default='redis-server',
@@ -277,7 +285,7 @@ class RLTest:
 
         debugger = None
         if self.args.use_valgrind:
-            if self.args.env == 'existing-env':
+            if self.args.env.endswith('existing-env'):
                 print(Colors.Bred('can not use valgrind with existing-env'))
                 sys.exit(1)
             vg_debugger = debuggers.Valgrind(suppressions=self.args.vg_suppressions)
@@ -289,12 +297,12 @@ class RLTest:
         elif self.args.interactive_debugger:
             debugger = debuggers.DefaultInteractiveDebugger()
         elif self.args.debugger:
-            if self.args.env != 'existing-env':
+            if self.args.env.endswith('existing-env'):
                 print(Colors.Bred('can not use debug with existing-env'))
                 sys.exit(1)
             debugger = debuggers.GenericInteractiveDebugger(self.args.debugger)
 
-        if self.args.env == 'existing-env':
+        if self.args.env.endswith('existing-env'):
             # when running on existing env we always reuse it
             self.args.env_reuse = True
         Defaults.module = self.args.module
@@ -306,6 +314,8 @@ class RLTest:
         Defaults.logdir = self.args.log_dir
         Defaults.use_slaves = self.args.use_slaves
         Defaults.num_shards = self.args.shards_count
+        Defaults.shards_ports = self.args.shards_ports.split(',')
+        Defaults.internal_password = self.args.internal_password
         Defaults.proxy_binary = self.args.proxy_binary_path
         Defaults.re_binary = self.args.enterprise_redis_path
         Defaults.re_libdir = self.args.enterprise_lib_path

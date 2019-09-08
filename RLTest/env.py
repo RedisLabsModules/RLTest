@@ -12,6 +12,7 @@ from .redis_cluster import ClusterEnv
 from .utils import Colors
 from .Enterprise import EnterpriseClusterEnv
 from .exists_redis import ExistsRedisEnv
+from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 
 
 class TestAssertionFailure(Exception):
@@ -217,6 +218,10 @@ class Env:
         if self.env == 'existing-env':
             return ExistsRedisEnv(addr=Defaults.external_addr, **kwargs)
 
+        if self.env == 'cluster_existing-env':
+            return EnterpriseRedisClusterEnv(addr = Defaults.external_addr, password = Defaults.internal_password,
+                                             shards_port=Defaults.shards_ports, **kwargs)
+
     def start(self):
         self.envRunner.startEnv()
         self.con = self.getConnection()
@@ -238,6 +243,9 @@ class Env:
 
     def isCluster(self):
         return 'cluster' in self.env
+
+    def isEnterpiseCluster(self):
+        return isinstance(self.envRunner, EnterpriseRedisClusterEnv)
 
     def _getCallerPosition(self, back_frames):
         frame = inspect.currentframe()
@@ -400,6 +408,10 @@ class Env:
         if self.isCluster():
             self.skip()
 
+    def skipOnEnterpriseCluster(self):
+        if self.isEnterpiseCluster():
+            self.skip()
+
     _mm = {
         'assertEquals': assertEqual,
         'assertListEqual': assertEqual,
@@ -411,7 +423,8 @@ class Env:
         'execute_command': cmd,
         'assertIn': assertContains,
         'assertNotIn': assertNotContains,
-        'is_cluster': isCluster
+        'is_cluster': isCluster,
+        'is_enterprise_redis_clusterEnv':isEnterpiseCluster
     }
     for k, v in _mm.items():
         locals().update({k:genDeprecated(k, v)})
