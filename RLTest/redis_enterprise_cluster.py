@@ -1,4 +1,3 @@
-import requests
 import rediscluster
 from redis import StrictRedis
 from exists_redis import ExistsRedisEnv
