@@ -314,7 +314,7 @@ class RLTest:
         Defaults.logdir = self.args.log_dir
         Defaults.use_slaves = self.args.use_slaves
         Defaults.num_shards = self.args.shards_count
-        Defaults.shards_ports = self.args.shards_ports.split(',')
+        Defaults.shards_ports = self.args.shards_ports.split(',') if self.args.shards_ports is not None else None
         Defaults.internal_password = self.args.internal_password
         Defaults.proxy_binary = self.args.proxy_binary_path
         Defaults.re_binary = self.args.enterprise_redis_path
