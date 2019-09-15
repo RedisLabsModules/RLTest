@@ -225,10 +225,10 @@ class StandardEnv(object):
     def _getConnection(self, role):
         if self.useUnix:
             return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
-                                     password=self.password)
+                                     password=self.password, decode_responses=True)
         else:
             return redis.StrictRedis('localhost', self.getPort(role),
-                                     password=self.password)
+                                     password=self.password, decode_responses=True)
 
     def getConnection(self, shardId=1):
         return self._getConnection(MASTER)
@@ -287,9 +287,7 @@ class StandardEnv(object):
         return ret
 
     def isUp(self):
-        if self.useSlaves:
-            raise Exception('unsupported operation')
-        return self._isAlive(self.masterProcess)
+        return self._isAlive(self.masterProcess) and self._isAlive(self.slaveProcess)
 
     def exists(self, val):
         return self.getConnection().exists(val)
