@@ -225,10 +225,10 @@ class StandardEnv(object):
     def _getConnection(self, role):
         if self.useUnix:
             return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
-                                     password=self.password, decode_responses=True)
+                                     password=self.password)
         else:
             return redis.StrictRedis('localhost', self.getPort(role),
-                                     password=self.password, decode_responses=True)
+                                     password=self.password)
 
     def getConnection(self, shardId=1):
         return self._getConnection(MASTER)
