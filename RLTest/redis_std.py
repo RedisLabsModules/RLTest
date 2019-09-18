@@ -287,7 +287,10 @@ class StandardEnv(object):
         return ret
 
     def isUp(self):
-        return self._isAlive(self.masterProcess) and self._isAlive(self.slaveProcess)
+        ret = self._isAlive(self.masterProcess)
+        if self.useSlaves:
+            ret = ret and self._isAlive(self.slaveProcess)
+        return ret
 
     def exists(self, val):
         return self.getConnection().exists(val)
