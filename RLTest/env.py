@@ -220,7 +220,9 @@ class Env:
 
         if self.env == 'cluster_existing-env':
             return EnterpriseRedisClusterEnv(addr = Defaults.external_addr, password = Defaults.internal_password,
-                                             shards_port=Defaults.shards_ports, **kwargs)
+                                             shards_port=Defaults.shards_ports, 
+                                             cluster_address = Defaults.cluster_address, 
+                                             cluster_credentials= Defaults.cluster_credentials, **kwargs)
 
     def start(self):
         self.envRunner.startEnv()
