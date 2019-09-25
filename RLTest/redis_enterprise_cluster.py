@@ -1,6 +1,6 @@
 import rediscluster
 from redis import StrictRedis
-from exists_redis import ExistsRedisEnv
+from .exists_redis import ExistsRedisEnv
 
 
 class Shard(StrictRedis):
