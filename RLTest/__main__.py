@@ -118,6 +118,14 @@ parser.add_argument(
     help=' list of ports, the shards are listening to, relevent only when running with cluster_existing-env')
 
 parser.add_argument(
+    '--cluster_address',
+    help='enterprise cluster ip, relevent only when running with cluster_existing-env')
+
+parser.add_argument(
+    '--cluster_credentials',
+    help='enterprise cluster cluster_credentials "username:password", relevent only when running with cluster_existing-env')
+
+parser.add_argument(
     '--internal_password', default='',
     help='Give an ability to execute commands on shards directly, relevent only when running with cluster_existing-env')
 
@@ -315,6 +323,8 @@ class RLTest:
         Defaults.use_slaves = self.args.use_slaves
         Defaults.num_shards = self.args.shards_count
         Defaults.shards_ports = self.args.shards_ports.split(',') if self.args.shards_ports is not None else None
+        Defaults.cluster_address = self.args.cluster_address
+        Defaults.cluster_credentials = self.args.cluster_credentials
         Defaults.internal_password = self.args.internal_password
         Defaults.proxy_binary = self.args.proxy_binary_path
         Defaults.re_binary = self.args.enterprise_redis_path
