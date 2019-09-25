@@ -284,6 +284,12 @@ class RLTest:
                 print(e)
 
         debugger = None
+        if self.args.debugger:
+            if self.args.env.endswith('existing-env'):
+                print(Colors.Bred('can not use debug with existing-env'))
+                sys.exit(1)
+            debuggers.set_interactive_debugger(self.args.debugger)
+            # debugger = interactive_debugger
         if self.args.use_valgrind:
             if self.args.env.endswith('existing-env'):
                 print(Colors.Bred('can not use valgrind with existing-env'))
@@ -295,12 +301,7 @@ class RLTest:
                 vg_debugger.verbose = True
             debugger = vg_debugger
         elif self.args.interactive_debugger:
-            debugger = debuggers.DefaultInteractiveDebugger()
-        elif self.args.debugger:
-            if self.args.env.endswith('existing-env'):
-                print(Colors.Bred('can not use debug with existing-env'))
-                sys.exit(1)
-            debugger = debuggers.GenericInteractiveDebugger(self.args.debugger)
+            debugger = debuggers.default_interactive_debugger
 
         if self.args.env.endswith('existing-env'):
             # when running on existing env we always reuse it
