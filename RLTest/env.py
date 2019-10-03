@@ -191,27 +191,28 @@ class Env:
         if Defaults.use_unix:
             single_args['unix'] = True
 
+        test_fname = self.testName.replace(':', '_')
         if self.env == 'oss':
             kwargs.update(single_args)
             return StandardEnv(redisBinaryPath=Defaults.binary,
-                               outputFilesFormat='%s-' + '%s-oss' % self.testName,
+                               outputFilesFormat='%s-' + '%s-oss' % test_fname,
                                **kwargs)
         if self.env == 'enterprise':
             kwargs.update(single_args)
             kwargs['libPath'] = Defaults.re_libdir
             return StandardEnv(redisBinaryPath=Defaults.re_binary,
-                               outputFilesFormat='%s-' + '%s-oss' % self.testName,
+                               outputFilesFormat='%s-' + '%s-oss' % test_fname,
                                **kwargs)
         if self.env == 'enterprise-cluster':
             kwargs['libPath'] = Defaults.re_libdir
             return EnterpriseClusterEnv(shardsCount=self.shardsCount,
                                         redisBinaryPath=Defaults.re_binary,
-                                        outputFilesFormat='%s-' + '%s-re-cluster' % self.testName,
+                                        outputFilesFormat='%s-' + '%s-re-cluster' % test_fname,
                                         dmcBinaryPath=Defaults.proxy_binary,
                                         **kwargs)
         if self.env == 'oss-cluster':
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Defaults.binary,
-                              outputFilesFormat='%s-' + '%s-oss-cluster' % self.testName,
+                              outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
                               randomizePorts=Defaults.randomize_ports,
                               **kwargs)
 
@@ -220,8 +221,8 @@ class Env:
 
         if self.env == 'cluster_existing-env':
             return EnterpriseRedisClusterEnv(addr = Defaults.external_addr, password = Defaults.internal_password,
-                                             shards_port=Defaults.shards_ports, 
-                                             cluster_address = Defaults.cluster_address, 
+                                             shards_port=Defaults.shards_ports,
+                                             cluster_address = Defaults.cluster_address,
                                              cluster_credentials= Defaults.cluster_credentials, **kwargs)
 
     def start(self):
