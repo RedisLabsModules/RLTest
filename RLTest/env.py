@@ -294,10 +294,10 @@ class Env:
         self.assertEqual(bool(val), False, depth + 1, message=message)
 
     def assertContains(self, value, holder, depth=0):
-        self._assertion('%s should contains %s' % (repr(holder), repr(value)), value in holder, depth)
+        self._assertion('%s should contain %s' % (repr(holder), repr(value)), value in holder, depth)
 
     def assertNotContains(self, value, holder, depth=0):
-        self._assertion('%s should not contains %s' % (repr(holder), repr(value)), value not in holder, depth)
+        self._assertion('%s should not contain %s' % (repr(holder), repr(value)), value not in holder, depth)
 
     def assertGreaterEqual(self, value1, value2, depth=0):
         self._assertion('%s >= %s' % (repr(value1), repr(value2)), value1 >= value2, depth)
