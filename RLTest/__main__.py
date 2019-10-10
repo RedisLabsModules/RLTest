@@ -289,7 +289,7 @@ class RLTest:
                 print(Colors.Bred('can not use debug with existing-env'))
                 sys.exit(1)
             debuggers.set_interactive_debugger(self.args.debugger)
-            # debugger = interactive_debugger
+            self.args.interactive_debugger = True
         if self.args.use_valgrind:
             if self.args.env.endswith('existing-env'):
                 print(Colors.Bred('can not use valgrind with existing-env'))
