@@ -4,8 +4,8 @@ setup(
     version='0.1',
     packages=find_packages(),
     install_requires=[
-        'redis >= 2.10.5, <= 2.10.6',
-	'redis-py-cluster <= 1.3.6',
+        'redis',
+	'redis-py-cluster',
         'psutil'
     ],
     entry_points='''
