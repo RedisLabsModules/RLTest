@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 setup(
     name='RLTest',
-    version='0.1',
+    version='0.2',
     packages=find_packages(),
     install_requires=[
-        'redis >= 2.10.5, <= 2.10.6',
-	'redis-py-cluster <= 1.3.6',
+        'redis',
+        'redis-py-cluster',
         'psutil'
     ],
     entry_points='''
