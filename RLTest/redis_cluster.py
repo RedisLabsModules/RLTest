@@ -97,8 +97,8 @@ class ClusterEnv(object):
         return self.shards[shardId - 1].getConnection()
 
     def getClusterConnection(self):
-        return rediscluster.StrictRedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
-                                               decode_responses=True)
+        return rediscluster.RedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
+                                         decode_responses=True)
 
     def getSlaveConnection(self):
         raise Exception('unsupported')
