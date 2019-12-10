@@ -123,7 +123,7 @@ class Defaults:
 
 class Env:
     RTestInstance = None
-    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof']
+    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof', 'forceTcp']
 
     def compareEnvs(self, env):
         if env is None:
@@ -133,8 +133,9 @@ class Env:
                 return False
         return True
 
-    def __init__(self, testName=None, testDescription=None, module=None, moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
-                 useAof=None):
+    def __init__(self, testName=None, testDescription=None, module=None,
+                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
+                 useAof=None, forceTcp=False):
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 
@@ -149,6 +150,7 @@ class Env:
         self.useAof = useAof if useAof else Defaults.use_aof
         self.verbose = Defaults.verbose
         self.logDir = Defaults.logdir
+        self.forceTcp = forceTcp
 
         self.assertionFailedSummary = []
 
@@ -190,8 +192,12 @@ class Env:
             single_args['port'] = 0
         if Defaults.use_unix:
             single_args['unix'] = True
+        if self.forceTcp and self.env != 'existing-env':
+            single_args['port'] = 0
+            del single_args['unix']
 
         test_fname = self.testName.replace(':', '_')
+
         if self.env == 'oss':
             kwargs.update(single_args)
             return StandardEnv(redisBinaryPath=Defaults.binary,
