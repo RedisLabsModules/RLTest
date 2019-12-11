@@ -194,7 +194,7 @@ class Env:
             single_args['unix'] = True
         if self.forceTcp and self.env != 'existing-env':
             single_args['port'] = 0
-            single_args.pop('unix', default=None)
+            single_args.pop('unix', None)
 
         test_fname = self.testName.replace(':', '_')
 
