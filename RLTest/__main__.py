@@ -208,6 +208,8 @@ parser.add_argument(
 parser.add_argument(
     '--vg-suppressions', default=None, help='path valgrind suppressions file')
 parser.add_argument(
+    '--vg-options', default='--leak-check=full --errors-for-leak-kinds=definite', dest='vg_options', help='valgrind [options]')
+parser.add_argument(
     '--vg-no-leakcheck', action='store_true', help="Don't perform a leak check")
 parser.add_argument(
     '--vg-verbose', action='store_true', help="Don't log valgrind output. "
@@ -302,7 +304,7 @@ class RLTest:
             if self.args.env.endswith('existing-env'):
                 print(Colors.Bred('can not use valgrind with existing-env'))
                 sys.exit(1)
-            vg_debugger = debuggers.Valgrind(suppressions=self.args.vg_suppressions)
+            vg_debugger = debuggers.Valgrind(options=self.args.vg_options, suppressions=self.args.vg_suppressions)
             if self.args.vg_no_leakcheck:
                 vg_debugger.leakcheck = False
             if self.args.no_output_catch or self.args.vg_verbose:
@@ -354,7 +356,6 @@ class RLTest:
         if self.args.collect_only:
             self.loader.print_tests()
             sys.exit(0)
-
         if self.args.use_valgrind or self.args.check_exitcode:
             self.require_clean_exit = True
         else:

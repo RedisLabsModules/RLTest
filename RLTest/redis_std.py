@@ -15,7 +15,7 @@ SLAVE = 'slave'
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
-                 useAof=False, debugger=None, noCatch=False, unix=False):
+                 useAof=False, debugger=None, noCatch=False, unix=False, verbose=False):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
         self.modulePath = os.path.abspath(modulePath) if modulePath else None
@@ -33,7 +33,11 @@ class StandardEnv(object):
         self.useUnix = unix
         self.dbDirPath = dbDirPath
         self.masterProcess = None
+        self.masterExitCode = None
         self.slaveProcess = None
+        self.slaveExitCode = None
+        self.verbose = verbose
+        self.role = MASTER
 
         if port > 0:
             self.port = port
@@ -202,6 +206,8 @@ class StandardEnv(object):
                 # on interactive debugger its expected that then process will not be alive
                 print('\t' + Colors.Bred('process is not alive, might have crash durring test execution, '
                                          'check this out. server id : %s' % str(serverId)))
+                if self.outputFilesFormat is not None and not self.noCatch:
+                    self.verbose_analyse_server_log(role)
             return
         try:
             process.terminate()
@@ -210,8 +216,26 @@ class StandardEnv(object):
                 self.masterExitCode = process.poll()
             else:
                 self.slaveExitCode = process.poll()
-        except OSError:
+        except OSError as e:
+            print('\t' + Colors.Bred('OSError caught while waiting for {0} process to end: {1}'.format(role,e.__str__()) ))
             pass
+
+
+    def verbose_analyse_server_log(self, role):
+        path = "{0}".format(self._getFileName(role, '.log'))
+        if self.dbDirPath is not None:
+            path = "{0}/{1}".format(self.dbDirPath, self._getFileName(role, '.log'))
+        print('\t' + Colors.Bred('check the redis log at: {0}'.format(path)))
+        print('\t' + Colors.Yellow('Printing only REDIS BUG REPORT START and STACK TRACE'))
+        with open(path) as file:
+            bug_report_found = False
+            for line in file:
+                if "REDIS BUG REPORT START" in line:
+                    bug_report_found = True
+                if "------ INFO OUTPUT ------" in line:
+                    break
+                if bug_report_found is True:
+                    print('\t\t' + Colors.Yellow(line.rstrip()))
 
     def stopEnv(self):
         if self.masterProcess:
@@ -278,10 +302,11 @@ class StandardEnv(object):
 
     def checkExitCode(self):
         ret = True
+
         if self.masterExitCode != 0:
             print('\t' + Colors.Bred('bad exit code for serverId %s' % str(self.masterServerId)))
             ret = False
-        if self.useSlaves and self.slaveExitCode != 0:
+        if self.useSlaves and (self.slaveExitCode  is None or self.slaveExitCode != 0):
             print('\t' + Colors.Bred('bad exit code for serverId %s' % str(self.slaveServerId)))
             ret = False
         return ret

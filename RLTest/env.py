@@ -177,6 +177,7 @@ class Env:
             raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
     def getEnvByName(self):
+        verbose = False
         kwargs = {
             'modulePath': self.module,
             'moduleArgs': self.moduleArgs,
@@ -184,7 +185,8 @@ class Env:
             'useAof': self.useAof,
             'dbDirPath': self.logDir,
             'debugger': Defaults.debugger,
-            'noCatch': Defaults.no_capture_output
+            'noCatch': Defaults.no_capture_output,
+            'verbose' : Defaults.verbose
         }
 
         single_args = {}
