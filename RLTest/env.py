@@ -151,6 +151,7 @@ class Env:
         self.verbose = Defaults.verbose
         self.logDir = Defaults.logdir
         self.forceTcp = forceTcp
+        self.debugger = Defaults.debugger
 
         self.assertionFailedSummary = []
 
@@ -257,6 +258,9 @@ class Env:
 
     def isEnterpiseCluster(self):
         return isinstance(self.envRunner, EnterpriseRedisClusterEnv)
+
+    def isDebugger(self):
+        return self.debugger is not None
 
     def _getCallerPosition(self, back_frames):
         frame = inspect.currentframe()
@@ -414,6 +418,10 @@ class Env:
 
     def skip(self):
         raise unittest.SkipTest()
+
+    def skipOnDebugger(self):
+        if self.isDebugger():
+            self.skip()
 
     def skipOnCluster(self):
         if self.isCluster():
