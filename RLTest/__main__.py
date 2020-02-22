@@ -215,6 +215,11 @@ parser.add_argument(
     '--vg-verbose', action='store_true', help="Don't log valgrind output. "
                                               "Output to screen directly")
 parser.add_argument(
+    '--vg-no-fail-on-errors', action='store_true', dest='vg_no_fail_on_errors', help="Dont Fail test when valgrind reported any errors in the run."
+                                                  "By default on RLTest the return value from Valgrind will be used to fail the tests."
+                                                  "Use this option when you wish to dry-run valgrind but not fail the test on valgrind reported errors."
+)
+parser.add_argument(
     '-i', '--interactive-debugger', action='store_const', const=True, default=False,
     help='runs the redis on a debuger (gdb/lldb) interactivly.'
          'debugger interactive mode is only possible on a single process and so unsupported on cluste or with slaves.'
@@ -304,7 +309,8 @@ class RLTest:
             if self.args.env.endswith('existing-env'):
                 print(Colors.Bred('can not use valgrind with existing-env'))
                 sys.exit(1)
-            vg_debugger = debuggers.Valgrind(options=self.args.vg_options, suppressions=self.args.vg_suppressions)
+            vg_debugger = debuggers.Valgrind(options=self.args.vg_options, suppressions=self.args.vg_suppressions, fail_on_errors=not(self.args.vg_no_fail_on_errors), leakcheck=not(self.args.vg_no_leakcheck)
+            )
             if self.args.vg_no_leakcheck:
                 vg_debugger.leakcheck = False
             if self.args.no_output_catch or self.args.vg_verbose:

@@ -194,6 +194,8 @@ class StandardEnv(object):
     def _isAlive(self, process):
         if not process:
             return False
+        # Check if child process has terminated. Set and return returncode
+        # attribute
         if process.poll() is None:
             return True
         return False

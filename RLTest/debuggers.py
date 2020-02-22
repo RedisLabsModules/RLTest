@@ -5,19 +5,21 @@ import os.path
 class Valgrind(object):
     is_interactive = False
 
-    def __init__(self, options, verbose=False, suppressions=None, leakcheck=True, ):
+    def __init__(self, options, suppressions=None, fail_on_errors=True, leakcheck=True ):
         self.options = options
-        self.verbose = verbose
         self.suppressions = suppressions
         self.leakcheck = leakcheck
+        self.fail_on_errors = fail_on_errors
 
     def generate_command(self, logfile=None):
-        cmd = ['valgrind', '--error-exitcode=1']
+        cmd = ['valgrind']
+        if self.fail_on_errors == True:
+            cmd += ['--error-exitcode=1']
         for option in self.options.split():
             cmd += [option]
         if self.leakcheck:
             if '--leak-check=full' not in self.options:
-                    cmd += ['option']
+                    cmd += ['--leak-check=full']
             if '--errors-for-leak-kinds=definite' not in self.options:
                     cmd += ['--errors-for-leak-kinds=definite']
         if self.suppressions:
