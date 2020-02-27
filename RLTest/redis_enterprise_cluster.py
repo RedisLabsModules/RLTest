@@ -97,5 +97,29 @@ class EnterpriseRedisClusterEnv(ExistsRedisEnv):
     def getConnection(self, shardId=1):
         return self.data_base
 
+    # List of nodes that initial bootstrapping can be done from
+    def getMasterNodesList(self):
+        full_master_list = []
+        for shard in self.shards:
+            node_info = {"host": None, "port": None, "unix_socket_path": None, "password": None}
+            node_info["password"] = self.password
+            node_info["host"] = 'localhost'
+            node_info["port"] = shard.getMasterPort()
+            full_master_list.append(node_info)
+        return full_master_list
+
+    # List containing a connection for each of the master nodes
+    def getOSSMasterNodesConnectionList(self):
+        full_master_connection_list = []
+        for shard in self.shards:
+            full_master_connection_list.append(shard.getConnection())
+        return full_master_connection_list
+
     def isUp(self):
         return self.getConnection().ping()
+
+    def isUnixSocket(self):
+        return False
+
+    def isTcp(self):
+        return True

@@ -45,7 +45,7 @@ class ClusterEnv(object):
             for shard in self.shards:
                 con = shard.getConnection()
                 status = con.execute_command('CLUSTER', 'INFO')
-                if 'cluster_state:ok' in status:
+                if b'cluster_state:ok' in status:
                     ok += 1
             if ok == len(self.shards):
                 return
@@ -103,6 +103,24 @@ class ClusterEnv(object):
     def getSlaveConnection(self):
         raise Exception('unsupported')
 
+    # List of nodes that initial bootstrapping can be done from
+    def getMasterNodesList(self):
+        full_master_list = []
+        for shard in self.shards:
+            node_info = {"host": None, "port": None, "unix_socket_path": None, "password": None}
+            node_info["password"] = shard.getPassword()
+            node_info["host"] = 'localhost'
+            node_info["port"] = shard.getMasterPort()
+            full_master_list.append(node_info)
+        return full_master_list
+
+    # List containing a connection for each of the master nodes
+    def getOSSMasterNodesConnectionList(self):
+        full_master_connection_list = []
+        for shard in self.shards:
+            full_master_connection_list.append(shard.getConnection())
+        return full_master_connection_list
+
     def flush(self):
         self.getClusterConnection().flushall()
 
@@ -126,6 +144,12 @@ class ClusterEnv(object):
 
     def isUp(self):
         self.waitCluster()
+        return True
+
+    def isUnixSocket(self):
+        return False
+
+    def isTcp(self):
         return True
 
     def exists(self, val):

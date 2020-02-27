@@ -48,6 +48,8 @@ class MyCmd(cmd.Cmd):
             return
         commands = [c[0] for c in commands_reply]
         for c in commands:
+            if type(c)==bytes:
+                c=c.decode('utf-8')
             setattr(MyCmd, 'do_' + c, self._create_functio(c))
 
     def _exec(self, command):
