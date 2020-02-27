@@ -250,6 +250,14 @@ class Env:
     def getSlaveConnection(self):
         return self.envRunner.getSlaveConnection()
 
+    # List of nodes that initial bootstrapping can be done from
+    def getMasterNodesList(self):
+        return self.envRunner.getMasterNodesList()
+
+    # List containing a connection for each of the master nodes
+    def getOSSMasterNodesConnectionList(self):
+        return self.envRunner.getOSSMasterNodesConnectionList()
+
     def flush(self):
         self.envRunner.flush()
 
@@ -425,6 +433,20 @@ class Env:
 
     def skipOnCluster(self):
         if self.isCluster():
+            self.skip()
+
+    def isUnixSocket(self):
+        return self.envRunner.isUnixSocket()
+
+    def isTcp(self):
+        return self.envRunner.isTcp()
+
+    def skipOnTcp(self):
+        if self.isTcp():
+            self.skip()
+
+    def skipOnUnixSocket(self):
+        if self.isUnixSocket():
             self.skip()
 
     def skipOnEnterpriseCluster(self):

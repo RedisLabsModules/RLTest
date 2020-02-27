@@ -81,6 +81,9 @@ class StandardEnv(object):
     def getMasterPort(self):
         return self.port
 
+    def getPassword(self):
+        return self.password
+
     def getUnixPath(self, role):
         basename = '{}-{}.sock'.format(self.uuid, role)
         return os.path.abspath(os.path.join(self.dbDirPath, basename))
@@ -139,7 +142,10 @@ class StandardEnv(object):
 
     def _printEnvData(self, prefix='', role=MASTER):
         print(Colors.Yellow(prefix + 'pid: %d' % (self.getPid(role))))
-        print(Colors.Yellow(prefix + 'port: %d' % (self.getPort(role))))
+        if self.useUnix:
+            print(Colors.Yellow(prefix + 'unix_socket_path: %s' % (self.getUnixPath(role))))
+        else:
+            print(Colors.Yellow(prefix + 'port: %d' % (self.getPort(role))))
         print(Colors.Yellow(prefix + 'binary path: %s' % (self.redisBinaryPath)))
         print(Colors.Yellow(prefix + 'server id: %d' % (self.getServerId(role))))
         print(Colors.Yellow(prefix + 'using debugger: {}'.format(bool(self.debugger))))
@@ -259,10 +265,26 @@ class StandardEnv(object):
     def getConnection(self, shardId=1):
         return self._getConnection(MASTER)
 
+    # List containing a connection for each of the master nodes
+    def getOSSMasterNodesConnectionList(self):
+        return [self.getConnection()]
+
     def getSlaveConnection(self):
         if self.useSlaves:
             return self._getConnection(SLAVE)
         raise Exception('asked for slave connection but no slave exists')
+
+    # List of nodes that initial bootstrapping can be done from
+    def getMasterNodesList(self):
+        node_info = {"host":None,"port":None,"unix_socket_path":None,"password":None}
+        node_info["password"] = self.password
+        if self.useUnix:
+            node_info["unix_socket_path"]=self.getUnixPath(MASTER)
+
+        else:
+            node_info["host"] = 'localhost'
+            node_info["port"] = self.getPort(MASTER)
+        return [node_info]
 
     def flush(self):
         self.getConnection().flushall()
@@ -318,6 +340,12 @@ class StandardEnv(object):
         if self.useSlaves:
             ret = ret and self._isAlive(self.slaveProcess)
         return ret
+
+    def isUnixSocket(self):
+        return self.useUnix
+
+    def isTcp(self):
+        return not(self.useUnix)
 
     def exists(self, val):
         return self.getConnection().exists(val)

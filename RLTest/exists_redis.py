@@ -41,6 +41,18 @@ class ExistsRedisEnv(object):
     def getSlaveConnection(self):
         raise Exception('asked for slave connection but no slave exists')
 
+    # List of nodes that initial bootstrapping can be done from
+    def getMasterNodesList(self):
+        node_info = {"host": None, "port": None, "unix_socket_path": None, "password": None}
+        node_info["password"] = self.password
+        node_info["host"] = self.host
+        node_info["port"] = self.port
+        return [node_info]
+
+    # List containing a connection for each of the master nodes
+    def getOSSMasterNodesConnectionList(self):
+        return [self.getConnection()]
+
     def flush(self):
         self.getConnection().flushall()
 
@@ -83,3 +95,9 @@ class ExistsRedisEnv(object):
 
     def keys(self, reg):
         return self.getConnection().keys(reg)
+
+    def isUnixSocket(self):
+        return False
+
+    def isTcp(self):
+        return True
