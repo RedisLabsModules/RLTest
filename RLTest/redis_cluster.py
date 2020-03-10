@@ -98,9 +98,11 @@ class ClusterEnv(object):
 
     def getClusterConnection(self):
         if self.useTLS:
-            return rediscluster.RedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
+            return rediscluster.RedisCluster(
+                startup_nodes=self.getMasterNodesList(),
                 decode_responses=True,
-                ssl=self.useTLS,
+                ssl=True,
+                connection_class = rediscluster.connection.SSLClusterConnection,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
                 ssl_cert_reqs='required',
@@ -108,7 +110,7 @@ class ClusterEnv(object):
                 )
         else:
             return rediscluster.RedisCluster(
-                startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
+                startup_nodes=self.getMasterNodesList(),
                 decode_responses=True )
 
     def getSlaveConnection(self):
