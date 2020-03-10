@@ -1,13 +1,22 @@
 name: CI
 
-on: [push, pull_request]
+on:
+ push:
+ pull_request:
+ schedule:
+   cron: "0 18 * * *"
+   branches:
+     - master
 
 jobs:
   build-ubuntu:
+    name: Test on ${{ matrix.os }} with Python ${{ matrix.python }}
+    runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
         platform: [ubuntu-latest, ubuntu-16.04]
-    runs-on: ${{ matrix.platform }}
+        python: ['2.7', '3.6']
+
     steps:
     - uses: actions/checkout@v2
     - name: Install OpenSSL development libraries
@@ -16,7 +25,8 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v1
       with:
-        python-version: '3.6'
+        python-version: ${{ matrix.python }}
+        architecture: x64
 
     - name: Cache pip
       uses: actions/cache@v1
@@ -27,6 +37,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
           ${{ runner.os }}-
+
     - name: Install Python dependencies
       run: pip install -r requirements.txt
 
@@ -38,6 +49,7 @@ jobs:
         ./utils/gen-test-certs.sh
         ./src/redis-server --version
         cd ..
+
     - name: Unit Test with pytest
       run: |
         cd RLTest
