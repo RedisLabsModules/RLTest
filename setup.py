@@ -5,7 +5,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'redis>=3.0.0,<3.5.0',
-        'redis-py-cluster>=1.3.4',
+        'redis-py-cluster @ git+ssh://git@github.com/Grokzen/redis-py-cluster.git@master#egg=redis-py-cluster',
         'psutil'
     ],
     entry_points='''
