@@ -36,8 +36,8 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        apt-get install -y python-setuptools
-        apt-get install -y python3-setuptools
+        sudo apt-get install -y python-setuptools
+        sudo apt-get install -y python3-setuptools
         pip install -r requirements.txt
 
     - name: Unit Test with pytest
