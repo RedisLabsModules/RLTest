@@ -1,0 +1,123 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build-ubuntu:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, ubuntu-16.04]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install OpenSSL development libraries
+      run: sudo apt-get install -y libssl-dev
+
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.6'
+
+    - name: Cache pip
+      uses: actions/cache@v1
+      with:
+        path: ~/.cache/pip # This path is specific to Ubuntu
+        # Look to see if there is a cache hit for the corresponding requirements file
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          ${{ runner.os }}-
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
+
+    - name: Install Redis Server test dependencies
+      run: |
+        git clone git://github.com/antirez/redis.git --branch unstable
+        cd redis
+        make BUILD_TLS=yes
+        ./utils/gen-test-certs.sh
+        ./src/redis-server --version
+        cd ..
+    - name: Unit Test with pytest
+      run: |
+        cd RLTest
+        pip install pytest
+        pytest
+        cd ..
+
+    - name: Install RLTest
+      run: |
+        pip3 install .
+
+    - name: Flow Test OSS TCP
+      run: |
+        cd tests
+        python3 -m RLTest --env oss -v --clear-logs --oss-redis-path ./../redis/src/redis-server
+        cd ..
+
+    - name: Flow Test OSS UNIX SOCKETS
+      run: |
+        cd tests
+        python3 -m RLTest --env oss -v --clear-logs --oss-redis-path ./../redis/src/redis-server
+        cd ..
+
+    - name: Flow Test OSS TCP SLAVES
+      run: |
+        cd tests
+        python3 -m RLTest --env oss -v --unix --clear-logs --oss-redis-path ./../redis/src/redis-server
+        cd ..
+
+    - name: Flow Test OSS-CLUSTER TCP
+      run: |
+        cd tests
+        python3 -m RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ./../redis/src/redis-server
+        cd ..
+
+    - name: Flow Test OSS TCP with TLS
+      run: |
+        cd tests
+        python3 -m RLTest --env oss -v --clear-logs \
+        --oss-redis-path ./../redis/src/redis-server \
+        --tls-cert-file ./../redis/tests/tls/redis.crt \
+        --tls-key-file ./../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ./../redis/tests/tls/ca.crt \
+        --tls
+        cd ..
+
+    - name: Flow Test OSS-CLUSTER with TLS
+      run: |
+        cd tests
+        python3 -m RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
+        --oss-redis-path ./../redis/src/redis-server \
+        --tls-cert-file ./../redis/tests/tls/redis.crt \
+        --tls-key-file ./../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ./../redis/tests/tls/ca.crt \
+        --tls
+        cd ..
+
+    - name: Flow Test OSS-CLUSTER with SLAVES and TLS
+      run: |
+        cd tests
+        python3 -m RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
+        --oss-redis-path ./../redis/src/redis-server \
+        --tls-cert-file ./../redis/tests/tls/redis.crt \
+        --tls-key-file ./../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ./../redis/tests/tls/ca.crt \
+        --tls
+        cd ..
+
+    - name: Generate coverage report
+      run: |
+        cd RLTest
+        pip install pytest
+        pip install pytest-cov
+        pytest --cov=./ --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./RLTest/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true

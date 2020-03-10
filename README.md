@@ -1,9 +1,12 @@
 # RLTest
+![CI](https://github.com/RedisLabsModules/RLTest/workflows/CI/badge.svg)
+
 Redis Labs Test Framework, allow to run tests on redis and modules on verity of environments.
 
 Supported Environment: oss, oss-cluster, enterprise, enterprise-cluster
 
 The framework allow you to write a test without environment specification and then run the test on all supported environment.
+
 
 # Install
 ```

@@ -15,7 +15,7 @@ SLAVE = 'slave'
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
-                 useAof=False, debugger=None, noCatch=False, unix=False, verbose=False):
+                 useAof=False, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None ):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
         self.modulePath = os.path.abspath(modulePath) if modulePath else None
@@ -38,6 +38,10 @@ class StandardEnv(object):
         self.slaveExitCode = None
         self.verbose = verbose
         self.role = MASTER
+        self.useTLS = useTLS
+        self.tlsCertFile = tlsCertFile
+        self.tlsKeyFile = tlsKeyFile
+        self.tlsCaCertFile = tlsCaCertFile
 
         if port > 0:
             self.port = port
@@ -56,6 +60,22 @@ class StandardEnv(object):
 
         if self.has_interactive_debugger:
             assert self.noCatch and not self.useSlaves and not self.clusterEnabled
+
+        if self.useTLS:
+            if self.useUnix:
+                raise ValueError('Unix sockets cannot be used with TLS enabled mode')
+            if self.tlsCertFile is None:
+                raise ValueError('When useTLS option is True tlsCertFile must be defined')
+            if os.path.isfile(self.tlsCertFile) is False:
+                raise ValueError('When useTLS option is True tlsCertFile must exist. specified path {}'.format(self.tlsCertFile))
+            if self.tlsKeyFile is None:
+                raise ValueError('When useTLS option is True tlsKeyFile must be defined')
+            if os.path.isfile(self.tlsKeyFile) is False:
+                raise ValueError('When useTLS option is True tlsKeyFile must exist. specified path {}'.format(self.tlsKeyFile))
+            if self.tlsCaCertFile is None:
+                raise ValueError('When useTLS option is True tlsCaCertFile must be defined')
+            if os.path.isfile(self.tlsCaCertFile) is False:
+                raise ValueError('When useTLS option is True tlsCaCertFile must exist. specified path {}'.format(self.tlsCaCertFile))
 
         if libPath:
             self.libPath = os.path.expanduser(libPath) if libPath.startswith('~/') else libPath
@@ -88,6 +108,15 @@ class StandardEnv(object):
         basename = '{}-{}.sock'.format(self.uuid, role)
         return os.path.abspath(os.path.join(self.dbDirPath, basename))
 
+    def getTLSCertFile(self):
+        return os.path.abspath(self.tlsCertFile)
+
+    def getTLSKeyFile(self):
+        return os.path.abspath(self.tlsKeyFile)
+
+    def getTLSCACertFile(self):
+        return os.path.abspath(self.tlsCaCertFile)
+
     @property
     def has_interactive_debugger(self):
         return self.debugger and self.debugger.is_interactive
@@ -98,8 +127,11 @@ class StandardEnv(object):
             cmdArgs += self.debugger.generate_command(self._getVlgrindFilePath(role) if not self.noCatch else None)
 
         cmdArgs += [self.redisBinaryPath]
-        if self.port > -1:
-            cmdArgs += ['--port', str(self.getPort(role))]
+        if self.port > -1 :
+            if self.useTLS:
+                cmdArgs += ['--port', str(0), '--tls-port', str(self.getPort(role))]
+            else:
+                cmdArgs += ['--port', str(self.getPort(role))]
         else:
             cmdArgs += ['--port', str(0), '--unixsocket', self.getUnixPath(role)]
         if self.modulePath:
@@ -121,10 +153,17 @@ class StandardEnv(object):
         if self.clusterEnabled and role is not SLAVE:
             cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', self._getFileName(role, '.cluster.conf'),
                         '--cluster-node-timeout', '5000']
+            if self.useTLS:
+                cmdArgs += ['--tls-cluster', 'yes']
         if self.useAof:
             cmdArgs += ['--appendonly yes']
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             cmdArgs += ['--aof-use-rdb-preamble', 'yes']
+
+        if self.useTLS:
+            cmdArgs += ['--tls-cert-file', self.getTLSCertFile()]
+            cmdArgs += ['--tls-key-file', self.getTLSKeyFile()]
+            cmdArgs += ['--tls-ca-cert-file', self.getTLSCACertFile()]
 
         return cmdArgs
 
@@ -160,6 +199,10 @@ class StandardEnv(object):
             print(Colors.Yellow(prefix + 'db dir path: %s' % (self.dbDirPath)))
         if self.libPath:
             print(Colors.Yellow(prefix + 'library path: %s' % (self.libPath)))
+        if self.useTLS:
+            print(Colors.Yellow(prefix + 'TLS Cert File: %s' % (self.getTLSCertFile())))
+            print(Colors.Yellow(prefix + 'TLS Key File: %s' % (self.getTLSKeyFile())))
+            print(Colors.Yellow(prefix + 'TLS CA Cert File: %s' % (self.getTLSCACertFile())))
 
     def printEnvData(self, prefix=''):
         print(Colors.Yellow(prefix + 'master:'))
@@ -258,6 +301,15 @@ class StandardEnv(object):
         if self.useUnix:
             return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
                                      password=self.password)
+        elif self.useTLS:
+            return redis.StrictRedis('localhost', self.getPort(role),
+                                     password=self.password,
+                                     ssl=self.useTLS,
+                                     ssl_keyfile=self.getTLSKeyFile(),
+                                     ssl_certfile=self.getTLSCertFile(),
+                                     ssl_cert_reqs='required',
+                                     ssl_ca_certs=self.getTLSCACertFile(),
+                                     )
         else:
             return redis.StrictRedis('localhost', self.getPort(role),
                                      password=self.password)
@@ -346,6 +398,9 @@ class StandardEnv(object):
 
     def isTcp(self):
         return not(self.useUnix)
+
+    def isTLS(self):
+        return self.useTLS
 
     def exists(self, val):
         return self.getConnection().exists(val)

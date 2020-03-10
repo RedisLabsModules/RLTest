@@ -107,6 +107,10 @@ class Defaults:
     re_binary = None
     re_libdir = None
     use_aof = False
+    use_TLS = False
+    tls_cert_file = None
+    tls_key_file = None
+    tls_ca_cert_file = None
     debugger = None
     debug_print = False
     debug_pause = False
@@ -135,7 +139,7 @@ class Env:
 
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
-                 useAof=None, forceTcp=False):
+                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None ):
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 
@@ -152,6 +156,10 @@ class Env:
         self.logDir = Defaults.logdir
         self.forceTcp = forceTcp
         self.debugger = Defaults.debugger
+        self.useTLS = useTLS if useTLS else Defaults.use_TLS
+        self.tlsCertFile = tlsCertFile if tlsCertFile else Defaults.tls_cert_file
+        self.tlsKeyFile = tlsKeyFile if tlsKeyFile else Defaults.tls_key_file
+        self.tlsCaCertFile = tlsCaCertFile if tlsCaCertFile else Defaults.tls_ca_cert_file
 
         self.assertionFailedSummary = []
 
@@ -187,7 +195,11 @@ class Env:
             'dbDirPath': self.logDir,
             'debugger': Defaults.debugger,
             'noCatch': Defaults.no_capture_output,
-            'verbose' : Defaults.verbose
+            'verbose' : Defaults.verbose,
+            'useTLS': self.useTLS,
+            'tlsCertFile': self.tlsCertFile,
+            'tlsKeyFile' : self.tlsKeyFile,
+            'tlsCaCertFile' : self.tlsCaCertFile,
         }
 
         single_args = {}
