@@ -101,7 +101,6 @@ class ClusterEnv(object):
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
                 decode_responses=True,
-                ssl=True,
                 connection_class = rediscluster.connection.SSLClusterConnection,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
