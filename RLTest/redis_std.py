@@ -304,10 +304,10 @@ class StandardEnv(object):
         elif self.useTLS:
             return redis.StrictRedis('localhost', self.getPort(role),
                                      password=self.password,
-                                     ssl=self.useTLS,
+                                     ssl=True,
                                      ssl_keyfile=self.getTLSKeyFile(),
                                      ssl_certfile=self.getTLSCertFile(),
-                                     ssl_cert_reqs='required',
+                                     ssl_cert_reqs=None,
                                      ssl_ca_certs=self.getTLSCACertFile(),
                                      )
         else:

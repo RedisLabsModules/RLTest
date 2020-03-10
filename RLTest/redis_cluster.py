@@ -101,10 +101,10 @@ class ClusterEnv(object):
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
                 decode_responses=True,
-                connection_class = rediscluster.connection.SSLClusterConnection,
+                ssl=True,
+                ssl_cert_reqs=None,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
-                ssl_cert_reqs='required',
                 ssl_ca_certs=self.shards[0].getTLSCACertFile(),
                 )
         else:
