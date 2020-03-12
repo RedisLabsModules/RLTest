@@ -40,17 +40,6 @@ jobs:
         sudo apt-get install -y python3-setuptools
         pip install -r requirements.txt
 
-    - name: Unit Test with pytest
-      run: |
-        cd RLTest
-        pip install pytest
-        pytest
-        cd ..
-
-    - name: Install RLTest
-      run: |
-        pip install .
-
     - name: Install Redis Server test dependencies
       run: |
         git clone git://github.com/antirez/redis.git --branch unstable
@@ -59,6 +48,17 @@ jobs:
         ./utils/gen-test-certs.sh
         ./src/redis-server --version
         cd ..
+
+    - name: Unit Test with pytest
+      run: |
+        cd RLTest
+        pip install pytest
+        REDIS_BINARY=./../redis/src/redis-server pytest
+        cd ..
+
+    - name: Install RLTest
+      run: |
+        pip install .
 
     - name: Flow Test OSS TCP
       run: |
