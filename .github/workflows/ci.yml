@@ -118,6 +118,7 @@ jobs:
         cd ..
 
     - name: Generate coverage report
+      if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
       run: |
         cd RLTest
         pip install pytest
@@ -126,6 +127,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
+      if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./RLTest/coverage.xml
