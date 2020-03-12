@@ -9,7 +9,7 @@ import contextlib
 import warnings
 from .redis_std import StandardEnv
 from .redis_cluster import ClusterEnv
-from .utils import Colors
+from .utils import Colors, expandBinary
 from .Enterprise import EnterpriseClusterEnv
 from .exists_redis import ExistsRedisEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
@@ -156,7 +156,8 @@ class Env:
 
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
-                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None ):
+                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, logDir=None, redisBinaryPath=None,dmcBinaryPath=None,redisEnterpriseBinaryPath=None ):
+
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 
@@ -170,7 +171,7 @@ class Env:
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
         self.useAof = useAof if useAof else Defaults.use_aof
         self.verbose = Defaults.verbose
-        self.logDir = Defaults.logdir
+        self.logDir = logDir if logDir else Defaults.logdir
         self.forceTcp = forceTcp
         self.debugger = Defaults.debugger
         self.useTLS = useTLS if useTLS else Defaults.use_TLS
@@ -178,12 +179,16 @@ class Env:
         self.tlsKeyFile = tlsKeyFile if tlsKeyFile else Defaults.tls_key_file
         self.tlsCaCertFile = tlsCaCertFile if tlsCaCertFile else Defaults.tls_ca_cert_file
 
+        self.redisBinaryPath = expandBinary(redisBinaryPath) if redisBinaryPath else Defaults.binary
+        self.dmcBinaryPath = expandBinary(dmcBinaryPath) if dmcBinaryPath else Defaults.proxy_binary
+        self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
+
         self.assertionFailedSummary = []
 
-        if Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
+        if Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
         else:
-            if Env.RTestInstance.currEnv:
+            if Env.RTestInstance and Env.RTestInstance.currEnv:
                 Env.RTestInstance.currEnv.stop()
             self.envRunner = self.getEnvByName()
 
@@ -197,7 +202,8 @@ class Env:
             print(Colors.Blue('\tenv data:'))
             self.envRunner.printEnvData('\t\t')
 
-        Env.RTestInstance.currEnv = self
+        if Env.RTestInstance:
+            Env.RTestInstance.currEnv = self
 
         if Defaults.debug_pause:
             raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
@@ -211,24 +217,24 @@ class Env:
 
         if self.env == 'oss':
             kwargs.update(single_args)
-            return StandardEnv(redisBinaryPath=Defaults.binary,
+            return StandardEnv(redisBinaryPath=self.redisBinaryPath,
                                outputFilesFormat='%s-' + '%s-oss' % test_fname,
                                **kwargs)
         if self.env == 'enterprise':
             kwargs.update(single_args)
             kwargs['libPath'] = Defaults.re_libdir
-            return StandardEnv(redisBinaryPath=Defaults.re_binary,
+            return StandardEnv(redisBinaryPath=self.redisEnterpriseBinaryPath,
                                outputFilesFormat='%s-' + '%s-oss' % test_fname,
                                **kwargs)
         if self.env == 'enterprise-cluster':
             kwargs['libPath'] = Defaults.re_libdir
             return EnterpriseClusterEnv(shardsCount=self.shardsCount,
-                                        redisBinaryPath=Defaults.re_binary,
+                                        redisBinaryPath=self.redisEnterpriseBinaryPath,
                                         outputFilesFormat='%s-' + '%s-re-cluster' % test_fname,
                                         dmcBinaryPath=Defaults.proxy_binary,
                                         **kwargs)
         if self.env == 'oss-cluster':
-            return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=Defaults.binary,
+            return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=self.redisBinaryPath,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
                               randomizePorts=Defaults.randomize_ports,
                               **kwargs)

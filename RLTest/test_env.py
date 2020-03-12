@@ -1,12 +1,29 @@
+import shutil
+import tempfile
 from unittest import TestCase
 
+from RLTest import Env
+from RLTest.test_common import REDIS_BINARY, REDIS_ENTERPRISE_BINARY, DMC_PROXY_BINARY
 
-class TestEnv(TestCase):
+
+class TestEnvOss(TestCase):
+
+    def setUp(self):
+        # Create a temporary directory
+        self.test_dir = tempfile.mkdtemp()
+        self.env = None
+
+    def tearDown(self):
+        # Remove the directory after the test
+        shutil.rmtree(self.test_dir, ignore_errors=True)
+
     def test_compare_envs(self):
         pass
 
     def test_get_env_by_name(self):
-        pass
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
+                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        oss_std_env = self.env.getEnvByName()
 
     def test_start(self):
         pass
@@ -15,7 +32,9 @@ class TestEnv(TestCase):
         pass
 
     def test_get_env_str(self):
-        pass
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
+                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        assert self.env.getEnvStr() == 'oss'
 
     def test_get_connection(self):
         pass
@@ -33,6 +52,11 @@ class TestEnv(TestCase):
         pass
 
     def test_is_cluster(self):
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
+                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        assert self.env.isCluster() == False
+        self.env = Env(useSlaves=True, env='oss-cluster', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
+                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
         pass
 
     def test_is_enterpise_cluster(self):

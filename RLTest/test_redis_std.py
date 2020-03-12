@@ -4,12 +4,11 @@ import tempfile
 from unittest import TestCase
 
 from RLTest.redis_std import StandardEnv
+from RLTest.test_common import REDIS_BINARY
 
 tlsCertFile = 'redis.crt'
 tlsKeyFile = 'redis.key'
 tlsCaCertFile = 'ca.crt'
-
-REDIS_BINARY = os.environ.get("REDIS_BINARY", "redis-server")
 
 
 class TestStandardEnv(TestCase):

@@ -1,12 +1,10 @@
-import os
 import shutil
 import tempfile
 from unittest import TestCase
 
 from RLTest.env import Defaults
 from RLTest.redis_cluster import ClusterEnv
-
-REDIS_BINARY = os.environ.get("REDIS_BINARY", "redis-server")
+from RLTest.test_common import REDIS_BINARY
 
 
 class TestClusterEnv(TestCase):

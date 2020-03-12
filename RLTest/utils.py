@@ -1,3 +1,5 @@
+import os
+
 import redis
 import time
 
@@ -21,6 +23,11 @@ def wait_for_conn(conn, retries=20, command='PING', shouldBe=True):
         retries -= 1
     raise Exception('Cannot establish connection %s: %s' % (conn, err1))
 
+def expandBinary(binaryPath):
+    if binaryPath is None:
+        return binaryPath
+    return os.path.expanduser(binaryPath) if binaryPath.startswith(
+        '~/') else binaryPath
 
 class Colors(object):
     @staticmethod
