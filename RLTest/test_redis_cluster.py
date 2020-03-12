@@ -1,7 +1,25 @@
+import os
+import shutil
+import tempfile
 from unittest import TestCase
+
+from RLTest.env import Defaults
+from RLTest.redis_cluster import ClusterEnv
+
+REDIS_BINARY = os.environ.get("REDIS_BINARY", "redis-server")
 
 
 class TestClusterEnv(TestCase):
+
+    def setUp(self):
+        # Create a temporary directory
+        self.test_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        pass
+        # Remove the directory after the test
+        shutil.rmtree(self.test_dir)
+
     def test_print_env_data(self):
         pass
 
@@ -13,6 +31,14 @@ class TestClusterEnv(TestCase):
 
     def test_stop_env(self):
         pass
+
+    def test_start_stop_env(self):
+        default_args = Defaults().getKwargs()
+        default_args['dbDirPath'] = self.test_dir
+        cluster_env = ClusterEnv(shardsCount=1, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                 randomizePorts=Defaults.randomize_ports, **default_args)
+        cluster_env.startEnv()
+        cluster_env.stopEnv()
 
     def test_get_connection(self):
         pass

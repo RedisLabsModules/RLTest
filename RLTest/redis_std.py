@@ -159,7 +159,6 @@ class StandardEnv(object):
             cmdArgs += ['--appendonly yes']
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             cmdArgs += ['--aof-use-rdb-preamble', 'yes']
-
         if self.useTLS:
             cmdArgs += ['--tls-cert-file', self.getTLSCertFile()]
             cmdArgs += ['--tls-key-file', self.getTLSKeyFile()]

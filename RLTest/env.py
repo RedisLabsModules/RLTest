@@ -124,6 +124,23 @@ class Defaults:
     use_unix = False
     randomize_ports = False
 
+    def getKwargs(self):
+        kwargs = {
+            'modulePath': self.module,
+            'moduleArgs': self.module_args,
+            'useSlaves': self.use_slaves,
+            'useAof': self.use_aof,
+            'dbDirPath': self.logdir,
+            'debugger': self.debugger,
+            'noCatch': self.no_capture_output,
+            'verbose': self.verbose,
+            'useTLS': self.use_TLS,
+            'tlsCertFile': self.tls_cert_file,
+            'tlsKeyFile': self.tls_key_file,
+            'tlsCaCertFile': self.tls_ca_cert_file,
+        }
+        return kwargs
+
 
 class Env:
     RTestInstance = None
@@ -187,29 +204,8 @@ class Env:
 
     def getEnvByName(self):
         verbose = False
-        kwargs = {
-            'modulePath': self.module,
-            'moduleArgs': self.moduleArgs,
-            'useSlaves': self.useSlaves,
-            'useAof': self.useAof,
-            'dbDirPath': self.logDir,
-            'debugger': Defaults.debugger,
-            'noCatch': Defaults.no_capture_output,
-            'verbose' : Defaults.verbose,
-            'useTLS': self.useTLS,
-            'tlsCertFile': self.tlsCertFile,
-            'tlsKeyFile' : self.tlsKeyFile,
-            'tlsCaCertFile' : self.tlsCaCertFile,
-        }
-
-        single_args = {}
-        if Defaults.randomize_ports:
-            single_args['port'] = 0
-        if Defaults.use_unix:
-            single_args['unix'] = True
-        if self.forceTcp and self.env != 'existing-env':
-            single_args['port'] = 0
-            single_args.pop('unix', None)
+        kwargs = self.getEnvKwargs()
+        single_args = self.getSingleArgs()
 
         test_fname = self.testName.replace(':', '_')
 
@@ -245,6 +241,34 @@ class Env:
                                              shards_port=Defaults.shards_ports,
                                              cluster_address = Defaults.cluster_address,
                                              cluster_credentials= Defaults.cluster_credentials, **kwargs)
+
+    def getSingleArgs(self):
+        single_args = {}
+        if Defaults.randomize_ports:
+            single_args['port'] = 0
+        if Defaults.use_unix:
+            single_args['unix'] = True
+        if self.forceTcp and self.env != 'existing-env':
+            single_args['port'] = 0
+            single_args.pop('unix', None)
+        return single_args
+
+    def getEnvKwargs(self):
+        kwargs = {
+            'modulePath': self.module,
+            'moduleArgs': self.moduleArgs,
+            'useSlaves': self.useSlaves,
+            'useAof': self.useAof,
+            'dbDirPath': self.logDir,
+            'debugger': Defaults.debugger,
+            'noCatch': Defaults.no_capture_output,
+            'verbose': Defaults.verbose,
+            'useTLS': self.useTLS,
+            'tlsCertFile': self.tlsCertFile,
+            'tlsKeyFile': self.tlsKeyFile,
+            'tlsCaCertFile': self.tlsCaCertFile,
+        }
+        return kwargs
 
     def start(self):
         self.envRunner.startEnv()
