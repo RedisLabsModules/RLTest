@@ -32,29 +32,51 @@ class TestStandardEnv(TestCase):
     def test__get_file_name(self):
         pass
 
-    def test__get_vlgrind_file_path(self):
+    def test__get_valgrind_file_path(self):
         pass
 
     def test_get_master_port(self):
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.getMasterPort() == 6379
+        env2 = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                           port=10000)
+        assert env2.getMasterPort() == 10000
         pass
 
     def test_get_password(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.getPassword() == None
+        std_env_pass = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                                   password="passwd")
+        assert std_env_pass.getPassword() == "passwd"
 
     def test_get_unix_path(self):
         pass
 
     def test_get_tlscert_file(self):
-        pass
+        tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', useTLS=True,
+                                  tlsCertFile=os.path.join(self.test_dir, tlsCertFile),
+                                  tlsKeyFile=os.path.join(self.test_dir, tlsKeyFile),
+                                  tlsCaCertFile=os.path.join(self.test_dir, tlsCaCertFile), port=8000)
+        assert os.path.join(self.test_dir, tlsCertFile) == tls_std_env.getTLSCertFile()
 
     def test_get_tlskey_file(self):
-        pass
+        tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', useTLS=True,
+                                  tlsCertFile=os.path.join(self.test_dir, tlsCertFile),
+                                  tlsKeyFile=os.path.join(self.test_dir, tlsKeyFile),
+                                  tlsCaCertFile=os.path.join(self.test_dir, tlsCaCertFile), port=8000)
+        assert os.path.join(self.test_dir, tlsKeyFile) == tls_std_env.getTLSKeyFile()
 
     def test_get_tlscacert_file(self):
-        pass
+        tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', useTLS=True,
+                                  tlsCertFile=os.path.join(self.test_dir, tlsCertFile),
+                                  tlsKeyFile=os.path.join(self.test_dir, tlsKeyFile),
+                                  tlsCaCertFile=os.path.join(self.test_dir, tlsCaCertFile), port=8000)
+        assert os.path.join(self.test_dir, tlsCaCertFile) == tls_std_env.getTLSCACertFile()
 
     def test_has_interactive_debugger(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test')
+        assert std_env.has_interactive_debugger == None
 
     def test_create_cmd_args_default(self):
         std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test')
@@ -84,10 +106,25 @@ class TestStandardEnv(TestCase):
         pass
 
     def test_get_port(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.getPort('master') == 6379
+        std_env_slave = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                                    useSlaves=True)
+        assert std_env_slave.getPort('slave') == 6380
+        env2 = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                           port=10000)
+        assert env2.getPort('master') == 10000
+
+        env2_slave = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                                 useSlaves=True, port=10000)
+        assert env2_slave.getPort('slave') == 10001
 
     def test_get_server_id(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.getServerId('master') == 1
+        std_env_id2 = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                                  serverId=2)
+        assert std_env_id2.getServerId('master') == 2
 
     def test__print_env_data(self):
         pass
@@ -95,19 +132,18 @@ class TestStandardEnv(TestCase):
     def test_print_env_data(self):
         pass
 
-    def test_start_env(self):
-        pass
-
     def test__is_alive(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.isUp() == False
+        std_env.startEnv()
+        assert std_env._isAlive(std_env.masterProcess) == True
+        std_env.stopEnv()
+        assert std_env._isAlive(std_env.masterProcess) == False
 
     def test__stop_process(self):
         pass
 
     def test_verbose_analyse_server_log(self):
-        pass
-
-    def test_stop_env(self):
         pass
 
     def test__get_connection(self):
@@ -141,16 +177,24 @@ class TestStandardEnv(TestCase):
         pass
 
     def test_is_up(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.isUp() == False
+        std_env.startEnv()
+        assert std_env.isUp() == True
+        std_env.stopEnv()
+        assert std_env.isUp() == False
 
     def test_is_unix_socket(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.isUnixSocket() == False
 
     def test_is_tcp(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.isTcp() == True
 
     def test_is_tls(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        assert std_env.isTLS() == False
 
     def test_exists(self):
         pass
