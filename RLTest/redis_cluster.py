@@ -54,7 +54,7 @@ class ClusterEnv(object):
         raise RuntimeError("Cluster OK wait loop timed out after %s seconds" % timeout_sec)
 
     def startEnv(self):
-        if self.envIsUp:
+        if self.envIsUp == True:
             return  # env is already up
         try:
             for shard in self.shards:
@@ -155,8 +155,7 @@ class ClusterEnv(object):
         return True
 
     def isUp(self):
-        self.waitCluster()
-        return True
+        self.envIsUp
 
     def isUnixSocket(self):
         return False
