@@ -120,17 +120,16 @@ jobs:
     - name: Generate coverage report
       if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
       run: |
-        cd tests/unit
         pip install pytest
         pip install pytest-cov
-        REDIS_BINARY=./../../redis/src/redis-server pytest --cov=./ --cov-report=xml
+        REDIS_BINARY=./redis/src/redis-server pytest --cov-config=.coveragerc --cov-report=xml --cov=RLTest tests/unit
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./tests/unit/coverage.xml
+        file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: true
