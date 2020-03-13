@@ -63,35 +63,35 @@ jobs:
     - name: Flow Test OSS TCP
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ./../redis/src/redis-server
+        RLTest --env oss -v --clear-logs --oss-redis-path ./../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS UNIX SOCKETS
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ./../redis/src/redis-server
+        RLTest --env oss -v --clear-logs --oss-redis-path ./../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS TCP SLAVES
       run: |
         cd tests/flow
-        RLTest --env oss -v --unix --clear-logs --oss-redis-path ./../redis/src/redis-server
+        RLTest --env oss -v --unix --clear-logs --oss-redis-path ./../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS-CLUSTER TCP
       run: |
         cd tests/flow
-        RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ./../redis/src/redis-server
+        RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ./../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS TCP with TLS
       run: |
         cd tests/flow
         RLTest --env oss -v --clear-logs \
-        --oss-redis-path ./../redis/src/redis-server \
-        --tls-cert-file ./../redis/tests/tls/redis.crt \
-        --tls-key-file ./../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ./../redis/tests/tls/ca.crt \
+        --oss-redis-path ./../../redis/src/redis-server \
+        --tls-cert-file ./../../redis/tests/tls/redis.crt \
+        --tls-key-file ./../../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ./../../redis/tests/tls/ca.crt \
         --tls
         cd ..
 
@@ -99,10 +99,10 @@ jobs:
       run: |
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
-        --oss-redis-path ./../redis/src/redis-server \
-        --tls-cert-file ./../redis/tests/tls/redis.crt \
-        --tls-key-file ./../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ./../redis/tests/tls/ca.crt \
+        --oss-redis-path ./../../redis/src/redis-server \
+        --tls-cert-file ./../../redis/tests/tls/redis.crt \
+        --tls-key-file ./../../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ./../../redis/tests/tls/ca.crt \
         --tls
         cd ..
 
@@ -110,10 +110,10 @@ jobs:
       run: |
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
-        --oss-redis-path ./../redis/src/redis-server \
-        --tls-cert-file ./../redis/tests/tls/redis.crt \
-        --tls-key-file ./../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ./../redis/tests/tls/ca.crt \
+        --oss-redis-path ./../../redis/src/redis-server \
+        --tls-cert-file ./../../redis/tests/tls/redis.crt \
+        --tls-key-file ./../../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ./../../redis/tests/tls/ca.crt \
         --tls
         cd ../..
 
@@ -123,14 +123,14 @@ jobs:
         cd tests/unit
         pip install pytest
         pip install pytest-cov
-        REDIS_BINARY=./../redis/src/redis-server pytest --cov=./ --cov-report=xml
+        REDIS_BINARY=./../../redis/src/redis-server pytest --cov=./ --cov-report=xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./RLTest/coverage.xml
+        file: ./tests/unit/coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: true
