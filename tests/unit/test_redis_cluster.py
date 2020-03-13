@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from RLTest.env import Defaults
 from RLTest.redis_cluster import ClusterEnv
-from RLTest.test_common import REDIS_BINARY
+from tests.unit.test_common import REDIS_BINARY
 
 
 class TestClusterEnv(TestCase):

@@ -3,7 +3,7 @@ import tempfile
 from unittest import TestCase
 
 from RLTest import Env
-from RLTest.test_common import REDIS_BINARY, REDIS_ENTERPRISE_BINARY, DMC_PROXY_BINARY
+from tests.unit.test_common import REDIS_BINARY, REDIS_ENTERPRISE_BINARY, DMC_PROXY_BINARY
 
 
 class TestEnvOss(TestCase):
