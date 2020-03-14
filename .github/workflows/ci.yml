@@ -16,7 +16,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install OpenSSL development libraries
-      run: sudo apt-get install -y libssl-dev
+      run: |
+        sudo apt-get -qq update
+        sudo apt-get install -y libssl-dev
 
     - name: Setup Python
       uses: actions/setup-python@v1
@@ -65,35 +67,35 @@ jobs:
     - name: Flow Test OSS TCP
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ./../../redis/src/redis-server
+        RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS UNIX SOCKETS
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ./../../redis/src/redis-server
+        RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS TCP SLAVES
       run: |
         cd tests/flow
-        RLTest --env oss -v --unix --clear-logs --oss-redis-path ./../../redis/src/redis-server
+        RLTest --env oss -v --unix --clear-logs --oss-redis-path ../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS-CLUSTER TCP
       run: |
         cd tests/flow
-        RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ./../../redis/src/redis-server
+        RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ../../redis/src/redis-server
         cd ..
 
     - name: Flow Test OSS TCP with TLS
       run: |
         cd tests/flow
         RLTest --env oss -v --clear-logs \
-        --oss-redis-path ./../../redis/src/redis-server \
-        --tls-cert-file ./../../redis/tests/tls/redis.crt \
-        --tls-key-file ./../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ./../../redis/tests/tls/ca.crt \
+        --oss-redis-path ../../redis/src/redis-server \
+        --tls-cert-file ../../redis/tests/tls/redis.crt \
+        --tls-key-file ../../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
         --tls
         cd ..
 
@@ -101,10 +103,10 @@ jobs:
       run: |
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
-        --oss-redis-path ./../../redis/src/redis-server \
-        --tls-cert-file ./../../redis/tests/tls/redis.crt \
-        --tls-key-file ./../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ./../../redis/tests/tls/ca.crt \
+        --oss-redis-path ../../redis/src/redis-server \
+        --tls-cert-file ../../redis/tests/tls/redis.crt \
+        --tls-key-file ../../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
         --tls
         cd ..
 
@@ -112,10 +114,10 @@ jobs:
       run: |
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
-        --oss-redis-path ./../../redis/src/redis-server \
-        --tls-cert-file ./../../redis/tests/tls/redis.crt \
-        --tls-key-file ./../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ./../../redis/tests/tls/ca.crt \
+        --oss-redis-path ../../redis/src/redis-server \
+        --tls-cert-file ../../redis/tests/tls/redis.crt \
+        --tls-key-file ../../redis/tests/tls/redis.key \
+        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
         --tls
         cd ../..
 
