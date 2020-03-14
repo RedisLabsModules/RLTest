@@ -2,9 +2,6 @@ import shutil
 import tempfile
 from unittest import TestCase
 
-from RLTest.env import Defaults
-from RLTest.redis_enterprise_cluster import EnterpriseRedisClusterEnv
-
 
 class TestEnterpriseRedisClusterEnv(TestCase):
 
@@ -43,4 +40,3 @@ class TestEnterpriseRedisClusterEnv(TestCase):
 
     def test_is_tcp(self):
         pass
-

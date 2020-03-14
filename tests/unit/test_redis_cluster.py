@@ -5,11 +5,15 @@ from unittest import TestCase
 from RLTest.env import Defaults
 from RLTest.redis_cluster import ClusterEnv
 from tests.unit.test_common import REDIS_BINARY
+from tests.unit.test_common import TLS_CERT, TLS_KEY, TLS_CACERT
 
 
 class TestClusterEnv(TestCase):
 
     def setUp(self):
+        # Create a temporary directory
+        self.test_dir = tempfile.mkdtemp()
+
         # Create a temporary directory
         self.test_dir = tempfile.mkdtemp()
 
@@ -35,6 +39,8 @@ class TestClusterEnv(TestCase):
         default_args['dbDirPath'] = self.test_dir
         cluster_env = ClusterEnv(shardsCount=1, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
                                  randomizePorts=Defaults.randomize_ports, **default_args)
+        cluster_env.startEnv()
+        # check that calling twice does not affect
         cluster_env.startEnv()
         cluster_env.stopEnv()
 
@@ -66,16 +72,48 @@ class TestClusterEnv(TestCase):
         pass
 
     def test_is_up(self):
-        pass
+        default_args = Defaults().getKwargs()
+        default_args['dbDirPath'] = self.test_dir
+        cluster_env = ClusterEnv(shardsCount=1, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                 randomizePorts=Defaults.randomize_ports, **default_args)
+        cluster_env.startEnv()
+        cluster_env.stopEnv()
 
     def test_is_unix_socket(self):
-        pass
+        default_args = Defaults().getKwargs()
+        default_args['dbDirPath'] = self.test_dir
+        cluster_env = ClusterEnv(shardsCount=1, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                 randomizePorts=Defaults.randomize_ports, **default_args)
+        cluster_env.startEnv()
+        assert cluster_env.isUnixSocket() == False
+        cluster_env.stopEnv()
 
     def test_is_tcp(self):
-        pass
+        default_args = Defaults().getKwargs()
+        default_args['dbDirPath'] = self.test_dir
+        cluster_env = ClusterEnv(shardsCount=1, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                 randomizePorts=Defaults.randomize_ports, **default_args)
+        cluster_env.startEnv()
+        assert cluster_env.isTcp() == True
+        cluster_env.stopEnv()
 
     def test_is_tls(self):
-        pass
+        default_args = Defaults().getKwargs()
+        default_args['dbDirPath'] = self.test_dir
+        cluster_env = ClusterEnv(shardsCount=1, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                 randomizePorts=Defaults.randomize_ports, **default_args)
+        # cluster_env.startEnv()
+        assert cluster_env.isTLS() == False
+        cluster_env.stopEnv()
+        default_args['useTLS'] = True
+        default_args['tlsCertFile'] = TLS_CERT
+        default_args['tlsKeyFile'] = TLS_KEY
+        default_args['tlsCaCertFile'] = TLS_CACERT
+        tls_cluster_env = ClusterEnv(shardsCount=1, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                     randomizePorts=Defaults.randomize_ports, **default_args)
+        tls_cluster_env.startEnv()
+        assert tls_cluster_env.isTLS() == True
+        tls_cluster_env.stopEnv()
 
     def test_exists(self):
         pass

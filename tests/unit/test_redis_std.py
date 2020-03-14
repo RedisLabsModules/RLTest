@@ -4,11 +4,11 @@ import tempfile
 from unittest import TestCase
 
 from RLTest.redis_std import StandardEnv
-from tests.unit.test_common import REDIS_BINARY
+from tests.unit.test_common import REDIS_BINARY, TLS_CERT, TLS_KEY, TLS_CACERT
 
-tlsCertFile = 'redis.crt'
-tlsKeyFile = 'redis.key'
-tlsCaCertFile = 'ca.crt'
+tlsCertFile = 'fake_redis.crt'
+tlsKeyFile = 'fake_redis.key'
+tlsCaCertFile = 'fake_ca.crt'
 
 
 class TestStandardEnv(TestCase):
@@ -193,7 +193,17 @@ class TestStandardEnv(TestCase):
 
     def test_is_tls(self):
         std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        std_env.startEnv()
         assert std_env.isTLS() == False
+        std_env.stopEnv()
+        tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                                  useTLS=True,
+                                  tlsCertFile=TLS_CERT,
+                                  tlsKeyFile=TLS_KEY,
+                                  tlsCaCertFile=TLS_CACERT)
+        tls_std_env.startEnv()
+        assert tls_std_env.isTLS() == True
+        tls_std_env.stopEnv()
 
     def test_exists(self):
         pass

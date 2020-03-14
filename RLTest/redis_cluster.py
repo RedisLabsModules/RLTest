@@ -119,11 +119,8 @@ class ClusterEnv(object):
     def getMasterNodesList(self):
         full_master_list = []
         for shard in self.shards:
-            node_info = {"host": None, "port": None, "unix_socket_path": None, "password": None}
-            node_info["password"] = shard.getPassword()
-            node_info["host"] = 'localhost'
-            node_info["port"] = shard.getMasterPort()
-            full_master_list.append(node_info)
+            node_info_list = shard.getMasterNodesList()
+            full_master_list.append(node_info_list[0])
         return full_master_list
 
     # List containing a connection for each of the master nodes

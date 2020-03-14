@@ -2,7 +2,6 @@ import shutil
 import tempfile
 from unittest import TestCase
 
-from RLTest.Enterprise import EnterpriseClusterEnv
 from RLTest.env import Defaults
 from tests.unit.test_common import DMC_PROXY_BINARY, REDIS_BINARY
 
