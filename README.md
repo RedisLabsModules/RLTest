@@ -1,5 +1,6 @@
 # RLTest
 ![CI](https://github.com/RedisLabsModules/RLTest/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/RedisLabsModules/RLTest/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisLabsModules/RLTest)
 
 Redis Labs Test Framework, allow to run tests on redis and modules on verity of environments.
 
