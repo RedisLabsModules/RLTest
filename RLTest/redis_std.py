@@ -80,7 +80,7 @@ class StandardEnv(object):
                     'When useTLS option is True tlsKeyFile must exist. specified path {}'.format(self.tlsKeyFile))
             if self.tlsCaCertFile is None:
                 raise ValueError('When useTLS option is True tlsCaCertFile must be defined')
-            if os.path.isfile(self.tlsCaCertFile) is False:
+            if not os.path.isfile(self.tlsCaCertFile):
                 raise ValueError(
                     'When useTLS option is True tlsCaCertFile must exist. specified path {}'.format(self.tlsCaCertFile))
 
