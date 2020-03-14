@@ -250,6 +250,17 @@ parser.add_argument(
     '--collect-only', action='store_true',
     help='Collect the tests and exit')
 
+parser.add_argument('--tls', help='Enable TLS Support and disable the non-TLS port completely. TLS connections will be available at the default non-TLS ports.',
+                    default=False, action='store_true')
+
+parser.add_argument(
+    '--tls-cert-file', default=None, help='/path/to/redis.crt')
+
+parser.add_argument(
+    '--tls-key-file', default=None, help='/path/to/redis.key')
+
+parser.add_argument(
+    '--tls-ca-cert-file', default=None, help='/path/to/ca.crt')
 
 class EnvScopeGuard:
     def __init__(self, runner):
@@ -354,6 +365,10 @@ class RLTest:
         Defaults.external_addr = self.args.existing_env_addr
         Defaults.use_unix = self.args.unix
         Defaults.randomize_ports = self.args.randomize_ports
+        Defaults.use_TLS = self.args.tls
+        Defaults.tls_cert_file = self.args.tls_cert_file
+        Defaults.tls_key_file = self.args.tls_key_file
+        Defaults.tls_ca_cert_file = self.args.tls_ca_cert_file
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 

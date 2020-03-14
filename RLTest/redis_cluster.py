@@ -1,6 +1,5 @@
 from __future__ import print_function
 from .redis_std import StandardEnv
-import redis
 import rediscluster
 import time
 from RLTest.utils import Colors
@@ -14,6 +13,7 @@ class ClusterEnv(object):
         self.moduleArgs = kwargs['moduleArgs']
         self.shardsCount = kwargs.pop('shardsCount')
         useSlaves = kwargs.get('useSlaves', False)
+        self.useTLS = kwargs['useTLS']
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
@@ -54,7 +54,7 @@ class ClusterEnv(object):
         raise RuntimeError("Cluster OK wait loop timed out after %s seconds" % timeout_sec)
 
     def startEnv(self):
-        if self.envIsUp:
+        if self.envIsUp == True:
             return  # env is already up
         try:
             for shard in self.shards:
@@ -97,8 +97,20 @@ class ClusterEnv(object):
         return self.shards[shardId - 1].getConnection()
 
     def getClusterConnection(self):
-        return rediscluster.RedisCluster(startup_nodes=[{'host': 'localhost', 'port': self.shards[0].getMasterPort()}],
-                                         decode_responses=True)
+        if self.useTLS:
+            return rediscluster.RedisCluster(
+                startup_nodes=self.getMasterNodesList(),
+                decode_responses=True,
+                ssl=True,
+                ssl_cert_reqs=None,
+                ssl_keyfile=self.shards[0].getTLSKeyFile(),
+                ssl_certfile=self.shards[0].getTLSCertFile(),
+                ssl_ca_certs=self.shards[0].getTLSCACertFile(),
+                )
+        else:
+            return rediscluster.RedisCluster(
+                startup_nodes=self.getMasterNodesList(),
+                decode_responses=True )
 
     def getSlaveConnection(self):
         raise Exception('unsupported')
@@ -107,11 +119,8 @@ class ClusterEnv(object):
     def getMasterNodesList(self):
         full_master_list = []
         for shard in self.shards:
-            node_info = {"host": None, "port": None, "unix_socket_path": None, "password": None}
-            node_info["password"] = shard.getPassword()
-            node_info["host"] = 'localhost'
-            node_info["port"] = shard.getMasterPort()
-            full_master_list.append(node_info)
+            node_info_list = shard.getMasterNodesList()
+            full_master_list.append(node_info_list[0])
         return full_master_list
 
     # List containing a connection for each of the master nodes
@@ -143,14 +152,16 @@ class ClusterEnv(object):
         return True
 
     def isUp(self):
-        self.waitCluster()
-        return True
+        self.envIsUp
 
     def isUnixSocket(self):
         return False
 
     def isTcp(self):
         return True
+
+    def isTLS(self):
+        return self.useTLS
 
     def exists(self, val):
         return self.getClusterConnection().exists(val)
