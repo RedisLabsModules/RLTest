@@ -13,20 +13,23 @@ class CcsMock():
     def __init__(self, redisBinaryPath, proxyPort, directory=None, useSlaves=False, password=None, libPath=None):
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith('~/') else redisBinaryPath
         self.useSlaves = useSlaves
-        self.args = self.redisBinaryPath.split()
         self.directory = directory
-        if self.directory:
-            self.args += ['--dir', self.directory]
-        self.args += ['--port', '0',
-                      '--unixsocket', self.CCS_UNIX_SOCKET_DEFAULT_PATH,
-                      '--dbfilename', self.CCS_DB_RDB_FILE_NAME,
-                      '--logfile', self.CCS_LOG_FILE_NAME]
+        self.generateArgs()
         self.libPath = os.path.expanduser(libPath) if libPath.startswith('~/') else libPath
         self.env = {}
         if self.libPath:
             self.env['LD_LIBRARY_PATH'] = self.libPath
         self.password = password
         self.proxyPort = proxyPort
+
+    def generateArgs(self):
+        self.args = self.redisBinaryPath.split()
+        if self.directory:
+            self.args += ['--dir', self.directory]
+        self.args += ['--port', '0',
+                      '--unixsocket', self.CCS_UNIX_SOCKET_DEFAULT_PATH,
+                      '--dbfilename', self.CCS_DB_RDB_FILE_NAME,
+                      '--logfile', self.CCS_LOG_FILE_NAME]
 
     def Start(self, shards, bdb_fields=None, endpoint_ccs_params=None, legacy_hash_slots=True, extra_keys=None):
         self.setup(shards, bdb_fields, endpoint_ccs_params, legacy_hash_slots, extra_keys)
