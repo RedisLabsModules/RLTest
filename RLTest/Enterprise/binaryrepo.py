@@ -10,15 +10,15 @@ from RLTest.utils import Colors
 
 OS_NAME = platform.dist()[2]
 REPO_ROOT = os.path.expanduser('~/.RLTest')
-ENTERPRISE_VERSION = '5.2.0'
-ENTERPRISE_SUB_VERSION = '14'
+ENTERPRISE_VERSION = '5.4.14'
+ENTERPRISE_SUB_VERSION = '25'
+
 ENTERPRISE_TAR_FILE_NAME = 'redislabs-%s-%s-%s-amd64.tar' % (
     ENTERPRISE_VERSION, ENTERPRISE_SUB_VERSION, OS_NAME)
-ENTERPRISE_URL = 'https://s3.amazonaws.com/rlec-downloads/%s/%s' % (
+ENTERPRISE_URL = 'https://s3.amazonaws.com/redis-enterprise-software-downloads/%s/%s' % (
     ENTERPRISE_VERSION, ENTERPRISE_TAR_FILE_NAME)
 DEBIAN_PKG_NAME = 'redislabs_%s-%s~%s_amd64.deb' % (
         ENTERPRISE_VERSION, ENTERPRISE_SUB_VERSION, OS_NAME)
-
 
 class BinaryRepository(object):
     """
@@ -36,17 +36,22 @@ class BinaryRepository(object):
         print(Colors.Yellow('creating RLTest working dir: %s' % self.root))
         try:
             shutil.rmtree(self.root)
-            os.makedirs(self.root)
-        except Exception:
+        except Exception as e:
             pass
 
-        print(Colors.Yellow('download binaries'))
+        try:
+            os.makedirs(self.root)
+        except Exception as e:
+            print(Colors.Bred('Error creating RLTest working dir %' % e))
+            pass
+
+        print(Colors.Yellow('downloading binary from %s' % ENTERPRISE_URL))
         args = ['wget', self.url, '-O', os.path.join(self.root, binariesName)]
-        process = subprocess.Popen(args=args, stdout=sys.stdout,
-                                        stderr=sys.stdout)
+        process = subprocess.Popen(args=args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         process.wait()
         if process.poll() != 0:
-            raise Exception('failed to download enterprise binaries from s3')
+            stdout, stderr = process.communicate()
+            raise Exception('failed to download enterprise binaries from s3. Error %s' % stderr )
 
         print(Colors.Yellow('extracting binaries'))
 
