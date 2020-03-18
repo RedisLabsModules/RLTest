@@ -81,7 +81,7 @@ class TestStandardEnv(TestCase):
         std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test')
         role = 'master'
         cmd_args = std_env.createCmdArgs(role)
-        assert [REDIS_BINARY, '--port', '6379', '--logfile', std_env._getFileName(role, '.log'), '--dbfilename',
+        assert [REDIS_BINARY, '--protected-mode', 'no','--port', '6379', '--logfile', std_env._getFileName(role, '.log'), '--dbfilename',
                 std_env._getFileName(role, '.rdb')] == cmd_args
 
     def test_create_cmd_args_tls(self):
@@ -92,7 +92,7 @@ class TestStandardEnv(TestCase):
                                   tlsCaCertFile=os.path.join(self.test_dir, tlsCaCertFile), port=8000)
         role = 'master'
         cmd_args = tls_std_env.createCmdArgs(role)
-        assert [REDIS_BINARY, '--port', '0', '--tls-port', '{}'.format(port), '--logfile',
+        assert [REDIS_BINARY, '--protected-mode', 'no', '--port', '0', '--tls-port', '{}'.format(port), '--logfile',
                 tls_std_env._getFileName(role, '.log'), '--dbfilename',
                 tls_std_env._getFileName(role, '.rdb'), '--tls-cert-file', os.path.join(self.test_dir, tlsCertFile),
                 '--tls-key-file', os.path.join(self.test_dir, tlsKeyFile), '--tls-ca-cert-file',

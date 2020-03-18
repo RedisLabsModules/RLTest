@@ -13,6 +13,7 @@ class ClusterEnv(object):
         self.moduleArgs = kwargs['moduleArgs']
         self.shardsCount = kwargs.pop('shardsCount')
         useSlaves = kwargs.get('useSlaves', False)
+        self.bootstrapCluster = kwargs.pop('bootstrapCluster')
         self.useTLS = kwargs['useTLS']
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
@@ -63,7 +64,11 @@ class ClusterEnv(object):
             for shard in self.shards:
                 shard.stopEnv()
             raise
+        if self.bootstrapCluster:
+            self.bootstrap_cluster()
+        self.envIsUp = True
 
+    def bootstrap_cluster(self):
         slots_per_node = int(16384 / len(self.shards)) + 1
         for i, shard in enumerate(self.shards):
             con = shard.getConnection()
@@ -79,14 +84,12 @@ class ClusterEnv(object):
                 con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x) for x in range(start_slot, end_slot)))
             except Exception:
                 pass
-
         self.waitCluster()
         for shard in self.shards:
             try:
                 shard.getConnection().execute_command('FT.CLUSTERREFRESH')
             except Exception:
                 pass
-        self.envIsUp = True
 
     def stopEnv(self):
         for shard in self.shards:

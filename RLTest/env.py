@@ -123,6 +123,7 @@ class Defaults:
     external_addr = 'localhost:6379'
     use_unix = False
     randomize_ports = False
+    bootstrap_cluster = True
 
     def getKwargs(self):
         kwargs = {
@@ -130,6 +131,7 @@ class Defaults:
             'moduleArgs': self.module_args,
             'useSlaves': self.use_slaves,
             'useAof': self.use_aof,
+            'bootstrapCluster': self.bootstrap_cluster,
             'dbDirPath': self.logdir,
             'debugger': self.debugger,
             'noCatch': self.no_capture_output,
@@ -156,7 +158,7 @@ class Env:
 
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
-                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, logDir=None, redisBinaryPath=None,dmcBinaryPath=None,redisEnterpriseBinaryPath=None ):
+                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, logDir=None, redisBinaryPath=None,dmcBinaryPath=None,redisEnterpriseBinaryPath=None, bootstrapCluster=None ):
 
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
@@ -178,6 +180,7 @@ class Env:
         self.tlsCertFile = tlsCertFile if tlsCertFile else Defaults.tls_cert_file
         self.tlsKeyFile = tlsKeyFile if tlsKeyFile else Defaults.tls_key_file
         self.tlsCaCertFile = tlsCaCertFile if tlsCaCertFile else Defaults.tls_ca_cert_file
+        self.bootstrapCluster = bootstrapCluster if bootstrapCluster else Defaults.bootstrap_cluster
 
         self.redisBinaryPath = expandBinary(redisBinaryPath) if redisBinaryPath else Defaults.binary
         self.dmcBinaryPath = expandBinary(dmcBinaryPath) if dmcBinaryPath else Defaults.proxy_binary
@@ -236,7 +239,7 @@ class Env:
         if self.env == 'oss-cluster':
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=self.redisBinaryPath,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
-                              randomizePorts=Defaults.randomize_ports,
+                              randomizePorts=Defaults.randomize_ports, bootstrapCluster=self.bootstrapCluster,
                               **kwargs)
 
         if self.env == 'existing-env':

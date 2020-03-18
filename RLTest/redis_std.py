@@ -135,6 +135,7 @@ class StandardEnv(object):
             cmdArgs += self.debugger.generate_command(self._getValgrindFilePath(role) if not self.noCatch else None)
 
         cmdArgs += [self.redisBinaryPath]
+        cmdArgs += ['--protected-mode', 'no']
         if self.port > -1:
             if self.useTLS:
                 cmdArgs += ['--port', str(0), '--tls-port', str(self.getPort(role))]

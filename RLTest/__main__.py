@@ -199,6 +199,10 @@ parser.add_argument(
     help='use aof instead of rdb')
 
 parser.add_argument(
+    '--no-bootstrap', action='store_const', const=True, default=False,
+    help='do not bootstap cluster environments')
+
+parser.add_argument(
     '--debug-print', action='store_const', const=True, default=False,
     help='print debug messages')
 
@@ -369,6 +373,7 @@ class RLTest:
         Defaults.tls_cert_file = self.args.tls_cert_file
         Defaults.tls_key_file = self.args.tls_key_file
         Defaults.tls_ca_cert_file = self.args.tls_ca_cert_file
+        Defaults.bootstrap_cluster = not self.args.no_bootstrap
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 
