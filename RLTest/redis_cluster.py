@@ -15,6 +15,7 @@ class ClusterEnv(object):
         useSlaves = kwargs.get('useSlaves', False)
         self.bootstrapCluster = kwargs.pop('bootstrapCluster')
         self.useTLS = kwargs['useTLS']
+        self.cluster_ip = "10.3.0.22"
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
@@ -73,7 +74,7 @@ class ClusterEnv(object):
         for i, shard in enumerate(self.shards):
             con = shard.getConnection()
             for s in self.shards:
-                con.execute_command('CLUSTER', 'MEET', '127.0.0.1', s.getMasterPort())
+                con.execute_command('CLUSTER', 'MEET', '{}'.format(self.cluster_ip), s.getMasterPort())
 
             start_slot = i * slots_per_node
             end_slot = start_slot + slots_per_node
