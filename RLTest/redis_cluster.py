@@ -152,7 +152,7 @@ class ClusterEnv(object):
         return True
 
     def isUp(self):
-        self.envIsUp
+        return self.envIsUp or self.waitCluster()
 
     def isUnixSocket(self):
         return False
