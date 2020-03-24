@@ -15,7 +15,7 @@ class ClusterEnv(object):
         useSlaves = kwargs.get('useSlaves', False)
         self.bootstrapCluster = kwargs.pop('bootstrapCluster')
         self.useTLS = kwargs['useTLS']
-        self.cluster_ip = "10.3.0.22"
+        self.cluster_ip = "10.3.0.50"
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
