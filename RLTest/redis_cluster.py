@@ -107,7 +107,7 @@ class ClusterEnv(object):
             pool = ClusterConnectionPool(
                 startup_nodes=self.getMasterNodesList(),
                 connection_class=SSLClusterConnection,
-                ssl=True,
+                # ssl=True,
                 ssl_cert_reqs=None,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
