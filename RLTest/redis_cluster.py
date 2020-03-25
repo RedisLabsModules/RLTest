@@ -101,22 +101,19 @@ class ClusterEnv(object):
 
     def getClusterConnection(self):
         if self.useTLS:
+            # workaround for error on
+            # got an unexpected keyword argument 'ssl'
+            # we enforce the connection_class instead of setting ssl=True
             pool = ClusterConnectionPool(
                 startup_nodes=self.getMasterNodesList(),
                 connection_class=SSLClusterConnection,
-                # ssl=True,
                 ssl_cert_reqs=None,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
                 ssl_ca_certs=self.shards[0].getTLSCACertFile(),
             )
-            # workaround for error on
-            # got an unexpected keyword argument 'ssl'
-            # we enforce the connection_class instead of setting ssl=True
             if pool.connection_kwargs:
                 pool.connection_kwargs.pop('ssl', None)
-                # if 'ssl' in pool.connection_kwargs:
-                #     pool.connection_kwargs.pop('ssl')
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
                 connection_pool=pool
