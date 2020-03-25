@@ -105,7 +105,10 @@ class ClusterEnv(object):
                 startup_nodes=self.getMasterNodesList(),
                 decode_responses=True,
                 connection_class=SSLClusterConnection,
-                ssl=True,
+                # workaround for error on
+                # got an unexpected keyword argument 'ssl'
+                # we enforce the connection_class instead of setting ssl=True
+                # ssl=True,
                 ssl_cert_reqs=None,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
