@@ -1,4 +1,7 @@
 from __future__ import print_function
+
+from rediscluster.connection import SSLClusterConnection
+
 from .redis_std import StandardEnv
 import rediscluster
 import time
@@ -101,6 +104,7 @@ class ClusterEnv(object):
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
                 decode_responses=True,
+                connection_class=SSLClusterConnection,
                 ssl=True,
                 ssl_cert_reqs=None,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
