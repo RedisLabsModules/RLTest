@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from rediscluster.connection import SSLClusterConnection
+from rediscluster.connection import SSLClusterConnection, ClusterConnectionPool
 
 from .redis_std import StandardEnv
 import rediscluster
@@ -101,18 +101,21 @@ class ClusterEnv(object):
 
     def getClusterConnection(self):
         if self.useTLS:
-            return rediscluster.RedisCluster(
+            # workaround for error on
+            # got an unexpected keyword argument 'ssl'
+            # we enforce the connection_class instead of setting ssl=True
+            pool = ClusterConnectionPool(
                 startup_nodes=self.getMasterNodesList(),
-                decode_responses=True,
                 connection_class=SSLClusterConnection,
-                # workaround for error on
-                # got an unexpected keyword argument 'ssl'
-                # we enforce the connection_class instead of setting ssl=True
-                # ssl=True,
+                ssl=True,
                 ssl_cert_reqs=None,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
                 ssl_ca_certs=self.shards[0].getTLSCACertFile(),
+            )
+            return rediscluster.RedisCluster(
+                startup_nodes=self.getMasterNodesList(),
+                connection_pool=pool
                 )
         else:
             return rediscluster.RedisCluster(
