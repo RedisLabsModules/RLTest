@@ -3,8 +3,6 @@ import shutil
 import tempfile
 from unittest import TestCase
 
-import pytest
-
 from RLTest.redis_std import StandardEnv
 from tests.unit.test_common import REDIS_BINARY, TLS_CERT, TLS_KEY, TLS_CACERT
 
@@ -205,7 +203,7 @@ class TestStandardEnv(TestCase):
         assert std_env.isTLS() == False
         std_env.stopEnv()
         if not os.path.isfile(TLS_CERT) or not os.path.isfile(TLS_KEY) or not os.path.isfile(TLS_CACERT):
-            pytest.skip("unsupported configuration")
+            self.skipTest("missing required tls files")
 
         tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
                                   useTLS=True,
