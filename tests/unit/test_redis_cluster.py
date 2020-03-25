@@ -1,3 +1,4 @@
+import os
 import shutil
 import tempfile
 from unittest import TestCase
@@ -105,6 +106,8 @@ class TestClusterEnv(TestCase):
         # cluster_env.startEnv()
         assert cluster_env.isTLS() == False
         cluster_env.stopEnv()
+        if not os.path.isfile(TLS_CERT) or not os.path.isfile(TLS_KEY) or not os.path.isfile(TLS_CACERT):
+            self.skipTest("missing required tls files")
         default_args['useTLS'] = True
         default_args['tlsCertFile'] = TLS_CERT
         default_args['tlsKeyFile'] = TLS_KEY
