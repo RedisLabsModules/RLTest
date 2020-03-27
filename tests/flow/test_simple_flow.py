@@ -3,25 +3,6 @@ import redis
 from RLTest import Env
 
 
-class testSingleEnvironment():
-    '''
-    run all tests on a single env without taking
-    env down between tests
-    '''
-
-    def __init__(self):
-        self.env = Env()
-
-    def setUp(self):
-        self.env.debugPrint('setUp', True)
-
-    def tearDown(self):
-        self.env.debugPrint('tearDown', True)
-
-    def testExample(self):
-        con = self.env.getConnection()
-
-
 # run each test on different env
 def test_getConnection(env):
     con = env.getConnection()

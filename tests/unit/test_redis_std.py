@@ -53,6 +53,8 @@ class TestStandardEnv(TestCase):
         pass
 
     def test_get_tlscert_file(self):
+        if not os.path.isfile(TLS_CERT) or not os.path.isfile(TLS_KEY) or not os.path.isfile(TLS_CACERT):
+            self.skipTest("missing required tls files")
         tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', useTLS=True,
                                   tlsCertFile=os.path.join(self.test_dir, tlsCertFile),
                                   tlsKeyFile=os.path.join(self.test_dir, tlsKeyFile),
@@ -60,6 +62,8 @@ class TestStandardEnv(TestCase):
         assert os.path.join(self.test_dir, tlsCertFile) == tls_std_env.getTLSCertFile()
 
     def test_get_tlskey_file(self):
+        if not os.path.isfile(TLS_CERT) or not os.path.isfile(TLS_KEY) or not os.path.isfile(TLS_CACERT):
+            self.skipTest("missing required tls files")
         tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', useTLS=True,
                                   tlsCertFile=os.path.join(self.test_dir, tlsCertFile),
                                   tlsKeyFile=os.path.join(self.test_dir, tlsKeyFile),
@@ -67,6 +71,8 @@ class TestStandardEnv(TestCase):
         assert os.path.join(self.test_dir, tlsKeyFile) == tls_std_env.getTLSKeyFile()
 
     def test_get_tlscacert_file(self):
+        if not os.path.isfile(TLS_CERT) or not os.path.isfile(TLS_KEY) or not os.path.isfile(TLS_CACERT):
+            self.skipTest("missing required tls files")
         tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', useTLS=True,
                                   tlsCertFile=os.path.join(self.test_dir, tlsCertFile),
                                   tlsKeyFile=os.path.join(self.test_dir, tlsKeyFile),
@@ -196,6 +202,9 @@ class TestStandardEnv(TestCase):
         std_env.startEnv()
         assert std_env.isTLS() == False
         std_env.stopEnv()
+        if not os.path.isfile(TLS_CERT) or not os.path.isfile(TLS_KEY) or not os.path.isfile(TLS_CACERT):
+            self.skipTest("missing required tls files")
+
         tls_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
                                   useTLS=True,
                                   tlsCertFile=TLS_CERT,

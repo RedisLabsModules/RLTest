@@ -21,7 +21,7 @@ class TestEnvOss(TestCase):
         pass
 
     def test_get_env_by_name(self):
-        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
+        self.env = Env(useSlaves=False, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
                        redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
         assert self.env.isUp() == True
         self.env.stop()
