@@ -495,6 +495,49 @@ class Env:
         if self.isEnterpiseCluster():
             self.skip()
 
+    def startProfiler(self,frequency=None):
+        """
+
+        @param frequency: profile at this frequency
+        @return: returns True if profiler started, False if unsuccessful
+        """
+        return self.envRunner.startProfiler(frequency)
+
+    def stopProfiler(self):
+        """
+
+        @return: returns True if profiler stop, False if unsuccessful
+        """
+        return self.envRunner.stopProfiler()
+
+    def getProfilerOutputs(self):
+        """
+
+        @return: list of profiler outputs for the given environments. Depending on the environment it can be more than one
+        """
+        return self.envRunner.getProfilerOutputs()
+
+    def generateTraceFiles(self):
+        """
+
+        @return: returns True if was able to generate trace Files, False if unsuccessful
+        """
+        return self.envRunner.generateTraceFiles()
+
+    def getTraceFiles(self):
+        return self.envRunner.getTraceFiles()
+
+    def stackCollapse(self):
+        """
+
+        @return: returns True if was able to generate stack collapsed Files, False if unsuccessful
+        """
+        return self.envRunner.stackCollapse()
+
+    def getCollapsedStacksMap(self):
+        return self.envRunner.getCollapsedStacksMap()
+
+
     _mm = {
         'assertEquals': assertEqual,
         'assertListEqual': assertEqual,

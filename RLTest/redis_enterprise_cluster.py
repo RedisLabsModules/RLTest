@@ -123,3 +123,24 @@ class EnterpriseRedisClusterEnv(ExistsRedisEnv):
 
     def isTcp(self):
         return True
+
+    def startProfiler(self, frequency=None):
+        raise Exception('unsupported')
+
+    def stopProfiler(self):
+        raise Exception('unsupported')
+
+    def getProfilerOutputs(self):
+        raise Exception('unsupported')
+
+    def generateTraceFiles(self):
+        raise Exception('unsupported')
+
+    def getTraceFiles(self):
+        raise Exception('unsupported')
+
+    def stackCollapse(self):
+        raise Exception('unsupported')
+
+    def getCollapsedStacksMap(self):
+        raise Exception('unsupported')

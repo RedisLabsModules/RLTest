@@ -7,6 +7,7 @@ import uuid
 
 import redis
 
+from .profilers import Perf
 from .random_port import get_random_port
 from .utils import Colors, wait_for_conn
 
@@ -32,6 +33,7 @@ class StandardEnv(object):
         self.useAof = useAof
         self.envIsUp = False
         self.debugger = debugger
+        self.profiler = Perf()
         self.noCatch = noCatch
         self.environ = os.environ.copy()
         self.useUnix = unix
@@ -303,6 +305,67 @@ class StandardEnv(object):
             self._stopProcess(SLAVE)
             self.slaveProcess = None
         self.envIsUp = False
+
+    def startProfiler(self, frequency=None):
+        result = False
+        if self.profiler is not None and self.envIsUp:
+            result = self.profiler.startProfile(self.masterProcess.pid,
+                                                os.path.join(self.dbDirPath, self._getFileName(MASTER, '.perf.data')),
+                                                frequency)
+        return result
+
+    def stopProfiler(self):
+        result = False
+        if self.profiler is not None:
+            result = self.profiler.stopProfile()
+            if result is True:
+                std_out = self.profiler.getProfilerStdOut()
+                std_err = self.profiler.getProfilerStdErr()
+                if std_err is not None and self.verbose:
+                    print('\t' + Colors.Yellow('### Printing profiler std_err output ###'))
+                    for line in std_err.decode().split('\n'):
+                        print('\t' + Colors.Yellow('{0}'.format(line)))
+                if std_out is not None and self.verbose:
+                    print('\t' + Colors.Green('### Printing profiler stdout output ###'))
+                    for line in std_out.decode().split('\n'):
+                        print('\t' + Colors.Green('{0}'.format(line)))
+
+        return result
+
+    def getProfilerOutputs(self):
+        result = []
+        if self.profiler is not None:
+            output = self.profiler.getProfilerOutputFile()
+            if output is not None:
+                result.append(output)
+        return result
+
+    def generateTraceFiles(self):
+        result = False
+        if self.profiler is not None:
+            result = self.profiler.generateTraceFileFromProfile(filename=os.path.join(self.dbDirPath, self._getFileName(MASTER, '.out.perf')))
+        return result
+
+    def getTraceFiles(self):
+        result = []
+        if self.profiler is not None:
+            trace = self.profiler.getTraceFile()
+            if trace is not None:
+                result.append(trace)
+        return result
+
+    def stackCollapse(self):
+        result = False
+        if self.profiler is not None:
+            result = self.profiler.stackCollapse(
+                filename=os.path.join(self.dbDirPath, self._getFileName(MASTER, '.out.stacks-folded')))
+        return result
+
+    def getCollapsedStacksMap(self):
+        stacksMap = {}
+        if self.profiler is not None:
+            stacksMap[self._getFileName(MASTER, '.out.stacks-folded')] = self.profiler.getCollapsedStacks()
+        return stacksMap
 
     def _getConnection(self, role):
         if self.useUnix:
