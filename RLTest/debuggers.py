@@ -5,7 +5,7 @@ import os.path
 class Valgrind(object):
     is_interactive = False
 
-    def __init__(self, options, suppressions=None, fail_on_errors=True, leakcheck=True ):
+    def __init__(self, options, suppressions=None, fail_on_errors=True, leakcheck=True):
         self.options = options
         self.suppressions = suppressions
         self.leakcheck = leakcheck
@@ -44,8 +44,8 @@ class GDB(GenericInteractiveDebugger):
         super(GDB, self).__init__(cmdline)
 
     def generate_command(self, *argc, **kw):
-        return ['gdb', '-ex', 'run', '--args']
-
+        # return ['gdb', '-ex', 'run', '--args']
+        return ['gdb', '--args']
 
 class CGDB(GenericInteractiveDebugger):
     def __init__(self, cmdline="cgdb"):

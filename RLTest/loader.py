@@ -130,3 +130,22 @@ class TestLoader(object):
                     print("\t\t", m)
             else:
                 print("\tFunction")
+
+
+class _CleanerLoader(TestLoader):
+    def filter_modulevar(self, candidate):
+        return candidate == self.toplevel_filter
+
+    def filter_method(self, candidate):
+        return False
+
+    def __init__(self):
+        super(_CleanerLoader, self).__init__()
+
+
+def load_cleaner(spec):
+    cl = _CleanerLoader()
+    cl.load_spec(spec)
+    if len(cl.tests) != 1:
+        raise ValueError("Bad cleaner for tests")
+    return cl.tests[0].target

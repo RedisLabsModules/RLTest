@@ -239,6 +239,7 @@ class StandardEnv(object):
         }
 
         self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
+        print(self.masterCmdArgs)
         con = self.getConnection()
         self.waitForRedisToStart(con)
         if self.useSlaves:
@@ -365,7 +366,8 @@ class StandardEnv(object):
         if self.useSlaves:
             conns.append(self.getSlaveConnection())
         if restart:
-            [con.bgrewriteaof() for con in conns]
+            # [con.bgrewriteaof() for con in conns]
+            [con.save() for con in conns]
             self._waitForChild(conns)
 
             self.stopEnv()

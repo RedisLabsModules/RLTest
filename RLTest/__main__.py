@@ -13,7 +13,7 @@ import shlex
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
 from RLTest.utils import Colors
-from RLTest.loader import TestLoader
+from RLTest.loader import TestLoader, load_cleaner
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
 
@@ -250,6 +250,11 @@ parser.add_argument(
     '--collect-only', action='store_true',
     help='Collect the tests and exit')
 
+parser.add_argument(
+    '--cleaner',
+    help='Path to function to be called in addition to any invocation of flush'
+)
+
 parser.add_argument('--tls', help='Enable TLS Support and disable the non-TLS port completely. TLS connections will be available at the default non-TLS ports.',
                     default=False, action='store_true')
 
@@ -323,7 +328,7 @@ class RLTest:
                 print(Colors.Bred('can not use valgrind with existing-env'))
                 sys.exit(1)
             if self.args.vg_options is None:
-                self.args.vg_options = os.getenv('VG_OPTIONS', '--leak-check=full --errors-for-leak-kinds=definite')
+                self.args.vg_options = os.getenv('VG_OPTIONS', '')
             vg_debugger = debuggers.Valgrind(options=self.args.vg_options, 
                                              suppressions=self.args.vg_suppressions, 
                                              fail_on_errors=not(self.args.vg_no_fail_on_errors), 
@@ -376,10 +381,15 @@ class RLTest:
         self.testsFailed = []
         self.currEnv = None
         self.loader = TestLoader()
+        self.cleaner = None
+
         if self.args.test:
             self.loader.load_spec(self.args.test)
         else:
             self.loader.scan_dir(os.getcwd())
+
+        if self.args.cleaner:
+            self.cleaner = load_cleaner(self.args.cleaner)
 
         if self.args.collect_only:
             self.loader.print_tests()
@@ -392,6 +402,12 @@ class RLTest:
     def _convertArgsType(self):
         pass
 
+    def _flush(self):
+        if self.currEnv.isUp():
+            self.currEnv.flush()
+            if self.cleaner:
+                self.cleaner(self.currEnv)
+
     def takeEnvDown(self, fullShutDown=False):
         if not self.currEnv:
             return
@@ -399,7 +415,7 @@ class RLTest:
         needShutdown = True
         if self.args.env_reuse and not fullShutDown:
             try:
-                self.currEnv.flush()
+                self._flush()
                 needShutdown = False
             except Exception as e:
                 self.currEnv.stop()
@@ -407,8 +423,7 @@ class RLTest:
                                    env=self.currEnv)
 
         if needShutdown:
-            if self.currEnv.isUp():
-                self.currEnv.flush()
+            self._flush()
             self.currEnv.stop()
             if self.require_clean_exit and self.currEnv and not self.currEnv.checkExitCode():
                 print(Colors.Bred('\tRedis did not exit cleanly'))
