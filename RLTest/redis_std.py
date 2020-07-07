@@ -238,10 +238,14 @@ class StandardEnv(object):
             'env': self.environ
         }
 
+        if self.verbose:
+            print("Redis master command: " + ' '.join(self.masterCmdArgs))
         self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
         con = self.getConnection()
         self.waitForRedisToStart(con)
         if self.useSlaves:
+            if self.vebose:
+                print("Redis slave command: " + join(self.slaveCmdArgs))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)
