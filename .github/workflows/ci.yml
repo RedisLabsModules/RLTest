@@ -16,23 +16,23 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Setup Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python }}
+        architecture: x64
+
     - name: Setup automation
       run: |
         (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-        sudo ./deps/readies/bin/getpy2
-        sudo ./deps/readies/bin/getpy3
+        # sudo ./deps/readies/bin/getpy2
+        # sudo ./deps/readies/bin/getpy3
         # ./sbin/system-setup.py
 
     - name: Install OpenSSL development libraries
       run: |
         sudo apt-get -qq update
         sudo apt-get install -y libssl-dev
-
-    - name: Setup Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python }}
-        architecture: x64
 
     - name: Cache pip
       uses: actions/cache@v1
@@ -46,8 +46,8 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        # sudo apt-get install -y python-setuptools
-        # sudo apt-get install -y python3-setuptools
+        sudo apt-get install -y python-setuptools
+        sudo apt-get install -y python3-setuptools
         pip install -r requirements.txt
 
 
@@ -61,7 +61,7 @@ jobs:
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        ./deps/readies/bin/getredis
+        sudo ./deps/readies/bin/getredis
         # git clone git://github.com/antirez/redis.git --branch unstable
         # cd redis
         # make BUILD_TLS=yes
