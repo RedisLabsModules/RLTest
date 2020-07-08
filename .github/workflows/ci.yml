@@ -15,6 +15,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
+    - name: Setup automation
+      run: |
+        (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+        sudo ./deps/readies/bin/getpy2
+        sudo ./deps/readies/bin/getpy3
+        # ./sbin/system-setup.py
+
     - name: Install OpenSSL development libraries
       run: |
         sudo apt-get -qq update
@@ -38,8 +46,8 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        sudo apt-get install -y python-setuptools
-        sudo apt-get install -y python3-setuptools
+        # sudo apt-get install -y python-setuptools
+        # sudo apt-get install -y python3-setuptools
         pip install -r requirements.txt
 
 
@@ -53,12 +61,13 @@ jobs:
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone git://github.com/antirez/redis.git --branch unstable
-        cd redis
-        make BUILD_TLS=yes
+        ./deps/readies/bin/getredis -b unstable
+        # git clone git://github.com/antirez/redis.git --branch unstable
+        # cd redis
+        # make BUILD_TLS=yes
         ./utils/gen-test-certs.sh
         ./src/redis-server --version
-        cd ..
+        # cd ..
 
 #    - name: Unit Test with pytest
 #      run: |
@@ -76,59 +85,56 @@ jobs:
     - name: Flow Test OSS TCP
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
-        cd ..
+        RLTest --env oss -v --clear-logs
+        # cd ..
 
     - name: Flow Test OSS UNIX SOCKETS
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
-        cd ..
+        RLTest --env oss -v --clear-logs
+        # cd ..
 
     - name: Flow Test OSS TCP SLAVES
       run: |
         cd tests/flow
-        RLTest --env oss -v --unix --clear-logs --oss-redis-path ../../redis/src/redis-server
-        cd ..
+        RLTest --env oss -v --unix --clear-logs
+        # cd ..
 
     - name: Flow Test OSS-CLUSTER TCP
       run: |
         cd tests/flow
-        RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ../../redis/src/redis-server
-        cd ..
+        RLTest --env oss-cluster -v --clear-logs --shards-count 3
+        # cd ..
 
     - name: Flow Test OSS TCP with TLS
       run: |
         cd tests/flow
         RLTest --env oss -v --clear-logs \
-        --oss-redis-path ../../redis/src/redis-server \
-        --tls-cert-file ../../redis/tests/tls/redis.crt \
-        --tls-key-file ../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
-        --tls
-        cd ..
+            --tls-cert-file ../../redis/tests/tls/redis.crt \
+            --tls-key-file ../../redis/tests/tls/redis.key \
+            --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+            --tls
+        # cd ..
 
     - name: Flow Test OSS-CLUSTER with TLS
       run: |
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
-        --oss-redis-path ../../redis/src/redis-server \
-        --tls-cert-file ../../redis/tests/tls/redis.crt \
-        --tls-key-file ../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
-        --tls
-        cd ..
+            --tls-cert-file ../../redis/tests/tls/redis.crt \
+            --tls-key-file ../../redis/tests/tls/redis.key \
+            --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+            --tls
+        # cd ..
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
       run: |
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
-        --oss-redis-path ../../redis/src/redis-server \
-        --tls-cert-file ../../redis/tests/tls/redis.crt \
-        --tls-key-file ../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
-        --tls
-        cd ../..
+            --tls-cert-file ../../redis/tests/tls/redis.crt \
+            --tls-key-file ../../redis/tests/tls/redis.key \
+            --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+            --tls
+        # cd ../..
 
     - name: Generate coverage report
       if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
@@ -138,7 +144,7 @@ jobs:
         TLS_CERT=./tests/unit/tls/redis.crt \
         TLS_KEY=./tests/unit/tls/redis.key \
         TLS_CACERT=./tests/unit/tls/ca.crt \
-        REDIS_BINARY=./redis/src/redis-server \
+        REDIS_BINARY=./usr/local/bin/redis-server \
         pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
 
     - name: Upload coverage to Codecov
