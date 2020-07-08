@@ -61,11 +61,17 @@ jobs:
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        sudo ./deps/readies/bin/getredis --keep --info-file /tmp/redis.info
-        redis_dir=`cat /tmp/redis.info | grep redis_dir | cut -d" " -f2`
-        sudo chmod a+x $redis_dir/utils/gen-test-certs.sh
-        $redis_dir/utils/gen-test-certs.sh
-        redis-server --version
+        # sudo ./deps/readies/bin/getredis --keep --info-file /tmp/redis.info
+        # redis_dir=`cat /tmp/redis.info | grep redis_dir | cut -d" " -f2`
+        # sudo chmod a+x $redis_dir/utils/gen-test-certs.sh
+        # $redis_dir/utils/gen-test-certs.sh
+        # redis-server --version
+        git clone git://github.com/antirez/redis.git --branch unstable
+        cd redis
+        make BUILD_TLS=yes
+        ./utils/gen-test-certs.sh
+        ./src/redis-server --version
+		cp ./src/redis-server /usr/local/bin/
 
     - name: Unit Test with pytest
       run: |
