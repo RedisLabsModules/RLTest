@@ -63,7 +63,8 @@ jobs:
       run: |
         sudo ./deps/readies/bin/getredis --keep --info-file /tmp/redis.info
         redis_dir=`cat /tmp/redis.info | grep redis_dir | cut -d" " -f2`
-        bash $redis_dir/utils/gen-test-certs.sh
+        cp $redis_dir/utils/gen-test-certs.sh .
+        ./gen-test-certs.sh
         redis-server --version
 
     - name: Unit Test with pytest
