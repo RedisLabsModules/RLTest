@@ -60,14 +60,14 @@ jobs:
         ./src/redis-server --version
         cd ..
 
-    - name: Unit Test with pytest
-      run: |
-        pip install pytest
-        TLS_CERT=./tests/unit/tls/redis.crt \
-        TLS_KEY=./tests/unit/tls/redis.key \
-        TLS_CACERT=./tests/unit/tls/ca.crt \
-        REDIS_BINARY=./redis/src/redis-server \
-        pytest --ignore=tests/flow --ignore=test_example.py
+#    - name: Unit Test with pytest
+#      run: |
+#        pip install pytest
+#        TLS_CERT=./tests/unit/tls/redis.crt \
+#        TLS_KEY=./tests/unit/tls/redis.key \
+#        TLS_CACERT=./tests/unit/tls/ca.crt \
+#        REDIS_BINARY=./redis/src/redis-server \
+#        pytest --ignore=tests/flow --ignore=test_example.py
 
     - name: Install RLTest
       run: |
