@@ -63,17 +63,18 @@ jobs:
       run: |
         sudo ./deps/readies/bin/getredis --keep --info-file /tmp/redis.info
         redis_dir=`cat /tmp/redis.info | grep redis_dir | cut -d" " -f2`
-        $redis_dir/utils/gen-test-certs.sh
+        $redis_dir/utils/gen-test-certs.sh # this creates certs in ./tests/unit/tls
         redis-server --version
 
-#    - name: Unit Test with pytest
-#      run: |
-#        pip install pytest
-#        TLS_CERT=./tests/unit/tls/redis.crt \
-#        TLS_KEY=./tests/unit/tls/redis.key \
-#        TLS_CACERT=./tests/unit/tls/ca.crt \
-#        REDIS_BINARY=./redis/src/redis-server \
-#        pytest --ignore=tests/flow --ignore=test_example.py
+    - name: Unit Test with pytest
+      run: |
+        pip install pytest
+        certs=./tests/tls
+        TLS_CERT=$certs/redis.crt \
+        TLS_KEY=$certs/redis.key \
+        TLS_CACERT=$certs/ca.crt \
+        REDIS_BINARY=`command -v redis-server` \
+        pytest --ignore=tests/flow --ignore=test_example.py
 
     - name: Install RLTest
       run: |
@@ -102,28 +103,31 @@ jobs:
     - name: Flow Test OSS TCP with TLS
       run: |
         cd tests/flow
+        certs=../../tests/tls
         RLTest --env oss -v --clear-logs \
-            --tls-cert-file ../../redis/tests/tls/redis.crt \
-            --tls-key-file ../../redis/tests/tls/redis.key \
-            --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+            --tls-cert-file $certs/redis.crt \
+            --tls-key-file $certs/redis.key \
+            --tls-ca-cert-file $certs/ca.crt \
             --tls
 
     - name: Flow Test OSS-CLUSTER with TLS
       run: |
         cd tests/flow
+        certs=../../tests/tls
         RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
-            --tls-cert-file ../../redis/tests/tls/redis.crt \
-            --tls-key-file ../../redis/tests/tls/redis.key \
-            --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+            --tls-cert-file $certs/redis.crt \
+            --tls-key-file $certs/redis.key \
+            --tls-ca-cert-file $certs/ca.crt \
             --tls
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
       run: |
         cd tests/flow
+        certs=../../tests/tls
         RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
-            --tls-cert-file ../../redis/tests/tls/redis.crt \
-            --tls-key-file ../../redis/tests/tls/redis.key \
-            --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+            --tls-cert-file $certs/redis.crt \
+            --tls-key-file $certs/redis.key \
+            --tls-ca-cert-file $certs/ca.crt \
             --tls
 
     - name: Generate coverage report
@@ -131,9 +135,10 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-cov
-        TLS_CERT=./tests/unit/tls/redis.crt \
-        TLS_KEY=./tests/unit/tls/redis.key \
-        TLS_CACERT=./tests/unit/tls/ca.crt \
+        certs=./tests/tls
+        TLS_CERT=$certs/redis.crt \
+        TLS_KEY=$certs/redis.key \
+        TLS_CACERT=$certs/ca.crt \
         REDIS_BINARY=`command -v redis-server` \
         pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
 
