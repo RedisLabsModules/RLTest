@@ -62,7 +62,7 @@ jobs:
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
         sudo ./deps/readies/bin/getredis --keep --info-file /tmp/redis.info
-        redsi_dir=`cat /tmp/redis.info | grep redis_dir | cut -d" " -f2`
+        redis_dir=`cat /tmp/redis.info | grep redis_dir | cut -d" " -f2`
         $redis_dir/utils/gen-test-certs.sh
         redis-server --version
 
