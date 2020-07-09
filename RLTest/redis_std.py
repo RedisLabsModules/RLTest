@@ -244,7 +244,7 @@ class StandardEnv(object):
         con = self.getConnection()
         self.waitForRedisToStart(con)
         if self.useSlaves:
-            if self.vebose:
+            if self.verbose:
                 print("Redis slave command: " + ' '.join(self.slaveCmdArgs))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()
