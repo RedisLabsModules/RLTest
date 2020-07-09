@@ -71,7 +71,7 @@ jobs:
         make BUILD_TLS=yes
         ./utils/gen-test-certs.sh
         ./src/redis-server --version
-		cp ./src/redis-server /usr/local/bin/
+        cp ./src/redis-server /usr/local/bin/
 
     - name: Unit Test with pytest
       run: |
