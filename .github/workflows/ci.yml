@@ -61,18 +61,18 @@ jobs:
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        # sudo ./deps/readies/bin/getredis --prepare
-        # mkdir redis
-        # ./deps/readies/bin/getredis --no-prepare --workdir redis --no-install
-        # sudo cp redis/redis/src/redis-server /usr/local/bin/
-        # redis-server --version
-        # ./redis/redis/utils/gen-test-certs.sh
-        git clone git://github.com/antirez/redis.git --branch unstable
-        cd redis
-        make BUILD_TLS=yes
-        ./utils/gen-test-certs.sh
-        ./src/redis-server --version
-        sudo cp ./src/redis-server /usr/local/bin/
+        sudo ./deps/readies/bin/getredis --prepare
+        mkdir redis
+        ./deps/readies/bin/getredis --no-prepare --workdir redis --no-install
+        sudo cp redis/redis/src/redis-server /usr/local/bin/
+        redis-server --version
+        ./redis/redis/utils/gen-test-certs.sh
+        # git clone git://github.com/antirez/redis.git --branch unstable
+        # cd redis
+        # make BUILD_TLS=yes
+        # ./utils/gen-test-certs.sh
+        # ./src/redis-server --version
+        # sudo cp ./src/redis-server /usr/local/bin/
 
     - name: Unit Test with pytest
       run: |
@@ -110,8 +110,8 @@ jobs:
 
     - name: Flow Test OSS TCP with TLS
       run: |
+        certs=$(cd tests/unit/tls; pwd)
         cd tests/flow
-        certs=../../tests/tls
         RLTest --env oss -v --clear-logs \
             --tls-cert-file $certs/redis.crt \
             --tls-key-file $certs/redis.key \
@@ -120,8 +120,8 @@ jobs:
 
     - name: Flow Test OSS-CLUSTER with TLS
       run: |
+        certs=$(cd tests/unit/tls; pwd)
         cd tests/flow
-        certs=../../tests/tls
         RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
             --tls-cert-file $certs/redis.crt \
             --tls-key-file $certs/redis.key \
@@ -130,8 +130,8 @@ jobs:
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
       run: |
+        certs=$(cd tests/unit/tls; pwd)
         cd tests/flow
-        certs=../../tests/tls
         RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
             --tls-cert-file $certs/redis.crt \
             --tls-key-file $certs/redis.key \
@@ -143,7 +143,7 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-cov
-        certs=./tests/tls
+        certs=$(cd tests/unit/tls; pwd)
         TLS_CERT=$certs/redis.crt \
         TLS_KEY=$certs/redis.key \
         TLS_CACERT=$certs/ca.crt \
