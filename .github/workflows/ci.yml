@@ -11,7 +11,8 @@ jobs:
     strategy:
       matrix:
         platform: [ubuntu-latest, ubuntu-16.04]
-        python: ['2.7', '3.6']
+        # python: ['2.7', '3.6']
+        python: ['2.7']
 
     steps:
     - uses: actions/checkout@v2
@@ -22,11 +23,21 @@ jobs:
         python-version: ${{ matrix.python }}
         architecture: x64
 
+    - name: Setup Python 2
+      if: matrix.platform == 'ubuntu-latest' && matrix.python == '2.7'
+      run: |
+        sudo PIP=1 ./deps/readies/bin/getpy2
+        sudo apt-get install -y python-setuptools
+
+    - name: Setup Python 3
+      if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
+      run: |
+        sudo PIP=1 ./deps/readies/bin/getpy3
+        sudo apt-get install -y python3-setuptools
+
     - name: Setup automation
       run: |
         (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-        # sudo ./deps/readies/bin/getpy2
-        # sudo ./deps/readies/bin/getpy3
         # ./sbin/system-setup.py
 
     - name: Install OpenSSL development libraries
@@ -46,10 +57,7 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        sudo apt-get install -y python-setuptools
-        sudo apt-get install -y python3-setuptools
         pip install -r requirements.txt
-
 
     - name: Cache Redis
       id: cache-redis
@@ -61,9 +69,8 @@ jobs:
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        sudo ./deps/readies/bin/getredis --prepare
         mkdir redis
-        ./deps/readies/bin/getredis --no-prepare --workdir redis --no-install
+        ./deps/readies/bin/getredis --workdir redis --no-install
         sudo cp redis/redis/src/redis-server /usr/local/bin/
         redis-server --version
         ./redis/redis/utils/gen-test-certs.sh
