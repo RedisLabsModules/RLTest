@@ -23,6 +23,11 @@ jobs:
         python-version: ${{ matrix.python }}
         architecture: x64
 
+    - name: Setup automation
+      run: |
+        (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
+        # ./sbin/system-setup.py
+
     - name: Setup Python 2
       if: matrix.platform == 'ubuntu-latest' && matrix.python == '2.7'
       run: |
@@ -34,11 +39,6 @@ jobs:
       run: |
         sudo PIP=1 ./deps/readies/bin/getpy3
         sudo apt-get install -y python3-setuptools
-
-    - name: Setup automation
-      run: |
-        (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-        # ./sbin/system-setup.py
 
     - name: Install OpenSSL development libraries
       run: |
