@@ -10,7 +10,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
-        platform: [ubuntu-latest, ubuntu-16.04]
+        # platform: [ubuntu-latest, ubuntu-16.04]
+        platform: [ubuntu-18.04]
         # python: ['2.7', '3.6']
         python: ['2.7']
 
@@ -31,7 +32,7 @@ jobs:
     - name: Setup Python 2
       if: matrix.platform == 'ubuntu-latest' && matrix.python == '2.7'
       run: |
-        sudo PIP=1 ./deps/readies/bin/getpy2
+        sudo PIP=1 VERBOSE=1 ./deps/readies/bin/getpy2
         sudo apt-get install -y python-setuptools
 
     - name: Setup Python 3
