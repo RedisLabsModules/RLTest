@@ -18,11 +18,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Setup Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python }}
-        architecture: x64
+#    - name: Setup Python
+#      uses: actions/setup-python@v1
+#      with:
+#        python-version: ${{ matrix.python }}
+#        architecture: x64
 
     - name: Setup automation
       run: |
@@ -30,16 +30,16 @@ jobs:
         # ./sbin/system-setup.py
 
     - name: Setup Python 2
-      if: matrix.platform == 'ubuntu-latest' && matrix.python == '2.7'
+      if: matrix.python == '2.7'
       run: |
         sudo PIP=1 VERBOSE=1 ./deps/readies/bin/getpy2
-        sudo apt-get install -y python-setuptools
+        # sudo apt-get install -y python-setuptools
 
     - name: Setup Python 3
-      if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
+      if: matrix.python == '3.6'
       run: |
         sudo PIP=1 ./deps/readies/bin/getpy3
-        sudo apt-get install -y python3-setuptools
+        # sudo apt-get install -y python3-setuptools
 
     - name: Install OpenSSL development libraries
       run: |
