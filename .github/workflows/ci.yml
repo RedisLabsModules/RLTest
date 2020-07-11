@@ -7,7 +7,7 @@ on:
 jobs:
   build-ubuntu:
     name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }}
-    # runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.platform }}
     container:
       image: ${{ matrix.platform }}
     strategy:
