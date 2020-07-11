@@ -22,9 +22,17 @@ class RLTestSetup(paella.Setup):
 
     def debian_compat(self):
         self.install("libssl-dev")
+        if sys.version_info < (3, 0):
+            self.install("python-psutil")
+        else:
+            self.install("python3-psutil")
 
     def redhat_compat(self):
         self.install("openssl-devel")
+        if sys.version_info < (3, 0):
+            self.install("python-psutil")
+        else:
+            self.install("python36-psutil")
 
     def macosx(self):
         if sh('xcode-select -p') == '':

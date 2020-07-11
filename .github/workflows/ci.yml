@@ -34,15 +34,15 @@ jobs:
       if: matrix.python == '2.7'
       run: |
         sudo PIP=1 FORCE=1 ./deps/readies/bin/getpy2
-        sudo python -m pip install virtualenv
-        python -m virtualenv venv
+        sudo python2 -m pip install virtualenv
+        python2 -m virtualenv --system-site-packages venv
 
     - name: Setup Python 3
       if: matrix.python == '3.6'
       run: |
         sudo PIP=1 FORCE=1 ./deps/readies/bin/getpy3
         sudo python3 -m pip install virtualenv
-        python -m virtualenv venv
+        python3 -m virtualenv --system-site-packages venv
 
     - name: Cache pip
       uses: actions/cache@v1
@@ -57,7 +57,7 @@ jobs:
     - name: Install prerequisites
       run: |
         . venv/bin/activate
-        sudo ./sbin/system-setup.py
+        sudo -E ./sbin/system-setup.py
 
     - name: Cache Redis
       id: cache-redis
@@ -96,32 +96,37 @@ jobs:
       run: |
         . venv/bin/activate
         cd tests/flow
-        RLTest --env oss -v --clear-logs
+        RLTest --env oss \
+            -v --clear-logs
 
     - name: Flow Test OSS UNIX SOCKETS
       run: |
         . venv/bin/activate
         cd tests/flow
-        RLTest --env oss -v --clear-logs
+        RLTest --env oss --unix \
+            -v --clear-logs
 
     - name: Flow Test OSS TCP SLAVES
       run: |
         . venv/bin/activate
         cd tests/flow
-        RLTest --env oss -v --unix --clear-logs
+        RLTest --env oss --use-slaves \
+            -v --clear-logs
 
     - name: Flow Test OSS-CLUSTER TCP
       run: |
         . venv/bin/activate
         cd tests/flow
-        RLTest --env oss-cluster -v --clear-logs --shards-count 3
+        RLTest --env oss-cluster --shards-count 3 \
+            -v --clear-logs
 
     - name: Flow Test OSS TCP with TLS
       run: |
         . venv/bin/activate
         certs=$(cd tests/unit/tls; pwd)
         cd tests/flow
-        RLTest --env oss -v --clear-logs \
+        RLTest --env oss \
+            -v --clear-logs \
             --tls-cert-file $certs/redis.crt \
             --tls-key-file $certs/redis.key \
             --tls-ca-cert-file $certs/ca.crt \
@@ -132,7 +137,8 @@ jobs:
         . venv/bin/activate
         certs=$(cd tests/unit/tls; pwd)
         cd tests/flow
-        RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
+        RLTest --env oss-cluster --shards-count 3 \
+            -v --clear-logs \
             --tls-cert-file $certs/redis.crt \
             --tls-key-file $certs/redis.key \
             --tls-ca-cert-file $certs/ca.crt \
@@ -143,7 +149,8 @@ jobs:
         . venv/bin/activate
         certs=$(cd tests/unit/tls; pwd)
         cd tests/flow
-        RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
+        RLTest --env oss-cluster --shards-count 3 --use-slaves \
+            -v --clear-logs \
             --tls-cert-file $certs/redis.crt \
             --tls-key-file $certs/redis.key \
             --tls-ca-cert-file $certs/ca.crt \
