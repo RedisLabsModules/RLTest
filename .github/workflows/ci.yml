@@ -12,7 +12,7 @@ jobs:
       image: ${{ matrix.platform }}
     strategy:
       matrix:
-        platform: [ubuntu:bionic, ubuntu:xenial]
+        platform: ['ubuntu:bionic', 'ubuntu:xenial']
         python: ['2.7', '3.6']
 
     steps:
