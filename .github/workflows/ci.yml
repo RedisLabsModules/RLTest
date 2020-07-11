@@ -33,7 +33,9 @@ jobs:
     - name: Setup Python 2
       if: matrix.python == '2.7'
       run: |
-        sudo PIP=1 FORCE=1 ./deps/readies/bin/getpy2
+        sudo PIP=1 FORCE=1 VERBOSE=1 ./deps/readies/bin/getpy2
+        sudo ln -s `which python2` /usr/local/bin/python
+        which python
 
     - name: Setup Python 3
       if: matrix.python == '3.6'
@@ -70,12 +72,6 @@ jobs:
         redis-server --version
         sudo chmod a+x ./redis/redis/utils/gen-test-certs.sh
         ./redis/redis/utils/gen-test-certs.sh
-        # git clone git://github.com/antirez/redis.git --branch unstable
-        # cd redis
-        # make BUILD_TLS=yes
-        # ./utils/gen-test-certs.sh
-        # ./src/redis-server --version
-        # sudo cp ./src/redis-server /usr/local/bin/
 
     - name: Unit Test with pytest
       run: |
