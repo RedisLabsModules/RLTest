@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         # platform: [ubuntu-latest, ubuntu-16.04]
-        platform: [ubuntu-18.04]
+        platform: [ubuntu-latest]
         # python: ['2.7', '3.6']
         python: ['2.7']
 
@@ -26,25 +26,19 @@ jobs:
 
     - name: Setup automation
       run: |
-        (mkdir -p deps; cd deps; git clone https://github.com/RedisLabsModules/readies.git)
-        # ./sbin/system-setup.py
+        mkdir -p deps
+        cd deps
+        git clone https://github.com/RedisLabsModules/readies.git
 
     - name: Setup Python 2
       if: matrix.python == '2.7'
       run: |
-        sudo PIP=1 VERBOSE=1 ./deps/readies/bin/getpy2
-        # sudo apt-get install -y python-setuptools
+        sudo PIP=1 FORCE=1 ./deps/readies/bin/getpy2
 
     - name: Setup Python 3
       if: matrix.python == '3.6'
       run: |
-        sudo PIP=1 ./deps/readies/bin/getpy3
-        # sudo apt-get install -y python3-setuptools
-
-    - name: Install OpenSSL development libraries
-      run: |
-        sudo apt-get -qq update
-        sudo apt-get install -y libssl-dev
+        sudo PIP=1 FORCE=1 ./deps/readies/bin/getpy3
 
     - name: Cache pip
       uses: actions/cache@v1
@@ -56,9 +50,9 @@ jobs:
           ${{ runner.os }}-${{ matrix.python }}-pip-
           ${{ runner.os }}-${{ matrix.python }}-
 
-    - name: Install Python dependencies
+    - name: Install prerequisites
       run: |
-        pip install -r requirements.txt
+        ./sbin/system-setup.py
 
     - name: Cache Redis
       id: cache-redis
@@ -67,13 +61,14 @@ jobs:
         path: redis
         key: ${{ runner.os }}-redis
 
-    - name: Install Redis Server test dependencies
+    - name: Install Redis Server
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
         mkdir redis
         ./deps/readies/bin/getredis --workdir redis --no-install
         sudo cp redis/redis/src/redis-server /usr/local/bin/
         redis-server --version
+        sudo chmod a+x ./redis/redis/utils/gen-test-certs.sh
         ./redis/redis/utils/gen-test-certs.sh
         # git clone git://github.com/antirez/redis.git --branch unstable
         # cd redis
@@ -84,7 +79,6 @@ jobs:
 
     - name: Unit Test with pytest
       run: |
-        pip install pytest
         certs=./tests/tls
         TLS_CERT=$certs/redis.crt \
         TLS_KEY=$certs/redis.key \
@@ -149,8 +143,6 @@ jobs:
     - name: Generate coverage report
       if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
       run: |
-        pip install pytest
-        pip install pytest-cov
         certs=$(cd tests/unit/tls; pwd)
         TLS_CERT=$certs/redis.crt \
         TLS_KEY=$certs/redis.key \
