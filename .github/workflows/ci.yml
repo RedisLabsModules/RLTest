@@ -52,7 +52,7 @@ jobs:
 
     - name: Install prerequisites
       run: |
-        ./sbin/system-setup.py
+        sudo ./sbin/system-setup.py
 
     - name: Cache Redis
       id: cache-redis
