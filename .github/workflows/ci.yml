@@ -10,19 +10,11 @@ jobs:
     runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
-        # platform: [ubuntu-latest, ubuntu-16.04]
-        platform: [ubuntu-latest]
-        # python: ['2.7', '3.6']
-        python: ['2.7']
+        platform: [ubuntu-latest, ubuntu-16.04]
+        python: ['2.7', '3.6']
 
     steps:
     - uses: actions/checkout@v2
-
-#    - name: Setup Python
-#      uses: actions/setup-python@v1
-#      with:
-#        python-version: ${{ matrix.python }}
-#        architecture: x64
 
     - name: Setup automation
       run: |
@@ -44,16 +36,6 @@ jobs:
         sudo python3 -m pip install virtualenv
         python3 -m virtualenv --system-site-packages venv
 
-    - name: Cache pip
-      uses: actions/cache@v1
-      with:
-        path: ~/.cache/pip # This path is specific to Ubuntu
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-${{ matrix.python }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.python }}-pip-
-          ${{ runner.os }}-${{ matrix.python }}-
-
     - name: Install prerequisites
       run: |
         . venv/bin/activate
@@ -74,7 +56,6 @@ jobs:
         ./deps/readies/bin/getredis --workdir redis --no-install
         sudo cp redis/redis/src/redis-server /usr/local/bin/
         redis-server --version
-        sudo chmod a+x ./redis/redis/utils/gen-test-certs.sh
         ./redis/redis/utils/gen-test-certs.sh
 
     - name: Unit Test with pytest
