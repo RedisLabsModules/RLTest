@@ -9,7 +9,7 @@ requirements = list(map(str.strip, open("requirements.txt").readlines()))
 
 setup(
     name='RLTest',
-    version='0.2.1',
+    version='0.2.2',
     description="Redis Labs Test Framework, allow to run tests on redis and modules on verity of environments.",
     long_description=read_all("README.md"),
     long_description_content_type='text/markdown',
