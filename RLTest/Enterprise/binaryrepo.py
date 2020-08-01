@@ -1,14 +1,14 @@
 from __future__ import print_function
 import os.path
 import shutil
-import platform
+import distro
 import subprocess
 import sys
 
 from RLTest.utils import Colors
 
 
-OS_NAME = platform.dist()[2]
+OS_NAME = distro.linux_distribution()[2]
 REPO_ROOT = os.path.expanduser('~/.RLTest')
 ENTERPRISE_VERSION = '5.2.0'
 ENTERPRISE_SUB_VERSION = '14'
