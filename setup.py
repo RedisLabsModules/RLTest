@@ -8,7 +8,8 @@ setup(
     install_requires=[
         'redis>=3.0.0',
         'redis-py-cluster@git+ssh://git@github.com/Grokzen/redis-py-cluster.git@master#egg=redis-py-cluster',
-        'psutil'
+        'psutil',
+        'distro>=1.4.0'
     ],
     entry_points='''
         [console_scripts]
