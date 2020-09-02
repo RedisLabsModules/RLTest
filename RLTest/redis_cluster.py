@@ -83,6 +83,7 @@ class ClusterEnv(object):
         self.waitCluster()
         for shard in self.shards:
             try:
+                shard.getConnection().execute_command('FT.CLUSTERREFRESH')
                 shard.getConnection().execute_command('SEARCH.CLUSTERREFRESH')
             except Exception:
                 pass
