@@ -48,6 +48,15 @@ class ClusterEnv(object):
                 if 'cluster_state:ok' in status:
                     ok += 1
             if ok == len(self.shards):
+                for shard in self.shards:
+                    try:
+                        shard.getConnection().execute_command('FT.CLUSTERREFRESH')
+                    except Exception:
+                        pass
+                    try:
+                        shard.getConnection().execute_command('SEARCH.CLUSTERREFRESH')
+                    except Exception:
+                        pass
                 return
 
             time.sleep(0.1)
@@ -81,15 +90,6 @@ class ClusterEnv(object):
                 pass
 
         self.waitCluster()
-        for shard in self.shards:
-            try:
-                shard.getConnection().execute_command('FT.CLUSTERREFRESH')
-            except Exception:
-                pass
-            try:
-                shard.getConnection().execute_command('SEARCH.CLUSTERREFRESH')
-            except Exception:
-                pass
         self.envIsUp = True
 
     def stopEnv(self):
