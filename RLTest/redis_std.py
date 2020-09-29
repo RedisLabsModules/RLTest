@@ -62,7 +62,7 @@ class StandardEnv(object):
                 raise ValueError('Unix sockets cannot be used with cluster mode')
             self.port = -1
 
-        if self.has_interactive_debugger:
+        if self.has_interactive_debugger and serverId > 1:
             assert self.noCatch and not self.useSlaves and not self.clusterEnabled
 
         if self.useTLS:
