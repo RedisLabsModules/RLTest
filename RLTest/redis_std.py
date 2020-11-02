@@ -295,14 +295,14 @@ class StandardEnv(object):
                 if bug_report_found is True:
                     print('\t\t' + Colors.Yellow(line.rstrip()))
 
-    def stopEnv(self):
-        if self.masterProcess:
+    def stopEnv(self, masters = True, slaves = True):
+        if self.masterProcess and masters is True:
             self._stopProcess(MASTER)
             self.masterProcess = None
-        if self.useSlaves:
+        if self.useSlaves and slaves is True:
             self._stopProcess(SLAVE)
             self.slaveProcess = None
-        self.envIsUp = False
+        self.envIsUp = False if (self.masterProcess is None and self.slaveProcess is None) else True
 
     def _getConnection(self, role):
         if self.useUnix:

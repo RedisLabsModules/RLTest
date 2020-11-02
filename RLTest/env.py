@@ -280,8 +280,8 @@ class Env:
         self.envRunner.startEnv()
         self.con = self.getConnection()
 
-    def stop(self):
-        self.envRunner.stopEnv()
+    def stop(self, masters = True, slaves = True):
+        self.envRunner.stopEnv(masters, slaves)
 
     def getEnvStr(self):
         return self.env

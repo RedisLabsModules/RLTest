@@ -146,7 +146,28 @@ class TestStandardEnv(TestCase):
         assert std_env._isAlive(std_env.masterProcess) == False
 
     def test__stop_process(self):
-        pass
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir, useSlaves=True)
+        assert std_env.isUp() == False
+        std_env.startEnv()
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        std_env.stopEnv()
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == False
+
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir, useSlaves=True)
+        assert std_env.isUp() == False
+        std_env.startEnv()
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        std_env.stopEnv(masters=True, slaves=False)
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        std_env.stopEnv(slaves=True)
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == False
+        assert std_env.isUp() == False
+
 
     def test_verbose_analyse_server_log(self):
         pass

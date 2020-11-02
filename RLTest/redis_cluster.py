@@ -95,10 +95,11 @@ class ClusterEnv(object):
         self.waitCluster()
         self.envIsUp = True
 
-    def stopEnv(self):
-        for shard in self.shards:
-            shard.stopEnv()
+    def stopEnv(self, masters = True, slaves = True):
         self.envIsUp = False
+        for shard in self.shards:
+            shard.stopEnv(masters, slaves)
+            self.envIsUp = self.envIsUp or shard.envIsUp
 
     def getConnection(self, shardId=1):
         return self.shards[shardId - 1].getConnection()
