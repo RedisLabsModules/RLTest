@@ -304,8 +304,8 @@ class StandardEnv(object):
         if self.useSlaves and slaves is True:
             self._stopProcess(SLAVE)
             self.slaveProcess = None
-        self.envIsUp = self.masterProcess or self.slaveProcess
-        self.envIsHealthy = self.masterProcess and (self.slaveProcess if self.useSlaves else True)
+        self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
+        self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
 
 
     def _getConnection(self, role):
@@ -399,10 +399,7 @@ class StandardEnv(object):
         return ret
 
     def isUp(self):
-        ret = self._isAlive(self.masterProcess)
-        if self.useSlaves:
-            ret = ret and self._isAlive(self.slaveProcess)
-        return ret
+        return self.envIsUp
 
     def isHealthy(self):
         return self.envIsHealthy
