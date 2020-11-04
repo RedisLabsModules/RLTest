@@ -160,13 +160,18 @@ class TestStandardEnv(TestCase):
         std_env.startEnv()
         assert std_env._isAlive(std_env.masterProcess) == True
         assert std_env._isAlive(std_env.slaveProcess) == True
+        assert std_env.isUp() == True
+        assert  std_env.isHealthy() == True
         std_env.stopEnv(masters=True, slaves=False)
         assert std_env._isAlive(std_env.masterProcess) == False
         assert std_env._isAlive(std_env.slaveProcess) == True
+        assert std_env.isUp() == True
+        assert  std_env.isHealthy() == False
         std_env.stopEnv(slaves=True)
         assert std_env._isAlive(std_env.masterProcess) == False
         assert std_env._isAlive(std_env.slaveProcess) == False
         assert std_env.isUp() == False
+        assert  std_env.isHealthy() == False
 
 
     def test_verbose_analyse_server_log(self):

@@ -466,6 +466,9 @@ class Env:
     def isUp(self):
         return self.envRunner.isUp()
 
+    def isHealthy(self):
+        return self.envRunner.isHealthy()
+
     def skip(self):
         raise unittest.SkipTest()
 

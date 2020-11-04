@@ -12,6 +12,7 @@ class ClusterEnv(object):
     def __init__(self, **kwargs):
         self.shards = []
         self.envIsUp = False
+        self.envIsHealthy = False
         self.modulePath = kwargs['modulePath']
         self.moduleArgs = kwargs['moduleArgs']
         self.shardsCount = kwargs.pop('shardsCount')
@@ -94,12 +95,15 @@ class ClusterEnv(object):
 
         self.waitCluster()
         self.envIsUp = True
+        self.envIsHealthy = True
 
     def stopEnv(self, masters = True, slaves = True):
         self.envIsUp = False
+        self.envIsHealthy = False
         for shard in self.shards:
             shard.stopEnv(masters, slaves)
             self.envIsUp = self.envIsUp or shard.envIsUp
+            self.envIsHealthy = self.envIsHealthy and shard.envIsUp
 
     def getConnection(self, shardId=1):
         return self.shards[shardId - 1].getConnection()
@@ -169,6 +173,9 @@ class ClusterEnv(object):
 
     def isUp(self):
         return self.envIsUp or self.waitCluster()
+
+    def isHealthy(self):
+        return self.envIsHealthy
 
     def isUnixSocket(self):
         return False
