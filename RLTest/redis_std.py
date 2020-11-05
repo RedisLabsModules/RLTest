@@ -99,6 +99,8 @@ class StandardEnv(object):
             self.slaveServerId = serverId + 1
             self.slaveCmdArgs = self.createCmdArgs(SLAVE)
 
+        self.envIsHealthy = True
+
     def _getFileName(self, role, suffix):
         return (self.outputFilesFormat + suffix) % (
             'master-%d' % self.masterServerId if role == MASTER else 'slave-%d' % self.slaveServerId)
@@ -295,14 +297,16 @@ class StandardEnv(object):
                 if bug_report_found is True:
                     print('\t\t' + Colors.Yellow(line.rstrip()))
 
-    def stopEnv(self):
-        if self.masterProcess:
+    def stopEnv(self, masters = True, slaves = True):
+        if self.masterProcess and masters is True:
             self._stopProcess(MASTER)
             self.masterProcess = None
-        if self.useSlaves:
+        if self.useSlaves and slaves is True:
             self._stopProcess(SLAVE)
             self.slaveProcess = None
-        self.envIsUp = False
+        self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
+        self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
+
 
     def _getConnection(self, role):
         if self.useUnix:
@@ -395,10 +399,10 @@ class StandardEnv(object):
         return ret
 
     def isUp(self):
-        ret = self._isAlive(self.masterProcess)
-        if self.useSlaves:
-            ret = ret and self._isAlive(self.slaveProcess)
-        return ret
+        return self.envIsUp
+
+    def isHealthy(self):
+        return self.envIsHealthy
 
     def isUnixSocket(self):
         return self.useUnix
