@@ -99,7 +99,7 @@ class Query:
 
 class Defaults:
     module = None
-    module_args = []
+    module_args = None
 
     env = 'oss'
     binary = 'redis-server'
@@ -123,6 +123,7 @@ class Defaults:
     external_addr = 'localhost:6379'
     use_unix = False
     randomize_ports = False
+    oss_password = None
 
     def getKwargs(self):
         kwargs = {
@@ -138,6 +139,7 @@ class Defaults:
             'tlsCertFile': self.tls_cert_file,
             'tlsKeyFile': self.tls_key_file,
             'tlsCaCertFile': self.tls_ca_cert_file,
+            'password': self.oss_password
         }
         return kwargs
 
@@ -165,7 +167,18 @@ class Env:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Defaults.module
-        self.moduleArgs = moduleArgs if moduleArgs else Defaults.module_args
+        self.moduleArgs = None
+        if moduleArgs:
+            self.moduleArgs = moduleArgs
+        if Defaults.module_args:
+            if not self.moduleArgs:
+                self.moduleArgs = Defaults.module_args
+            else:
+                defaultArgs = Defaults.module_args.split(' ')
+                for i in range(0, len(defaultArgs) - 1, 2):
+                    # join module args
+                    if defaultArgs[i] not in self.moduleArgs:
+                        self.moduleArgs += ' %s %s' % (defaultArgs[i], defaultArgs[i + 1])
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
@@ -217,6 +230,7 @@ class Env:
 
         if self.env == 'oss':
             kwargs.update(single_args)
+            kwargs['password'] = Defaults.oss_password
             return StandardEnv(redisBinaryPath=self.redisBinaryPath,
                                outputFilesFormat='%s-' + '%s-oss' % test_fname,
                                **kwargs)
@@ -234,6 +248,7 @@ class Env:
                                         dmcBinaryPath=Defaults.proxy_binary,
                                         **kwargs)
         if self.env == 'oss-cluster':
+            kwargs['password'] = Defaults.oss_password
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=self.redisBinaryPath,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
                               randomizePorts=Defaults.randomize_ports,
