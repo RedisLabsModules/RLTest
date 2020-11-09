@@ -310,7 +310,7 @@ class StandardEnv(object):
 
     def _getConnection(self, role):
         if self.useUnix:
-            return redis.Redis(unix_socket_path=self.getUnixPath(role),
+            return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
                                      password=self.password)
         elif self.useTLS:
             return redis.StrictRedis('localhost', self.getPort(role),
@@ -322,7 +322,7 @@ class StandardEnv(object):
                                      ssl_ca_certs=self.getTLSCACertFile(),
                                      )
         else:
-            return redis.Redis('localhost', self.getPort(role),
+            return redis.StrictRedis('localhost', self.getPort(role),
                                      password=self.password)
 
     def getConnection(self, shardId=1):
