@@ -15,6 +15,7 @@ class ClusterEnv(object):
         self.envIsHealthy = False
         self.modulePath = kwargs['modulePath']
         self.moduleArgs = kwargs['moduleArgs']
+        self.password = kwargs['password']
         self.shardsCount = kwargs.pop('shardsCount')
         useSlaves = kwargs.get('useSlaves', False)
         self.useTLS = kwargs['useTLS']
@@ -130,7 +131,7 @@ class ClusterEnv(object):
         else:
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
-                decode_responses=True )
+                decode_responses=True, password=self.password)
 
     def getSlaveConnection(self):
         raise Exception('unsupported')

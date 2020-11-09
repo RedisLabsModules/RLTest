@@ -104,7 +104,7 @@ parser.add_argument(
     help='path to the module file')
 
 parser.add_argument(
-    '--module-args', default=[],
+    '--module-args', default=None,
     help='arguments to give to the module on loading', action='append')
 
 parser.add_argument(
@@ -122,6 +122,10 @@ parser.add_argument(
 parser.add_argument(
     '--cluster_address',
     help='enterprise cluster ip, relevent only when running with cluster_existing-env')
+
+parser.add_argument(
+    '--oss_password', default=None,
+    help='set redis password, relevant for oss and oss-cluster environment')
 
 parser.add_argument(
     '--cluster_credentials',
@@ -342,7 +346,7 @@ class RLTest:
             self.args.env_reuse = True
         Defaults.module = self.args.module
 
-        Defaults.module_args = ' '.join(self.args.module_args)
+        Defaults.module_args = (' '.join(self.args.module_args) if self.args.module_args else None)
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose
@@ -369,6 +373,7 @@ class RLTest:
         Defaults.tls_cert_file = self.args.tls_cert_file
         Defaults.tls_key_file = self.args.tls_key_file
         Defaults.tls_ca_cert_file = self.args.tls_ca_cert_file
+        Defaults.oss_password = self.args.oss_password
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 
