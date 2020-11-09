@@ -123,6 +123,7 @@ class Defaults:
     external_addr = 'localhost:6379'
     use_unix = False
     randomize_ports = False
+    oss_password = None
 
     def getKwargs(self):
         kwargs = {
@@ -138,6 +139,7 @@ class Defaults:
             'tlsCertFile': self.tls_cert_file,
             'tlsKeyFile': self.tls_key_file,
             'tlsCaCertFile': self.tls_ca_cert_file,
+            'password': self.oss_password
         }
         return kwargs
 
