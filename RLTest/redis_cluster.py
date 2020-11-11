@@ -67,12 +67,12 @@ class ClusterEnv(object):
             time.sleep(0.1)
         raise RuntimeError("Cluster OK wait loop timed out after %s seconds" % timeout_sec)
 
-    def startEnv(self):
+    def startEnv(self, masters = True, slaves = True):
         if self.envIsUp == True:
             return  # env is already up
         try:
             for shard in self.shards:
-                shard.startEnv()
+                shard.startEnv(masters, slaves)
         except Exception:
             for shard in self.shards:
                 shard.stopEnv()

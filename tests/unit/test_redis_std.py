@@ -173,6 +173,76 @@ class TestStandardEnv(TestCase):
         assert std_env.isUp() == False
         assert std_env.isHealthy() == False
 
+    def test__start_process(self):
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir,
+                              useSlaves=True)
+        assert std_env.isUp() == False
+        std_env.startEnv()
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        std_env.stopEnv()
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == False
+        assert std_env.isUp() == False
+        assert std_env.isHealthy() == False
+
+        std_env.startEnv(masters=True, slaves=False)
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == False
+        assert std_env.isUp() == True
+        assert std_env.isHealthy() == False
+
+        std_env.stopEnv()
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == False
+        assert std_env.isUp() == False
+        assert std_env.isHealthy() == False
+
+        std_env.startEnv(masters=False, slaves=True)
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        assert std_env.isUp() == True
+        assert std_env.isHealthy() == False
+
+        std_env.stopEnv()
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == False
+        assert std_env.isUp() == False
+        assert std_env.isHealthy() == False
+
+        std_env.startEnv()
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        assert std_env.isUp() == True
+        assert std_env.isHealthy() == True
+
+        std_env.stopEnv(masters=True, slaves=False)
+        assert std_env._isAlive(std_env.masterProcess) == False
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        assert std_env.isUp() == True
+        assert std_env.isHealthy() == False
+
+        std_env.startEnv()
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        assert std_env.isUp() == True
+        assert std_env.isHealthy() == True
+
+        std_env.stopEnv(masters=False, slaves=True)
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == False
+        assert std_env.isUp() == True
+        assert std_env.isHealthy() == False
+
+        std_env.startEnv()
+        assert std_env._isAlive(std_env.masterProcess) == True
+        assert std_env._isAlive(std_env.slaveProcess) == True
+        assert std_env.isUp() == True
+        assert std_env.isHealthy() == True
+
+        std_env.stopEnv()
+
+
 
     def test_verbose_analyse_server_log(self):
         pass
