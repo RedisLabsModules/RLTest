@@ -220,8 +220,8 @@ class StandardEnv(object):
             print(Colors.Yellow(prefix + 'slave:'))
             self._printEnvData(prefix + '\t', SLAVE)
 
-    def startEnv(self):
-        if self.envIsUp:
+    def startEnv(self, masters = True, slaves = True):
+        if self.envIsUp and self.envIsHealthy:
             return  # env is already up
         stdoutPipe = subprocess.PIPE
         stderrPipe = subprocess.STDOUT
@@ -240,14 +240,16 @@ class StandardEnv(object):
             'env': self.environ
         }
 
-        self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
-        con = self.getConnection()
-        self.waitForRedisToStart(con)
-        if self.useSlaves:
+        if masters and self.masterProcess is None:
+            self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
+            con = self.getConnection()
+            self.waitForRedisToStart(con)
+        if self.useSlaves and slaves and self.slaveProcess is None:
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)
         self.envIsUp = True
+        self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
 
     def _isAlive(self, process):
         if not process:
@@ -298,10 +300,10 @@ class StandardEnv(object):
                     print('\t\t' + Colors.Yellow(line.rstrip()))
 
     def stopEnv(self, masters = True, slaves = True):
-        if self.masterProcess and masters is True:
+        if self.masterProcess is not None and masters is True:
             self._stopProcess(MASTER)
             self.masterProcess = None
-        if self.useSlaves and slaves is True:
+        if self.useSlaves and self.slaveProcess is not None and slaves is True:
             self._stopProcess(SLAVE)
             self.slaveProcess = None
         self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
