@@ -21,6 +21,7 @@ class EnterpriseClusterEnv():
 
         self.shards = []
         self.envIsUp = False
+        self.envIsHealthy = False
         self.modulePath = kwargs.pop('modulePath')
         self.moduleArgs = kwargs['moduleArgs']
         self.shardsCount = kwargs.pop('shardsCount')
@@ -79,11 +80,11 @@ class EnterpriseClusterEnv():
         print(Colors.Yellow(prefix + 'dmc:'))
         self.dmc.PrintEnvData(prefix + '\t')
 
-    def startEnv(self):
+    def startEnv(self, masters = True, slaves = True):
         if self.envIsUp:
             return  # env is already up
         for shard in self.shards:
-            shard.startEnv()
+            shard.startEnv(masters, slaves)
 
         ccs_bdb_config = {'shard_key_regex': '012.*\{(?<tag>.*)\}.*00a(?<tag>.*)',
                           'sharding': 'enabled' if self.shardsCount > 0 else 'disabled'}
@@ -104,13 +105,15 @@ class EnterpriseClusterEnv():
         con = self.getConnection()
         wait_for_conn(con, command='sping', shouldBe=['SPONG 0' for i in self.shards])
         self.envIsUp = True
+        self.envIsHealthy = True
 
-    def stopEnv(self):
+    def stopEnv(self, masters = True, slaves = True):
         for shard in self.shards:
-            shard.stopEnv()
+            shard.stopEnv(masters, slaves)
+            self.envIsUp = self.envIsUp or shard.envIsUp
+            self.envIsHealthy = self.envIsHealthy and shard.envIsUp
         self.ccs.Stop()
         self.dmc.Stop()
-        self.envIsUp = False
 
     def getConnection(self, shardId=1):
         return redis.Redis('localhost', self.DMC_PORT)

@@ -28,11 +28,11 @@ class ExistsRedisEnv(object):
         print(Colors.Yellow(prefix + 'master:'))
         self._printEnvData(prefix + '\t', MASTER)
 
-    def startEnv(self):
+    def startEnv(self, masters = True, slaves = True):
         if not self.isUp():
             raise Exception('env is not up')
 
-    def stopEnv(self):
+    def stopEnv(self, masters = True, slaves = True):
         pass
 
     def getConnection(self, shardId=1):
