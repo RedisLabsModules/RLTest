@@ -60,7 +60,7 @@ class LLDB(GenericInteractiveDebugger):
         super(LLDB, self).__init__(cmdline)
 
     def generate_command(self, *argc, **kw):
-        return ['lldb', '--']
+        return ['lldb', '-o', 'run', '--']
 
 
 if platform.system() == 'Darwin':
