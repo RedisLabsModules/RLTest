@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import uuid
+import psutil
 
 import redis
 
@@ -272,6 +273,16 @@ class StandardEnv(object):
                     self.verbose_analyse_server_log(role)
             return
         try:
+            if platform.system() == 'Darwin':
+                # On macOS, with lldb, killing lldb process does not terminate inferior processes
+                p0 = psutil.Process(pid=process.pid)
+                pchi = p0.children(recursive=True)
+                for p in pchi:
+                    try:
+                        p.terminate()
+                        p.wait()
+                    except:
+                        pass
             process.terminate()
             process.wait()
             if role == MASTER:
