@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import uuid
+import platform
 import psutil
 
 import redis
