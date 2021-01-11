@@ -18,6 +18,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      # Number of commits to fetch. 0 indicates all history for all branches and tags.
+      with:
+        - fetch-depth: ''
     - name: Install OpenSSL development libraries
       run: |
         sudo apt-get -qq update
