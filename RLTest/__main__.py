@@ -314,7 +314,7 @@ class RLTest:
                 try:
                     shutil.rmtree(self.args.log_dir)
                 except Exception as e:
-                    print(e)
+                    print(e, file=sys.stderr)
 
         debugger = None
         if self.args.debugger:
