@@ -158,7 +158,7 @@ class Env:
         return True
 
     def __init__(self, testName=None, testDescription=None, module=None,
-                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=True,
+                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, logDir=None, redisBinaryPath=None,dmcBinaryPath=None,redisEnterpriseBinaryPath=None ):
 
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
