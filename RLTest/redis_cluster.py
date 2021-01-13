@@ -50,7 +50,7 @@ class ClusterEnv(object):
             for shard in self.shards:
                 con = shard.getConnection()
                 status = con.execute_command('CLUSTER', 'INFO')
-                if b'cluster_state:ok' in status:
+                if 'cluster_state:ok' in str(status):
                     ok += 1
             if ok == len(self.shards):
                 for shard in self.shards:

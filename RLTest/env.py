@@ -106,6 +106,7 @@ class Defaults:
     proxy_binary = None
     re_binary = None
     re_libdir = None
+    decode_responses = True
     use_aof = False
     use_TLS = False
     tls_cert_file = None
@@ -157,7 +158,7 @@ class Env:
         return True
 
     def __init__(self, testName=None, testDescription=None, module=None,
-                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None,
+                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, logDir=None, redisBinaryPath=None,dmcBinaryPath=None,redisEnterpriseBinaryPath=None ):
 
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
@@ -182,6 +183,7 @@ class Env:
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
+        self.decodeResponses = decodeResponses if decodeResponses else Defaults.decode_responses
         self.useAof = useAof if useAof else Defaults.use_aof
         self.verbose = Defaults.verbose
         self.logDir = logDir if logDir else Defaults.logdir
@@ -279,6 +281,7 @@ class Env:
             'modulePath': self.module,
             'moduleArgs': self.moduleArgs,
             'useSlaves': self.useSlaves,
+            'decodeResponses': self.decodeResponses,
             'useAof': self.useAof,
             'dbDirPath': self.logDir,
             'debugger': Defaults.debugger,

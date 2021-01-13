@@ -18,7 +18,7 @@ SLAVE = 'slave'
 
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
-                 dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False,
+                 dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=True,
                  useAof=False, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
                  tlsKeyFile=None, tlsCaCertFile=None):
         self.uuid = uuid.uuid4().hex
@@ -31,6 +31,7 @@ class StandardEnv(object):
         self.masterServerId = serverId
         self.password = password
         self.clusterEnabled = clusterEnabled
+        self.decodeResponses = decodeResponses
         self.useAof = useAof
         self.envIsUp = False
         self.debugger = debugger
@@ -325,7 +326,7 @@ class StandardEnv(object):
     def _getConnection(self, role):
         if self.useUnix:
             return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
-                                     password=self.password)
+                                     password=self.password, decode_responses=self.decodeResponses)
         elif self.useTLS:
             return redis.StrictRedis('localhost', self.getPort(role),
                                      password=self.password,
@@ -334,10 +335,11 @@ class StandardEnv(object):
                                      ssl_certfile=self.getTLSCertFile(),
                                      ssl_cert_reqs=None,
                                      ssl_ca_certs=self.getTLSCACertFile(),
+                                     decode_responses=self.decodeResponses
                                      )
         else:
             return redis.StrictRedis('localhost', self.getPort(role),
-                                     password=self.password)
+                                     password=self.password, decode_responses=self.decodeResponses)
 
     def getConnection(self, shardId=1):
         return self._getConnection(MASTER)
