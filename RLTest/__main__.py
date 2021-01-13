@@ -310,10 +310,11 @@ class RLTest:
             br.download_binaries()
 
         if self.args.clear_logs:
-            try:
-                shutil.rmtree(self.args.log_dir)
-            except Exception as e:
-                print(e)
+            if os.path.exists(self.args.log_dir):
+                try:
+                    shutil.rmtree(self.args.log_dir)
+                except Exception as e:
+                    print(e, file=sys.stderr)
 
         debugger = None
         if self.args.debugger:
