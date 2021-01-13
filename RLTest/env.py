@@ -106,7 +106,7 @@ class Defaults:
     proxy_binary = None
     re_binary = None
     re_libdir = None
-    decode_responses = True
+    decode_responses = False
     use_aof = False
     use_TLS = False
     tls_cert_file = None

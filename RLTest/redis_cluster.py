@@ -131,7 +131,7 @@ class ClusterEnv(object):
         else:
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
-                decode_responses=True, password=self.password)
+                decode_responses=False, password=self.password)
 
     def getSlaveConnection(self):
         raise Exception('unsupported')
