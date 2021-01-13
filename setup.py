@@ -1,9 +1,13 @@
 from setuptools import setup, find_packages
+from RLTest import __version__
+
 
 setup(
     name='RLTest',
-    version='0.2.1',
+    version=__version__,
     description="Redis Labs Test Framework, allow to run tests on redis and modules on a variety of environments.",
+    author='RedisLabs',
+    author_email='oss@redislabs.com',
     packages=find_packages(),
     install_requires=[
         'redis>=3.0.0',

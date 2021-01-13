@@ -1,4 +1,5 @@
 import os
+from unittest import TestCase
 
 REDIS_BINARY = os.environ.get("REDIS_BINARY", "redis-server")
 REDIS_ENTERPRISE_BINARY = os.environ.get("REDIS_ENTERPRISE_BINARY", None)
@@ -15,3 +16,9 @@ def whereis(program):
                 not os.path.isdir(os.path.join(path, program)):
             return os.path.join(path, program)
     return None
+
+class TestCommon(TestCase):
+
+    def testVersionRuntime(self):
+        import RLTest as rltest_pkg
+        self.assertNotEqual("",rltest_pkg.__version__)

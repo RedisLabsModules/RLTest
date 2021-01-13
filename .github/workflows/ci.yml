@@ -10,6 +10,7 @@ jobs:
   build-ubuntu:
     name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }}
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 10
     strategy:
       matrix:
         platform: [ubuntu-latest, ubuntu-16.04]
@@ -17,6 +18,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      # Number of commits to fetch. 0 indicates all history for all branches and tags.
+      with:
+        fetch-depth: ''
     - name: Install OpenSSL development libraries
       run: |
         sudo apt-get -qq update
@@ -63,6 +67,7 @@ jobs:
         cd ..
 
     - name: Unit Test with pytest
+      timeout-minutes: 5
       run: |
         pip install pytest
         TLS_CERT=./tests/unit/tls/redis.crt \

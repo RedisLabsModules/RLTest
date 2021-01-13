@@ -16,6 +16,7 @@ from RLTest.utils import Colors
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
+from RLTest._version import __version__
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -98,6 +99,9 @@ class MyCmd(cmd.Cmd):
 parser = CustomArgumentParser(fromfile_prefix_chars=RLTest_CONFIG_FILE_PREFIX,
                               formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                               description='Test Framework for redis and redis module')
+parser.add_argument(
+    '--version', action='store_const', const=True, default=False,
+    help='Print RLTest version and exit')
 
 parser.add_argument(
     '--module', default=None,
@@ -290,6 +294,10 @@ class RLTest:
         else:
             args = sys.argv[1:]
         self.args = parser.parse_args(args=args)
+
+        if self.args.version:
+            print(Colors.Green('RLTest version {}'.format(__version__)))
+            sys.exit(0)
 
         if self.args.interactive_debugger:
             if self.args.env != 'oss' and self.args.env != 'enterprise':
