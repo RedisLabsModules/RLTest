@@ -10,7 +10,9 @@ class Shard(StrictRedis):
         self.password = password
         self.cluster_username, self.cluster_password = cluster_credentials.split(":")
         self.host = self._get_node_address(cluster_address)
-        StrictRedis.__init__(self, host = self.host, port = self.port, password = self.password, decode_responses=False, **kwargs)
+        self.decodeResponses = kwargs.get('decodeResponses', False)
+        StrictRedis.__init__(self, host = self.host, port = self.port, password = self.password,
+                             decode_responses=self.decodeResponses, **kwargs)
 
     def dumpAndReload(self, restart=False, shardId=1):
         self.save()
@@ -49,11 +51,12 @@ class DB(StrictRedis):
     def __init__(self, host, port, password, shards_port, cluster_address, cluster_credentials, **kwargs):
         self.host = host
         self.port = port
-        self.shard_list = [Shard( cluster_address=cluster_address, 
-                                  port=port, password=password, 
-                                  cluster_credentials=cluster_credentials) for port in shards_port]
+        self.decodeResponses = kwargs.get('decodeResponses', False)
+        self.shard_list = [Shard(cluster_address=cluster_address, 
+                                 port=port, password=password, 
+                                 cluster_credentials=cluster_credentials) for port in shards_port]
         StrictRedis.__init__(self, host = self.host, port = self.port,
-                             decode_responses=False, **kwargs)
+                             decode_responses=self.decodeResponses, **kwargs)
 
 
 class EnterpriseRedisClusterEnv(ExistsRedisEnv):
@@ -68,11 +71,11 @@ class EnterpriseRedisClusterEnv(ExistsRedisEnv):
         self.host, self.port = addr.split(':')
         self.cluster_address = cluster_address
         self.password = password
-        self.data_base = DB(host=self.host, port=self.port,
-                            password=password, shards_port = shards_port,
-                            cluster_address = cluster_address,
-                            cluster_credentials = cluster_credentials)
-        self.shards = self.data_base.shard_list
+        self.database = DB(host=self.host, port=self.port,
+                           password=password, shards_port = shards_port,
+                           cluster_address = cluster_address,
+                           cluster_credentials = cluster_credentials, **kwargs)
+        self.shards = self.database.shard_list
 
     def waitCluster(self, timeout_sec=40):
         import time
@@ -95,7 +98,7 @@ class EnterpriseRedisClusterEnv(ExistsRedisEnv):
         return self.getConnection()
 
     def getConnection(self, shardId=1):
-        return self.data_base
+        return self.database
 
     # List of nodes that initial bootstrapping can be done from
     def getMasterNodesList(self):

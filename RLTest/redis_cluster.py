@@ -19,6 +19,7 @@ class ClusterEnv(object):
         self.shardsCount = kwargs.pop('shardsCount')
         useSlaves = kwargs.get('useSlaves', False)
         self.useTLS = kwargs['useTLS']
+        self.decodeResponses = kwargs.get('decodeResponses', False)
         startPort = 20000
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
@@ -126,12 +127,13 @@ class ClusterEnv(object):
                 pool.connection_kwargs.pop('ssl', None)
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
-                connection_pool=pool
+                connection_pool=pool,
+                decode_responses=self.decodeResponses
                 )
         else:
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
-                decode_responses=False, password=self.password)
+                decode_responses=self.decodeResponses, password=self.password)
 
     def getSlaveConnection(self):
         raise Exception('unsupported')
