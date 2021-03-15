@@ -104,6 +104,53 @@ class TestStandardEnv(TestCase):
                 '--tls-key-file', os.path.join(self.test_dir, tlsKeyFile), '--tls-ca-cert-file',
                 os.path.join(self.test_dir, tlsCaCertFile)] == cmd_args
 
+    def test_create_cmd_args_modules_default_behaviour(self):
+        port = 8000
+        temp = tempfile.TemporaryFile()
+        directory_name = tempfile.mkdtemp()
+        temp_file = tempfile.NamedTemporaryFile(dir=directory_name)
+        module_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                     port=port, modulePath=temp_file.name, moduleArgs="P1 V1 P2 V2")
+        role = 'master'
+        cmd_args = module_std_env.createCmdArgs(role)
+        assert [REDIS_BINARY, '--port', '{}'.format(port),
+                '--loadmodule', temp_file.name, 'P1', 'V1', 'P2', 'V2',
+                '--logfile',  module_std_env._getFileName(role, '.log'),
+                '--dbfilename', module_std_env._getFileName(role, '.rdb')] == cmd_args
+        shutil.rmtree(directory_name)
+
+    def test_create_cmd_args_modules_one_module_array(self):
+        port = 8000
+        temp = tempfile.TemporaryFile()
+        directory_name = tempfile.mkdtemp()
+        temp_file = tempfile.NamedTemporaryFile(dir=directory_name)
+        module_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                     port=port, modulePath=[temp_file.name], moduleArgs=["P1 V1 P2 V2"])
+        role = 'master'
+        cmd_args = module_std_env.createCmdArgs(role)
+        assert [REDIS_BINARY, '--port', '{}'.format(port),
+                '--loadmodule', temp_file.name, 'P1', 'V1', 'P2', 'V2',
+                '--logfile',  module_std_env._getFileName(role, '.log'),
+                '--dbfilename', module_std_env._getFileName(role, '.rdb')] == cmd_args
+        shutil.rmtree(directory_name)
+
+    def test_create_cmd_args_modules_two_modules_array(self):
+        port = 8000
+        temp = tempfile.TemporaryFile()
+        directory_name = tempfile.mkdtemp()
+        temp_file1 = tempfile.NamedTemporaryFile(dir=directory_name)
+        temp_file2 = tempfile.NamedTemporaryFile(dir=directory_name)
+        module_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                     port=port, modulePath=[temp_file1.name, temp_file2.name], moduleArgs=["P1 V1 P2 V2", ""])
+        role = 'master'
+        cmd_args = module_std_env.createCmdArgs(role)
+        assert [REDIS_BINARY, '--port', '{}'.format(port),
+                '--loadmodule', temp_file1.name, 'P1', 'V1', 'P2', 'V2',
+                '--loadmodule', temp_file2.name,
+                '--logfile', module_std_env._getFileName(role, '.log'),
+                '--dbfilename', module_std_env._getFileName(role, '.rdb')] == cmd_args
+        shutil.rmtree(directory_name)
+
     def test_wait_for_redis_to_start(self):
         pass
 

@@ -104,8 +104,10 @@ parser.add_argument(
     help='Print RLTest version and exit')
 
 parser.add_argument(
-    '--module', default=None,
-    help='path to the module file')
+    '--module', default=None,action='append',
+    help='path to the module file. '
+         'You can use `--module` more than once but it imples that you explicitly specify `--module-args` as well. '
+         'Notice that on enterprise the file should be a zip file packed with [RAMP](https://github.com/RedisLabs/RAMP).')
 
 parser.add_argument(
     '--module-args', default=None,
@@ -354,8 +356,20 @@ class RLTest:
             # when running on existing env we always reuse it
             self.args.env_reuse = True
         Defaults.module = self.args.module
+        module_args = None
 
-        Defaults.module_args = (' '.join(self.args.module_args) if self.args.module_args else None)
+        if self.args.module_args:
+            len_module_args = len(self.args.module_args)
+            modules = self.args.module
+            if type(modules) == list:
+                if (len(modules) != len_module_args):
+                    print(Colors.Bred('Using `--module` multiple time implies that you specify the `--module-args` in the the same number'))
+                    sys.exit(1)
+                module_args = self.args.module_args
+            else:
+                module_args = ' '.join(self.args.module_args)
+
+        Defaults.module_args = module_args
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose

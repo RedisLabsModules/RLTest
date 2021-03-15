@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        platform: [ubuntu-latest, ubuntu-16.04]
+        platform: [ubuntu-18.04, ubuntu-16.04]
         python: ['2.7', '3.6', '3.8' ]
 
     steps:
@@ -21,6 +21,15 @@ jobs:
       # Number of commits to fetch. 0 indicates all history for all branches and tags.
       with:
         fetch-depth: ''
+
+
+    # Remove apt repos that are known to break from time to time.
+    # See https://github.com/actions/virtual-environments/issues/323
+    - name: Remove broken apt repos [Ubuntu]
+      if: matrix.os == 'ubuntu-16.04' || matrix.os == 'ubuntu-18.04'
+      run: |
+        for apt_file in `grep -lr microsoft /etc/apt/sources.list.d/`; do sudo rm $apt_file; done
+
     - name: Install OpenSSL development libraries
       run: |
         sudo apt-get -qq update
@@ -48,7 +57,6 @@ jobs:
         sudo apt-get install -y python3-setuptools
         pip install -r requirements.txt
 
-
     - name: Cache Redis
       id: cache-redis
       uses: actions/cache@v1
@@ -59,26 +67,72 @@ jobs:
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone git://github.com/antirez/redis.git --branch unstable
+        git clone git://github.com/antirez/redis.git --branch unstable --depth 1
         cd redis
-        make BUILD_TLS=yes
-        ./utils/gen-test-certs.sh
+        make BUILD_TLS=yes -j
         ./src/redis-server --version
         cd ..
+    - name: Generate test certificates
+      run: |
+        cd redis
+        rm -rf ./tests/unit/tls/
+        ./utils/gen-test-certs.sh
 
     - name: Unit Test with pytest
       timeout-minutes: 5
       run: |
         pip install pytest
-        TLS_CERT=./tests/unit/tls/redis.crt \
-        TLS_KEY=./tests/unit/tls/redis.key \
-        TLS_CACERT=./tests/unit/tls/ca.crt \
+        TLS_CERT=./redis/tests/tls/redis.crt \
+        TLS_KEY=./redis/tests/tls/redis.key \
+        TLS_CACERT=./redis/tests/tls/ca.crt \
         REDIS_BINARY=./redis/src/redis-server \
         pytest --ignore=tests/flow --ignore=test_example.py
 
     - name: Install RLTest
       run: |
         pip install .
+
+    - name: Flow Test OSS Single Module
+      run: |
+        cd tests/flow
+        make -C modules
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
+          --module modules/module1.so
+        cd ..
+
+    - name: Flow Test OSS Multiple Modules  --use-slaves
+      run: |
+        cd tests/flow
+        make -C modules
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
+          --module modules/module1.so --module-args '' --module modules/module2.so --module-args '' \
+          --use-slaves
+        cd ..
+
+    - name: Flow Test OSS Multiple Modules  --use-aof
+      run: |
+        cd tests/flow
+        make -C modules
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
+          --module modules/module1.so --module-args '' --module modules/module2.so --module-args '' \
+          --use-aof
+        cd ..
+
+    - name: Flow Test OSS Multiple Modules
+      run: |
+        cd tests/flow
+        make -C modules
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
+          --module modules/module1.so --module-args '' --module modules/module2.so --module-args ''
+        cd ..
+
+    - name: Flow Test OSS-CLUSTER Modules
+      run: |
+        cd tests/flow
+        make -C modules
+        CONTAINS_MODULES=1 RLTest --env oss-cluster -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
+          --module modules/module1.so --module-args '' --module modules/module2.so --module-args ''
+        cd ..
 
     - name: Flow Test OSS TCP
       run: |
@@ -138,19 +192,19 @@ jobs:
         cd ../..
 
     - name: Generate coverage report
-      if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
+      if: matrix.platform == 'ubuntu-18.04' && matrix.python == '3.6'
       run: |
         pip install pytest
         pip install pytest-cov
-        TLS_CERT=./tests/unit/tls/redis.crt \
-        TLS_KEY=./tests/unit/tls/redis.key \
-        TLS_CACERT=./tests/unit/tls/ca.crt \
+        TLS_CERT=./redis/tests/tls/redis.crt \
+        TLS_KEY=./redis/tests/tls/redis.key \
+        TLS_CACERT=./redis/tests/tls/ca.crt \
         REDIS_BINARY=./redis/src/redis-server \
         pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
-      if: matrix.platform == 'ubuntu-latest' && matrix.python == '3.6'
+      if: matrix.platform == 'ubuntu-18.04' && matrix.python == '3.6'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
