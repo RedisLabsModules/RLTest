@@ -101,7 +101,6 @@ class Defaults:
     module = None
     module_args = None
 
-
     env = 'oss'
     binary = 'redis-server'
     proxy_binary = None
@@ -157,7 +156,6 @@ class Env:
             if self.__dict__[param] != env.__dict__[param]:
                 return False
         return True
-
 
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
