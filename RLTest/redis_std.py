@@ -24,8 +24,20 @@ class StandardEnv(object):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
-        self.modulePath = os.path.abspath(modulePath) if modulePath else None
-        self.moduleArgs = moduleArgs
+
+        if modulePath:
+            if not isinstance(modulePath, list):
+                modulePath = [modulePath]
+            self.modulePath = list(map(lambda p: os.path.abspath(p), modulePath))
+        else:
+            self.modulePath = None
+        if isinstance(moduleArgs, list):
+            self.moduleArgs = moduleArgs
+        else:
+            self.moduleArgs = [moduleArgs]
+            if isinstance(modulePath, list) and len(modulePath) > 1:
+                self.moduleArgs.extend([''] * (len(modulePath) - 1))
+
         self.outputFilesFormat = self.uuid + '.' + outputFilesFormat
         self.useSlaves = useSlaves
         self.masterServerId = serverId
@@ -92,7 +104,7 @@ class StandardEnv(object):
         else:
             self.libPath = None
         if self.libPath:
-            if 'LD_LIBRARY_PATH' is self.environ.keys():
+            if 'LD_LIBRARY_PATH' in self.environ.keys():
                 self.environ['LD_LIBRARY_PATH'] = self.libPath + ":" + self.environ['LD_LIBRARY_PATH']
             else:
                 self.environ['LD_LIBRARY_PATH'] = self.libPath
@@ -147,10 +159,15 @@ class StandardEnv(object):
                 cmdArgs += ['--port', str(self.getPort(role))]
         else:
             cmdArgs += ['--port', str(0), '--unixsocket', self.getUnixPath(role)]
+
         if self.modulePath:
-            cmdArgs += ['--loadmodule', self.modulePath]
-            if self.moduleArgs:
-                cmdArgs += self.moduleArgs.split(' ')
+            for pos, module in enumerate(self.modulePath):
+                cmdArgs += ['--loadmodule', module]
+                if self.moduleArgs:
+                    module_args = self.moduleArgs[pos]
+                    if module_args:
+                        cmdArgs += module_args.split(' ')
+
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
         if self.outputFilesFormat is not None and not self.noCatch:
@@ -243,11 +260,15 @@ class StandardEnv(object):
             'env': self.environ
         }
 
+        if self.verbose:
+            print("Redis master command: " + ' '.join(self.masterCmdArgs))
         if masters and self.masterProcess is None:
             self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
             con = self.getConnection()
             self.waitForRedisToStart(con)
         if self.useSlaves and slaves and self.slaveProcess is None:
+            if self.verbose:
+                print("Redis slave command: " + ' '.join(self.slaveCmdArgs))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)

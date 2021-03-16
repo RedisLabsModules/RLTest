@@ -1,18 +1,18 @@
 # coding=utf-8
 from __future__ import print_function
-import os
-import sys
-import redis
-import unittest
-import inspect
+
 import contextlib
+import inspect
+import os
+import unittest
 import warnings
-from .redis_std import StandardEnv
-from .redis_cluster import ClusterEnv
-from .utils import Colors, expandBinary
+
 from .Enterprise import EnterpriseClusterEnv
 from .exists_redis import ExistsRedisEnv
+from .redis_cluster import ClusterEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
+from .redis_std import StandardEnv
+from .utils import Colors, expandBinary
 
 
 class TestAssertionFailure(Exception):
@@ -159,7 +159,9 @@ class Env:
 
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
-                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, logDir=None, redisBinaryPath=None,dmcBinaryPath=None,redisEnterpriseBinaryPath=None ):
+                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
+                 tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
+                 redisEnterpriseBinaryPath=None):
 
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
@@ -168,18 +170,7 @@ class Env:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Defaults.module
-        self.moduleArgs = None
-        if moduleArgs:
-            self.moduleArgs = moduleArgs
-        if Defaults.module_args:
-            if not self.moduleArgs:
-                self.moduleArgs = Defaults.module_args
-            else:
-                defaultArgs = Defaults.module_args.split(' ')
-                for i in range(0, len(defaultArgs) - 1, 2):
-                    # join module args
-                    if defaultArgs[i] not in self.moduleArgs:
-                        self.moduleArgs += ' %s %s' % (defaultArgs[i], defaultArgs[i + 1])
+        self.moduleArgs = moduleArgs if moduleArgs else Defaults.module_args
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
@@ -306,6 +297,14 @@ class Env:
 
     def getConnection(self, shardId=1):
         return self.envRunner.getConnection(shardId)
+
+    def getClusterConnectionIfNeeded(self):
+        if isinstance(self.envRunner, ClusterEnv):
+            return self.envRunner.getClusterConnection()
+        elif isinstance(self.envRunner, EnterpriseRedisClusterEnv):
+            return self.envRunner.getClusterConnection()
+        else:
+            return self.getConnection()
 
     def getSlaveConnection(self):
         return self.envRunner.getSlaveConnection()

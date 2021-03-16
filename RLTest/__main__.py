@@ -104,12 +104,14 @@ parser.add_argument(
     help='Print RLTest version and exit')
 
 parser.add_argument(
-    '--module', default=None,
-    help='path to the module file')
+    '--module', default=None, action='append',
+    help='path to the module file. '
+         'You can use `--module` more than once but it imples that you explicitly specify `--module-args` as well. '
+         'Notice that on enterprise the file should be a zip file packed with [RAMP](https://github.com/RedisLabs/RAMP).')
 
 parser.add_argument(
-    '--module-args', default=None,
-    help='arguments to give to the module on loading', action='append')
+    '--module-args', default=None, action='append', nargs='*',
+    help='arguments to give to the module on loading')
 
 parser.add_argument(
     '--env', '-e', default='oss', choices=['oss', 'oss-cluster', 'enterprise', 'enterprise-cluster', 'existing-env', 'cluster_existing-env'],
@@ -337,9 +339,9 @@ class RLTest:
                 sys.exit(1)
             if self.args.vg_options is None:
                 self.args.vg_options = os.getenv('VG_OPTIONS', '--leak-check=full --errors-for-leak-kinds=definite')
-            vg_debugger = debuggers.Valgrind(options=self.args.vg_options, 
-                                             suppressions=self.args.vg_suppressions, 
-                                             fail_on_errors=not(self.args.vg_no_fail_on_errors), 
+            vg_debugger = debuggers.Valgrind(options=self.args.vg_options,
+                                             suppressions=self.args.vg_suppressions,
+                                             fail_on_errors=not(self.args.vg_no_fail_on_errors),
                                              leakcheck=not(self.args.vg_no_leakcheck)
             )
             if self.args.vg_no_leakcheck:
@@ -353,9 +355,24 @@ class RLTest:
         if self.args.env.endswith('existing-env'):
             # when running on existing env we always reuse it
             self.args.env_reuse = True
-        Defaults.module = self.args.module
 
-        Defaults.module_args = (' '.join(self.args.module_args) if self.args.module_args else None)
+        Defaults.module = self.args.module
+        module_args = None
+
+        if self.args.module_args:
+            len_module_args = len(self.args.module_args)
+            modules = self.args.module
+            if type(modules) == list:
+                if (len(modules) != len_module_args):
+                    print(Colors.Bred('Using `--module` multiple time implies that you specify the `--module-args` in the the same number'))
+                    sys.exit(1)
+                module_args = []
+                for args in self.args.module_args:
+                    module_args += [' '.join(args) if args else '']
+            else:
+                module_args = ' '.join(self.args.module_args)
+
+        Defaults.module_args = module_args
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose
