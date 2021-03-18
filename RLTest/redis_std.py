@@ -164,9 +164,12 @@ class StandardEnv(object):
             for pos, module in enumerate(self.modulePath):
                 cmdArgs += ['--loadmodule', module]
                 if self.moduleArgs:
-                    module_args = self.moduleArgs[pos]
-                    if module_args:
-                        cmdArgs += module_args.split(' ')
+                    if isinstance(self.moduleArgs, list):
+                        module_args = self.moduleArgs[pos]
+                        if module_args:
+                            cmdArgs += module_args.split(' ')
+                    else:
+                        cmdArgs += self.moduleArgs
 
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
