@@ -181,6 +181,9 @@ class Env:
                 # join module args
                 if argsToAdd[i] not in self.moduleArgs[0]:
                     self.moduleArgs[0] += ' %s %s' % (argsToAdd[i], argsToAdd[i + 1])
+        if self.moduleArgs is not None:
+            for i in range(0, len(self.moduleArgs)):
+                self.moduleArgs[i] = self.moduleArgs[i].strip()
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
