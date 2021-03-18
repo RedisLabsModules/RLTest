@@ -170,7 +170,15 @@ class Env:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Defaults.module
-        self.moduleArgs = moduleArgs if moduleArgs else Defaults.module_args
+        self.moduleArgs = Defaults.module_args
+        if moduleArgs:
+            if self.moduleArgs is None or len(self.moduleArgs) == 0:
+                self.moduleArgs = ['']
+            argsToAdd = moduleArgs.split(' ')
+            for i in range(0, len(argsToAdd) - 1, 2):
+                # join module args
+                if argsToAdd[i] not in self.moduleArgs[0]:
+                    self.moduleArgs[0] += ' %s %s' % (argsToAdd[i], argsToAdd[i + 1])
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
