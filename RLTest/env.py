@@ -172,7 +172,7 @@ class Env:
         self.module = module if module else Defaults.module
         self.moduleArgs = Defaults.module_args
         if moduleArgs:
-            if len(self.moduleArgs) == 0:
+            if self.moduleArgs is None or len(self.moduleArgs) == 0:
                 self.moduleArgs = ['']
             argsToAdd = moduleArgs.split(' ')
             for i in range(0, len(argsToAdd) - 1, 2):
