@@ -14,6 +14,8 @@ from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 from .redis_std import StandardEnv
 from .utils import Colors, expandBinary
 
+import copy
+
 
 class TestAssertionFailure(Exception):
     pass
@@ -170,7 +172,7 @@ class Env:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Defaults.module
-        self.moduleArgs = Defaults.module_args
+        self.moduleArgs = copy.deepcopy(Defaults.module_args)
         if moduleArgs:
             if self.moduleArgs is None or len(self.moduleArgs) == 0:
                 self.moduleArgs = ['']
