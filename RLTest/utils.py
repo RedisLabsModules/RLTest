@@ -1,7 +1,8 @@
 import os
-
-import redis
+import sys
 import time
+import copy
+import redis
 
 
 def wait_for_conn(conn, retries=20, command='PING', shouldBe=True):
@@ -89,7 +90,7 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
     # modulesArgs are added to default args
     if not defaultArgs:
         return modulesArgs
-        
+
     fixed_modulesArgs = copy.deepcopy(defaultArgs)
     if not modulesArgs:
         return fixed_modulesArgs

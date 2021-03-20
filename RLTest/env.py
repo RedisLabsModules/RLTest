@@ -14,8 +14,6 @@ from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 from .redis_std import StandardEnv
 from .utils import Colors, expandBinary, fix_modules, fix_modulesArgs
 
-import copy
-
 
 class TestAssertionFailure(Exception):
     pass
