@@ -12,10 +12,6 @@ import redis
 from .random_port import get_random_port
 from .utils import Colors, wait_for_conn, fix_modules, fix_modulesArgs
 
-import sys, os
-sys.path.insert(0, "/w/rafi_1/readies")
-import paella
-
 MASTER = 'master'
 SLAVE = 'slave'
 
