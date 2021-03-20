@@ -160,7 +160,7 @@ class Env:
         return True
 
     def __init__(self, testName=None, testDescription=None, module=None,
-                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
+                 moduleArgs=None, overideModuleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None):
@@ -172,18 +172,21 @@ class Env:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Defaults.module
-        self.moduleArgs = copy.deepcopy(Defaults.module_args)
-        if moduleArgs:
-            if self.moduleArgs is None or len(self.moduleArgs) == 0:
-                self.moduleArgs = ['']
-            argsToAdd = moduleArgs.split(' ')
-            for i in range(0, len(argsToAdd) - 1, 2):
-                # join module args
-                if argsToAdd[i] not in self.moduleArgs[0]:
-                    self.moduleArgs[0] += ' %s %s' % (argsToAdd[i], argsToAdd[i + 1])
-        if self.moduleArgs is not None:
-            for i in range(0, len(self.moduleArgs)):
-                self.moduleArgs[i] = self.moduleArgs[i].strip()
+        if(overideModuleArgs):
+            self.moduleArgs = copy.deepcopy(overideModuleArgs)
+        else:
+            self.moduleArgs = copy.deepcopy(Defaults.module_args)
+            if moduleArgs:
+                if self.moduleArgs is None or len(self.moduleArgs) == 0:
+                    self.moduleArgs = ['']
+                argsToAdd = moduleArgs.split(' ')
+                for i in range(0, len(argsToAdd) - 1, 2):
+                    # join module args
+                    if argsToAdd[i] not in self.moduleArgs[0]:
+                        self.moduleArgs[0] += ' %s %s' % (argsToAdd[i], argsToAdd[i + 1])
+            if self.moduleArgs is not None:
+                for i in range(0, len(self.moduleArgs)):
+                    self.moduleArgs[i] = self.moduleArgs[i].strip()
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
