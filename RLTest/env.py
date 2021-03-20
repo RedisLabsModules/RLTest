@@ -3,7 +3,7 @@ from __future__ import print_function
 
 import contextlib
 import inspect
-import os
+import os, sys
 import unittest
 import warnings
 
@@ -187,6 +187,14 @@ class Env:
         if Defaults.module_args:
             self.moduleArgs = copy.deepcopy(Defaults.module_args)
             if moduleArgs:
+                if isinstance(module, list) and len(module) > 1:
+                    n = len(module) - len(moduleArgs)
+                    if n > 0:
+                        moduleArgs.extend([['']] * n)
+                n = len(Defaults.module_args) - len(moduleArgs)
+                if n > 0:
+                    moduleArgs.extend([['']] * n)
+
                 if Defaults.module_args and len(moduleArgs) != len(Defaults.module_args):
                     print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
                     print(Defaults.module_args)

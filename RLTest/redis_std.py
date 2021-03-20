@@ -6,7 +6,6 @@ import sys
 import uuid
 import platform
 import psutil
-from functools import reduce
 
 import redis
 
@@ -271,14 +270,14 @@ class StandardEnv(object):
         }
 
         if self.verbose:
-            print("Redis master command: " + ' '.join(self.masterCmdArgs))
+            print(Colors.Green("Redis master command: " + ' '.join(self.masterCmdArgs)))
         if masters and self.masterProcess is None:
             self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
             con = self.getConnection()
             self.waitForRedisToStart(con)
         if self.useSlaves and slaves and self.slaveProcess is None:
             if self.verbose:
-                print("Redis slave command: " + ' '.join(self.slaveCmdArgs))
+                print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)
