@@ -12,7 +12,7 @@ from .exists_redis import ExistsRedisEnv
 from .redis_cluster import ClusterEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 from .redis_std import StandardEnv
-from .utils import Colors, expandBinary
+from .utils import Colors, expandBinary, fix_modules, fix_modulesArgs
 
 import copy
 
@@ -171,41 +171,8 @@ class Env:
         if testDescription:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
-        self.module = module if module else Defaults.module
-
-        # moduleArgs is either None or 'arg1 arg2 ...' or ['arg1 arg2 ...', ...]
-        if type(moduleArgs) == str:
-            moduleArgs = [moduleArgs.split(' ')]
-        elif type(moduleArgs) == list:
-            args = []
-            for argstr in moduleArgs:
-                args += [argstr.split(' ')]
-            moduleArgs = args
-        # moduleArgs is now [['arg1', 'arg2', ...], ...]
-
-        # moduleArgs are added to default args
-        if Defaults.module_args:
-            self.moduleArgs = copy.deepcopy(Defaults.module_args)
-            if moduleArgs:
-                if isinstance(module, list) and len(module) > 1:
-                    n = len(module) - len(moduleArgs)
-                    if n > 0:
-                        moduleArgs.extend([['']] * n)
-                n = len(Defaults.module_args) - len(moduleArgs)
-                if n > 0:
-                    moduleArgs.extend([['']] * n)
-
-                if Defaults.module_args and len(moduleArgs) != len(Defaults.module_args):
-                    print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
-                    print(Defaults.module_args)
-                    print(moduleArgs)
-                    sys.exit(1)
-                # for each module
-                for imod, args in enumerate(moduleArgs):
-                    self.moduleArgs[imod] += args
-        else:
-            self.moduleArgs = moduleArgs
-
+        self.module = fix_modules(module, Defaults.module)
+        self.moduleArgs = fix_modulesArgs(self.module, moduleArgs, Defaults.module_args)
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards

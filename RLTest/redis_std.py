@@ -10,7 +10,11 @@ import psutil
 import redis
 
 from .random_port import get_random_port
-from .utils import Colors, wait_for_conn
+from .utils import Colors, wait_for_conn, fix_modules, fix_modulesArgs
+
+import sys, os
+sys.path.insert(0, "/w/rafi_1/readies")
+import paella
 
 MASTER = 'master'
 SLAVE = 'slave'
@@ -25,19 +29,8 @@ class StandardEnv(object):
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
 
-        if modulePath:
-            if not isinstance(modulePath, list):
-                modulePath = [modulePath]
-            self.modulePath = list(map(lambda p: os.path.abspath(p), modulePath))
-        else:
-            self.modulePath = None
-        if isinstance(moduleArgs, list):
-            self.moduleArgs = moduleArgs
-        else:
-            self.moduleArgs = [moduleArgs]
-            if isinstance(modulePath, list) and len(modulePath) > 1:
-                self.moduleArgs.extend([''] * (len(modulePath) - 1))
-
+        self.modulePath = fix_modules(modulePath)
+        self.moduleArgs = fix_modulesArgs(self.modulePath, moduleArgs)
         self.outputFilesFormat = self.uuid + '.' + outputFilesFormat
         self.useSlaves = useSlaves
         self.masterServerId = serverId
@@ -161,7 +154,7 @@ class StandardEnv(object):
             cmdArgs += ['--port', str(0), '--unixsocket', self.getUnixPath(role)]
 
         if self.modulePath:
-            if len(self.modulePath) != len(self.moduleArgs):
+            if self.moduleArgs and len(self.modulePath) != len(self.moduleArgs):
                 print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
                 print(self.modulePath)
                 print(self.moduleArgs)
@@ -173,8 +166,9 @@ class StandardEnv(object):
                     if module_args:
                         # make sure there are no spaces within args
                         args = []
-                        for x in module_args:
-                            args += x.split(' ')
+                        for arg in module_args:
+                            if arg.strip() != '':
+                                args += arg.split(' ')
                         cmdArgs += args
 
         if self.dbDirPath is not None:

@@ -12,7 +12,7 @@ import time
 import shlex
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
-from RLTest.utils import Colors
+from RLTest.utils import Colors, fix_modules, fix_modulesArgs
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
@@ -356,11 +356,6 @@ class RLTest:
             # when running on existing env we always reuse it
             self.args.env_reuse = True
 
-        Defaults.module = self.args.module
-        module_args = None
-
-        # self.args.module is either None or ['path',...]
-        # self.args.module_args is either None or [['arg',...],...]
         # unless None, they must match in length
         if self.args.module_args:
             len_module_args = len(self.args.module_args)
@@ -370,7 +365,8 @@ class RLTest:
                     print(Colors.Bred('Using `--module` multiple time implies that you specify the `--module-args` in the the same number'))
                     sys.exit(1)
 
-        Defaults.module_args = self.args.module_args
+        Defaults.module = fix_modules(self.args.module)
+        Defaults.module_args = fix_modulesArgs(Defaults.module, self.args.module_args)
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose

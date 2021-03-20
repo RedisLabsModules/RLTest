@@ -61,3 +61,54 @@ class Colors(object):
     @staticmethod
     def Green(data):
         return '\033[32m' + data + '\033[0m'
+
+def fix_modules(modules, defaultModules=None):
+    # modules is either None or ['path',...]
+    if modules:
+        if not isinstance(modules, list):
+            modules = [modules]
+        modules = list(map(lambda p: os.path.abspath(p), modules))
+    else:
+        modules = defaultModules
+    return modules
+
+def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
+    # modulesArgs is either None or 'arg1 arg2 ...' or ['arg1 arg2 ...', ...] or [['arg', ...], ...]
+    if type(modulesArgs) == str:
+        modulesArgs = [modulesArgs.split(' ')]
+    elif type(modulesArgs) == list:
+        args = []
+        for argx in modulesArgs:
+            if type(argx) == list:
+                args += [argx]
+            else:
+                args += [str(argx).split(' ')]
+        modulesArgs = args
+    # modulesArgs is now [['arg1', 'arg2', ...], ...]
+
+    # modulesArgs are added to default args
+    if not defaultArgs:
+        return modulesArgs
+        
+    fixed_modulesArgs = copy.deepcopy(defaultArgs)
+    if not modulesArgs:
+        return fixed_modulesArgs
+
+    if isinstance(modules, list) and len(modules) > 1:
+        n = len(modules) - len(modulesArgs)
+        if n > 0:
+            modulesArgs.extend([['']] * n)
+    n = len(defaultArgs) - len(modulesArgs)
+    if n > 0:
+        modulesArgs.extend([['']] * n)
+
+    if defaultArgs and len(modulesArgs) != len(defaultArgs):
+        print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
+        print(defaultArgs)
+        print(modulesArgs)
+        sys.exit(1)
+    # for each module
+    for imod, args in enumerate(modulesArgs):
+        fixed_modulesArgs[imod] += args
+
+    return fixed_modulesArgs
