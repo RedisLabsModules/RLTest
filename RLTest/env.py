@@ -172,18 +172,32 @@ class Env:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = module if module else Defaults.module
-        self.moduleArgs = copy.deepcopy(Defaults.module_args)
-        if moduleArgs:
-            if self.moduleArgs is None or len(self.moduleArgs) == 0:
-                self.moduleArgs = ['']
-            argsToAdd = moduleArgs.split(' ')
-            for i in range(0, len(argsToAdd) - 1, 2):
-                # join module args
-                if argsToAdd[i] not in self.moduleArgs[0]:
-                    self.moduleArgs[0] += ' %s %s' % (argsToAdd[i], argsToAdd[i + 1])
-        if self.moduleArgs is not None:
-            for i in range(0, len(self.moduleArgs)):
-                self.moduleArgs[i] = self.moduleArgs[i].strip()
+
+        # moduleArgs is either None or 'arg1 arg2 ...' or ['arg1 arg2 ...', ...]
+        if type(moduleArgs) == str:
+            moduleArgs = [moduleArgs.split(' ')]
+        elif type(moduleArgs) == list:
+            args = []
+            for argstr in moduleArgs:
+                args += [argstr.split(' ')]
+            moduleArgs = args
+        # moduleArgs is now [['arg1', 'arg2', ...], ...]
+
+        # moduleArgs are added to default args
+        if Defaults.module_args:
+            self.moduleArgs = copy.deepcopy(Defaults.module_args)
+            if moduleArgs:
+                if Defaults.module_args and len(moduleArgs) != len(Defaults.module_args):
+                    print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
+                    print(Defaults.module_args)
+                    print(moduleArgs)
+                    sys.exit(1)
+                # for each module
+                for imod, args in enumerate(moduleArgs):
+                    self.moduleArgs[imod] += args
+        else:
+            self.moduleArgs = moduleArgs
+
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards

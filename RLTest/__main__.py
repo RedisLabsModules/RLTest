@@ -359,6 +359,9 @@ class RLTest:
         Defaults.module = self.args.module
         module_args = None
 
+        # self.args.module is either None or ['path',...]
+        # self.args.module_args is either None or [['arg',...],...]
+        # unless None, they must match in length
         if self.args.module_args:
             len_module_args = len(self.args.module_args)
             modules = self.args.module
@@ -366,13 +369,8 @@ class RLTest:
                 if (len(modules) != len_module_args):
                     print(Colors.Bred('Using `--module` multiple time implies that you specify the `--module-args` in the the same number'))
                     sys.exit(1)
-                module_args = []
-                for args in self.args.module_args:
-                    module_args += [' '.join(args) if args else '']
-            else:
-                module_args = ' '.join(self.args.module_args)
 
-        Defaults.module_args = module_args
+        Defaults.module_args = self.args.module_args
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose

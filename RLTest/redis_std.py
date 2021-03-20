@@ -6,6 +6,7 @@ import sys
 import uuid
 import platform
 import psutil
+from functools import reduce
 
 import redis
 
@@ -161,15 +162,21 @@ class StandardEnv(object):
             cmdArgs += ['--port', str(0), '--unixsocket', self.getUnixPath(role)]
 
         if self.modulePath:
+            if len(self.modulePath) != len(self.moduleArgs):
+                print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
+                print(self.modulePath)
+                print(self.moduleArgs)
+                sys.exit(1)
             for pos, module in enumerate(self.modulePath):
                 cmdArgs += ['--loadmodule', module]
                 if self.moduleArgs:
-                    if isinstance(self.moduleArgs, list):
-                        module_args = self.moduleArgs[pos]
-                        if module_args:
-                            cmdArgs += module_args.split(' ')
-                    else:
-                        cmdArgs += self.moduleArgs
+                    module_args = self.moduleArgs[pos]
+                    if module_args:
+                        # make sure there are no spaces within args
+                        args = []
+                        for x in module_args:
+                            args += x.split(' ')
+                        cmdArgs += args
 
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
