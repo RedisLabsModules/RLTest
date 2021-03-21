@@ -88,13 +88,13 @@ def args_list_to_dict(args_list):
 def join_lists(lists):
     return list(itertools.chain.from_iterable(lists))
 
-def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
+def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     # modulesArgs is one of the following:
     # None
     # 'args ...': arg string for a single module
     # ['args ...', ...]: arg list for a single module
     # [['arg', ...', ...], ...]: arg strings for multiple modules
-    
+
     # arg string is a string of words seperated by whitespace
     # arg string can be seperated by semicolons into (logical) arg lists.
     # semicolons can be escaped with a backslash.
@@ -119,7 +119,11 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
                     print(Colors.Bred('Error in args: %s' % str(modulesArgs)))
                     sys.exit(1)
                 is_list = True
-                args += [argx]
+                if haveSeqs:
+                    lists = map(lambda x: split_by_semicolon(x), argx)
+                    args += [join_lists(lists)]
+                else:
+                    args += [argx]
             else:
                 # case ['args ...', ...]: arg list for a single module
                 # transformed into [['arg', ...], ...]
@@ -133,11 +137,7 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
         modulesArgs = args
     # modulesArgs is now [[['arg1', ...], ['arg2', ...], ], ...]
 
-    # modulesArgs are added to default args
-    if not defaultArgs:
-        return modulesArgs
-
-    is_copy = not modulesArgs
+    is_copy = not modulesArgs and defaultArgs
     if is_copy:
         modulesArgs = copy.deepcopy(defaultArgs)
 
@@ -148,9 +148,17 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
     if is_copy:
         return modulesArgs
 
-    n = len(defaultArgs) - len(modulesArgs)
+    n = 0
+    if defaultArgs:
+        n = len(defaultArgs) - len(modulesArgs)
+    if n == 0 and modules:
+        n = len(modules) - len(modulesArgs)
     if n > 0:
         modulesArgs.extend([[]] * n)
+
+    # modulesArgs are added to default args
+    if not defaultArgs:
+        return modulesArgs
 
     # if there are fewer defaultArgs than moduleArgs, we should bail out
     # as we cannot pad the defaults with emply arg lists

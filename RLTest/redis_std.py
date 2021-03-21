@@ -26,7 +26,7 @@ class StandardEnv(object):
             '~/') else redisBinaryPath
 
         self.modulePath = fix_modules(modulePath)
-        self.moduleArgs = fix_modulesArgs(self.modulePath, moduleArgs)
+        self.moduleArgs = fix_modulesArgs(self.modulePath, moduleArgs, haveSeqs=False)
         self.outputFilesFormat = self.uuid + '.' + outputFilesFormat
         self.useSlaves = useSlaves
         self.masterServerId = serverId
