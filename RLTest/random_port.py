@@ -6,7 +6,6 @@ import os
 import errno
 import json
 
-
 def _check_alive(pid):
     try:
         os.kill(pid, 0)
@@ -18,7 +17,7 @@ def _check_alive(pid):
 
 
 def register_port(port):
-    fp = open('portfile.lock', 'a+')
+    fp = open('/tmp/rltest_portfile.lock', 'a+')
     fcntl.flock(fp.fileno(), fcntl.LOCK_EX)
     fp.seek(0, 2)  # seek from end
     if fp.tell() == 0:

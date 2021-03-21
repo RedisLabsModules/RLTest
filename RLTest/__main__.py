@@ -284,9 +284,7 @@ class EnvScopeGuard:
 
 
 class RLTest:
-
     def __init__(self):
-
         # adding the current path to sys.path for test import puspused
         sys.path.append(os.getcwd())
 
