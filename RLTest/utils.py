@@ -135,40 +135,36 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
         if is_str:
             args = [args]
         modulesArgs = args
-    # modulesArgs is now [[['arg1', ...], ['arg2', ...], ], ...]
+    # modulesArgs is now [['arg', ...], ...]
 
     is_copy = not modulesArgs and defaultArgs
     if is_copy:
         modulesArgs = copy.deepcopy(defaultArgs)
 
-    if isinstance(modules, list) and len(modules) > 1:
-        n = len(modules) - len(modulesArgs)
-        if n > 0:
-            modulesArgs.extend([[]] * n)
-    if is_copy:
-        return modulesArgs
-
     n = 0
+    num_mods = len(modulesArgs) if modulesArgs else 0
     if defaultArgs:
-        n = len(defaultArgs) - len(modulesArgs)
-    if n == 0 and modules:
-        n = len(modules) - len(modulesArgs)
+        n = len(defaultArgs) - num_mods
+        num_mods += n
+
+    if isinstance(modules, list) and len(modules) > 1:
+        n = len(modules) - num_mods
+
     if n > 0:
         modulesArgs.extend([[]] * n)
 
-    # modulesArgs are added to default args
-    if not defaultArgs:
+    if is_copy or not defaultArgs:
         return modulesArgs
 
-    # if there are fewer defaultArgs than moduleArgs, we should bail out
+    # if there are fewer defaultArgs than modulesArgs, we should bail out
     # as we cannot pad the defaults with emply arg lists
-    if defaultArgs and len(modulesArgs) != len(defaultArgs):
+    if defaultArgs and len(modulesArgs) > len(defaultArgs):
         print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
         print(defaultArgs)
         print(modulesArgs)
         sys.exit(1)
 
-    # for each module
+    # for each module, sync defaultArgs to modulesARgs
     modules_args_dict = args_list_to_dict(modulesArgs)
     for imod, args_list in enumerate(defaultArgs):
         for arg in args_list:

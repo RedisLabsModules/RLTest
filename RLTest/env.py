@@ -3,7 +3,8 @@ from __future__ import print_function
 
 import contextlib
 import inspect
-import os, sys
+import os
+import sys
 import unittest
 import warnings
 
