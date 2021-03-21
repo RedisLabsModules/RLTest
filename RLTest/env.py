@@ -4,6 +4,7 @@ from __future__ import print_function
 import contextlib
 import inspect
 import os
+import sys
 import unittest
 import warnings
 
@@ -12,9 +13,7 @@ from .exists_redis import ExistsRedisEnv
 from .redis_cluster import ClusterEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 from .redis_std import StandardEnv
-from .utils import Colors, expandBinary
-
-import copy
+from .utils import Colors, expandBinary, fix_modules, fix_modulesArgs
 
 
 class TestAssertionFailure(Exception):
@@ -171,19 +170,8 @@ class Env:
         if testDescription:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
-        self.module = module if module else Defaults.module
-        self.moduleArgs = copy.deepcopy(Defaults.module_args)
-        if moduleArgs:
-            if self.moduleArgs is None or len(self.moduleArgs) == 0:
-                self.moduleArgs = ['']
-            argsToAdd = moduleArgs.split(' ')
-            for i in range(0, len(argsToAdd) - 1, 2):
-                # join module args
-                if argsToAdd[i] not in self.moduleArgs[0]:
-                    self.moduleArgs[0] += ' %s %s' % (argsToAdd[i], argsToAdd[i + 1])
-        if self.moduleArgs is not None:
-            for i in range(0, len(self.moduleArgs)):
-                self.moduleArgs[i] = self.moduleArgs[i].strip()
+        self.module = fix_modules(module, Defaults.module)
+        self.moduleArgs = fix_modulesArgs(self.module, moduleArgs, Defaults.module_args)
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards

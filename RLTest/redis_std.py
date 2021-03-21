@@ -10,7 +10,7 @@ import psutil
 import redis
 
 from .random_port import get_random_port
-from .utils import Colors, wait_for_conn
+from .utils import Colors, wait_for_conn, fix_modules, fix_modulesArgs
 
 MASTER = 'master'
 SLAVE = 'slave'
@@ -25,19 +25,8 @@ class StandardEnv(object):
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
 
-        if modulePath:
-            if not isinstance(modulePath, list):
-                modulePath = [modulePath]
-            self.modulePath = list(map(lambda p: os.path.abspath(p), modulePath))
-        else:
-            self.modulePath = None
-        if isinstance(moduleArgs, list):
-            self.moduleArgs = moduleArgs
-        else:
-            self.moduleArgs = [moduleArgs]
-            if isinstance(modulePath, list) and len(modulePath) > 1:
-                self.moduleArgs.extend([''] * (len(modulePath) - 1))
-
+        self.modulePath = fix_modules(modulePath)
+        self.moduleArgs = fix_modulesArgs(self.modulePath, moduleArgs, haveSeqs=False)
         self.outputFilesFormat = self.uuid + '.' + outputFilesFormat
         self.useSlaves = useSlaves
         self.masterServerId = serverId
@@ -161,15 +150,22 @@ class StandardEnv(object):
             cmdArgs += ['--port', str(0), '--unixsocket', self.getUnixPath(role)]
 
         if self.modulePath:
+            if self.moduleArgs and len(self.modulePath) != len(self.moduleArgs):
+                print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
+                print(self.modulePath)
+                print(self.moduleArgs)
+                sys.exit(1)
             for pos, module in enumerate(self.modulePath):
                 cmdArgs += ['--loadmodule', module]
                 if self.moduleArgs:
-                    if isinstance(self.moduleArgs, list):
-                        module_args = self.moduleArgs[pos]
-                        if module_args:
-                            cmdArgs += module_args.split(' ')
-                    else:
-                        cmdArgs += self.moduleArgs
+                    module_args = self.moduleArgs[pos]
+                    if module_args:
+                        # make sure there are no spaces within args
+                        args = []
+                        for arg in module_args:
+                            if arg.strip() != '':
+                                args += arg.split(' ')
+                        cmdArgs += args
 
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
@@ -264,14 +260,14 @@ class StandardEnv(object):
         }
 
         if self.verbose:
-            print("Redis master command: " + ' '.join(self.masterCmdArgs))
+            print(Colors.Green("Redis master command: " + ' '.join(self.masterCmdArgs)))
         if masters and self.masterProcess is None:
             self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
             con = self.getConnection()
             self.waitForRedisToStart(con)
         if self.useSlaves and slaves and self.slaveProcess is None:
             if self.verbose:
-                print("Redis slave command: " + ' '.join(self.slaveCmdArgs))
+                print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)

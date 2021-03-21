@@ -12,7 +12,7 @@ import time
 import shlex
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
-from RLTest.utils import Colors
+from RLTest.utils import Colors, fix_modules, fix_modulesArgs
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
@@ -284,9 +284,7 @@ class EnvScopeGuard:
 
 
 class RLTest:
-
     def __init__(self):
-
         # adding the current path to sys.path for test import puspused
         sys.path.append(os.getcwd())
 
@@ -356,9 +354,7 @@ class RLTest:
             # when running on existing env we always reuse it
             self.args.env_reuse = True
 
-        Defaults.module = self.args.module
-        module_args = None
-
+        # unless None, they must match in length
         if self.args.module_args:
             len_module_args = len(self.args.module_args)
             modules = self.args.module
@@ -366,13 +362,9 @@ class RLTest:
                 if (len(modules) != len_module_args):
                     print(Colors.Bred('Using `--module` multiple time implies that you specify the `--module-args` in the the same number'))
                     sys.exit(1)
-                module_args = []
-                for args in self.args.module_args:
-                    module_args += [' '.join(args) if args else '']
-            else:
-                module_args = ' '.join(self.args.module_args)
 
-        Defaults.module_args = module_args
+        Defaults.module = fix_modules(self.args.module)
+        Defaults.module_args = fix_modulesArgs(Defaults.module, self.args.module_args)
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose
