@@ -78,7 +78,7 @@ def fix_modules(modules, defaultModules=None):
     return modules
 
 def split_by_semicolon(s):
-    return list(filter(lambda s: s != '', map(lambda s: s.strip(), re.split(r'(?<!\\);', s))))
+    return list(filter(lambda s: s != '', map(lambda s: re.sub(r'\\(.)', r'\1', s.strip()), re.split(r'(?<!\\);', s))))
 
 def args_list_to_dict(args_list):
     def dicty(args):
@@ -93,7 +93,7 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
     # None
     # 'args ...': arg string for a single module
     # ['args ...', ...]: arg list for a single module
-    # [['args ...', ...], ...]: arg strings for multiple modules
+    # [['arg', ...', ...], ...]: arg strings for multiple modules
     
     # arg string is a string of words seperated by whitespace
     # arg string can be seperated by semicolons into (logical) arg lists.
@@ -113,14 +113,13 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None):
         is_str = False
         for argx in modulesArgs:
             if type(argx) == list:
-                # case [['args ...', ...], ...]: arg strings for multiple modules
-                # transformed into [['arg', ...], ...]
+                # case [['arg', ...], ...]: arg strings for multiple modules
+                # already transformed into [['arg', ...], ...]
                 if is_str:
                     print(Colors.Bred('Error in args: %s' % str(modulesArgs)))
                     sys.exit(1)
                 is_list = True
-                lists = map(lambda x: split_by_semicolon(x), argx)
-                args += [join_lists(lists)]
+                args += [argx]
             else:
                 # case ['args ...', ...]: arg list for a single module
                 # transformed into [['arg', ...], ...]
