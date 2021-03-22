@@ -6,7 +6,6 @@ import copy
 import redis
 import itertools
 
-
 def wait_for_conn(conn, retries=20, command='PING', shouldBe=True):
     """Wait until a given Redis connection is ready"""
     err1 = ''
@@ -151,6 +150,8 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
         n = len(modules) - num_mods
 
     if n > 0:
+        if not modulesArgs:
+            modulesArgs = []
         modulesArgs.extend([[]] * n)
 
     if is_copy or not defaultArgs:

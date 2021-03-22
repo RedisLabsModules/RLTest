@@ -180,7 +180,8 @@ class StandardEnv(object):
         if self.password:
             cmdArgs += ['--requirepass', self.password]
         if self.clusterEnabled and role is not SLAVE:
-            cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', self._getFileName(role, '.cluster.conf'),
+            # creating .cluster.conf in /tmp as lock fails on NFS
+            cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', '/tmp/' + self._getFileName(role, '.cluster.conf'),
                         '--cluster-node-timeout', '5000']
             if self.useTLS:
                 cmdArgs += ['--tls-cluster', 'yes']
