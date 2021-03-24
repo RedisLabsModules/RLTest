@@ -286,8 +286,8 @@ class Env:
         }
         return kwargs
 
-    def start(self):
-        self.envRunner.startEnv()
+    def start(self, masters = True, slaves = True ):
+        self.envRunner.startEnv(masters, slaves)
         self.con = self.getConnection()
 
     def stop(self, masters = True, slaves = True):
