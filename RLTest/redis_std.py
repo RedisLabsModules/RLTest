@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import subprocess
 import sys
+import time
 import uuid
 import platform
 import psutil
@@ -308,12 +309,11 @@ class StandardEnv(object):
                     except:
                         pass
             while True:
-                try:
-                    process.terminate()
-                    process.wait(timeout=0.1)
+                process.terminate()
+                if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                    time.sleep(0.1)
+                else:
                     break
-                except subprocess.TimeoutExpired:
-                    pass  # Retry until redis exits
 
             if role == MASTER:
                 self.masterExitCode = process.poll()
