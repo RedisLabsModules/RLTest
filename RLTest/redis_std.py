@@ -3,6 +3,7 @@ from __future__ import print_function
 import os
 import subprocess
 import sys
+import time
 import uuid
 import platform
 import psutil
@@ -198,6 +199,7 @@ class StandardEnv(object):
 
     def waitForRedisToStart(self, con):
         wait_for_conn(con, retries=1000 if self.debugger else 200)
+        self._waitForAOFChild(con)
 
     def getPid(self, role):
         return self.masterProcess.pid if role == MASTER else self.slaveProcess.pid
@@ -306,8 +308,13 @@ class StandardEnv(object):
                         p.wait()
                     except:
                         pass
-            process.terminate()
-            process.wait()
+            while True:
+                process.terminate()
+                if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                    time.sleep(0.1)
+                else:
+                    break
+
             if role == MASTER:
                 self.masterExitCode = process.poll()
             else:
@@ -389,16 +396,15 @@ class StandardEnv(object):
     def flush(self):
         self.getConnection().flushall()
 
-    def _waitForChild(self, conns):
+    def _waitForAOFChild(self, con):
         import time
         # Wait until file is available
-        for con in conns:
-            while True:
-                info = con.info('persistence')
-                if info['aof_rewrite_scheduled'] or info['aof_rewrite_in_progress']:
-                    time.sleep(0.1)
-                else:
-                    break
+        while True:
+            info = con.info('persistence')
+            if info['aof_rewrite_scheduled'] or info['aof_rewrite_in_progress']:
+                time.sleep(0.1)
+            else:
+                break
 
     def dumpAndReload(self, restart=False, shardId=None):
         conns = []
@@ -406,8 +412,9 @@ class StandardEnv(object):
         if self.useSlaves:
             conns.append(self.getSlaveConnection())
         if restart:
-            [con.bgrewriteaof() for con in conns]
-            self._waitForChild(conns)
+            for con in conns:
+                con.bgrewriteaof()
+                self._waitForAOFChild(con)
 
             self.stopEnv()
             self.startEnv()
