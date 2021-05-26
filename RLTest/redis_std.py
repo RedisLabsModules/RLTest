@@ -413,6 +413,7 @@ class StandardEnv(object):
             conns.append(self.getSlaveConnection())
         if restart:
             for con in conns:
+                self._waitForAOFChild(con)
                 con.bgrewriteaof()
                 self._waitForAOFChild(con)
 
