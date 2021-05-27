@@ -4,6 +4,7 @@ from rediscluster.connection import SSLClusterConnection, ClusterConnectionPool
 
 from .redis_std import StandardEnv
 import rediscluster
+import redis
 import time
 from RLTest.utils import Colors
 
@@ -152,6 +153,29 @@ class ClusterEnv(object):
         for shard in self.shards:
             full_master_connection_list.append(shard.getConnection())
         return full_master_connection_list
+
+    # Gets a cluster connection by key. On std redis the default connection is returned.
+    def getConnectionByKey(self, key, command):
+        if self.useTLS:
+            # workaround for error on
+            # got an unexpected keyword argument 'ssl'
+            # we enforce the connection_class instead of setting ssl=True
+            pool = ClusterConnectionPool(
+                startup_nodes=self.getMasterNodesList(),
+                connection_class=SSLClusterConnection,
+                ssl_cert_reqs=None,
+                ssl_keyfile=self.shards[0].getTLSKeyFile(),
+                ssl_certfile=self.shards[0].getTLSCertFile(),
+                ssl_ca_certs=self.shards[0].getTLSCACertFile(),
+            )
+            if pool.connection_kwargs:
+                pool.connection_kwargs.pop('ssl', None)
+        else:
+            pool = ClusterConnectionPool(
+                startup_nodes=self.getMasterNodesList()
+            )
+        con = pool.get_connection_by_key(key, command)
+        return redis.StrictRedis(host=con.host, port=con.port,  decode_responses=self.decodeResponses, password=self.password)
 
     def flush(self):
         self.getClusterConnection().flushall()
