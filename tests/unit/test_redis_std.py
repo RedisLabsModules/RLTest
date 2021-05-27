@@ -365,3 +365,13 @@ class TestStandardEnv(TestCase):
 
     def test_keys(self):
         pass
+
+    def test_get_connection_by_key(self):
+        tagsCount = 3
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
+        std_env.startEnv()
+        for i in range(tagsCount):
+            key = f'x{i}'
+            con = std_env.getConnectionByKey(key, "set")
+            assert(con.set(key, "1"))
+        std_env.stopEnv()

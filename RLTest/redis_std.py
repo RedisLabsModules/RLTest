@@ -393,6 +393,9 @@ class StandardEnv(object):
             node_info["port"] = self.getPort(MASTER)
         return [node_info]
 
+    def getConnectionByKey(self, key, command):
+        return self.getConnection()
+
     def flush(self):
         self.getConnection().flushall()
 

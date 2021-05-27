@@ -318,6 +318,9 @@ class Env:
     def getOSSMasterNodesConnectionList(self):
         return self.envRunner.getOSSMasterNodesConnectionList()
 
+    def getConnectionByKey(self, key, command):
+        return self.envRunner.getConnectionByKey(key, command)
+
     def flush(self):
         self.envRunner.flush()
 

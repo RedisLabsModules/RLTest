@@ -126,3 +126,16 @@ class TestClusterEnv(TestCase):
 
     def test_keys(self):
         pass
+
+    def test_connection_by_key(self):
+        shardsCount = 3
+        default_args = Defaults().getKwargs()
+        default_args['dbDirPath'] = self.test_dir
+        cluster_env = ClusterEnv(shardsCount=shardsCount, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                 randomizePorts=Defaults.randomize_ports, **default_args)
+        cluster_env.startEnv()
+        for i in range(shardsCount):
+            key = f'x{i}'
+            con = cluster_env.getConnectionByKey(key, "set")
+            assert(con.set(key, "1"))
+        cluster_env.stopEnv()

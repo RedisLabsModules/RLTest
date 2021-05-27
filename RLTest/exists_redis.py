@@ -53,6 +53,9 @@ class ExistsRedisEnv(object):
     def getOSSMasterNodesConnectionList(self):
         return [self.getConnection()]
 
+    def getConnectionByKey(self, key, command):
+        return self.getConnection()
+        
     def flush(self):
         self.getConnection().flushall()
 
