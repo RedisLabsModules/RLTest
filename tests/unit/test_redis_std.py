@@ -371,7 +371,7 @@ class TestStandardEnv(TestCase):
         std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir)
         std_env.startEnv()
         for i in range(tagsCount):
-            key = f'x{i}'
+            key = 'x{%i}' % i
             con = std_env.getConnectionByKey(key, "set")
             assert(con.set(key, "1"))
         std_env.stopEnv()

@@ -135,7 +135,7 @@ class TestClusterEnv(TestCase):
                                  randomizePorts=Defaults.randomize_ports, **default_args)
         cluster_env.startEnv()
         for i in range(shardsCount):
-            key = f'x{i}'
+            key = 'x{%i}' % i
             con = cluster_env.getConnectionByKey(key, "set")
             assert(con.set(key, "1"))
         cluster_env.stopEnv()
