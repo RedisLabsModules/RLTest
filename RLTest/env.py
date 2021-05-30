@@ -162,7 +162,7 @@ class Env:
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
-                 redisEnterpriseBinaryPath=None):
+                 redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False):
 
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
@@ -171,7 +171,10 @@ class Env:
             print(Colors.Gray('\tdescription: ' + testDescription))
 
         self.module = fix_modules(module, Defaults.module)
-        self.moduleArgs = fix_modulesArgs(self.module, moduleArgs, Defaults.module_args)
+        if noDefaultModuleArgs:
+            self.moduleArgs = fix_modulesArgs(self.module, moduleArgs)
+        else:
+            self.moduleArgs = fix_modulesArgs(self.module, moduleArgs, Defaults.module_args)
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards

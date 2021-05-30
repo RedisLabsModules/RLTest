@@ -99,7 +99,7 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     # semicolons can be escaped with a backslash.
     # arg list is a list of arg strings.
     # arg list starts with an arg name that can later be used for argument overriding.
-    # arg strings are transformed into arg lists:
+    # arg strings are transformed into arg lists (haveSeqs parameter controls this behavior):
     # thus, 'num 1; names a b' becomes ['num 1', 'names a b']
 
     if type(modulesArgs) == str:
