@@ -109,3 +109,6 @@ venv.bak/
 
 # Covers JetBrains PyCharm
 .idea
+
+# vscode
+.vscode
