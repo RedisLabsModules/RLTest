@@ -13,8 +13,8 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        platform: [ubuntu-18.04, ubuntu-16.04]
-        python: ['2.7', '3.6', '3.8' ]
+        platform: ['ubuntu-20.04', 'ubuntu-18.04', 'ubuntu-16.04']
+        python: ['3.6', '3.7', '3.8' '3.9']
 
     steps:
     - uses: actions/checkout@v2
@@ -44,9 +44,9 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        sudo apt-get install -y python-setuptools
-        sudo apt-get install -y python3-setuptools
-        pip install -r requirements.txt
+        sudo apt-get install -y python-setuptools python3-setuptools
+        pip install poetry
+        poetry install
 
     - name: Cache Redis
       id: cache-redis
@@ -72,7 +72,6 @@ jobs:
     - name: Unit Test with pytest
       timeout-minutes: 5
       run: |
-        pip install pytest
         TLS_CERT=./redis/tests/tls/redis.crt \
         TLS_KEY=./redis/tests/tls/redis.key \
         TLS_CACERT=./redis/tests/tls/ca.crt \
@@ -185,8 +184,6 @@ jobs:
     - name: Generate coverage report
       if: matrix.platform == 'ubuntu-18.04' && matrix.python == '3.6'
       run: |
-        pip install pytest
-        pip install pytest-cov
         TLS_CERT=./redis/tests/tls/redis.crt \
         TLS_KEY=./redis/tests/tls/redis.key \
         TLS_CACERT=./redis/tests/tls/ca.crt \
