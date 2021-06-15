@@ -23,7 +23,6 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^2.7"
 distro = "^1.5.0"
 redis = "^3.5.3"
 redis-py-cluster = "^2.1.3"
