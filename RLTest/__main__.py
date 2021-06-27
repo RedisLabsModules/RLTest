@@ -209,6 +209,10 @@ parser.add_argument(
     help='use aof instead of rdb')
 
 parser.add_argument(
+    '--use-rdb-preamble', action='store_const', const=True, default=True,
+    help='use rdb preamble when rewriting aof file')
+
+parser.add_argument(
     '--debug-print', action='store_const', const=True, default=False,
     help='print debug messages')
 
