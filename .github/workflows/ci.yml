@@ -47,6 +47,7 @@ jobs:
     - name: Install Python dependencies
       run: |
         sudo apt-get install -y python-setuptools python3-setuptools
+        poetry config virtualenvs.create false
         pip install poetry
         poetry install
 
