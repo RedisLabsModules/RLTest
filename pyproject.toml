@@ -28,6 +28,7 @@ distro = "^1.5.0"
 redis = "^3.5.3"
 redis-py-cluster = "*"
 psutil = "^5.8.0"
+pytest-cov = "2.5"
 
 [tool.poetry.urls]
 repository = "https://github.com/RedisLabsModules/RLTest"
