@@ -43,14 +43,15 @@ jobs:
         # Look to see if there is a cache hit for the corresponding requirements file
         key: ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
-          ${{ runner.os }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
+          ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
 
     - name: Install Python dependencies
       run: |
         sudo apt-get install -y python-setuptools python3-setuptools
         pip install poetry
         poetry config virtualenvs.create false
-        poetry install
+        poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
+        pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
 
     - name: Cache Redis
       id: cache-redis
