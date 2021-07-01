@@ -15,10 +15,8 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        platform: ['ubuntu-18.04']
+        platform: ['ubuntu-20.04', 'ubuntu-18.04', 'ubuntu-16.04']
         python: ['2.7', '3.6', '3.7', '3.8', '3.9']
-        #platform: ['ubuntu-20.04', 'ubuntu-18.04', 'ubuntu-16.04']
-        #python: ['2.7', '3.6', '3.7', '3.8', '3.9']
 
     steps:
     - uses: actions/checkout@v2
