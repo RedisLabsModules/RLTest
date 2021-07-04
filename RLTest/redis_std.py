@@ -188,7 +188,7 @@ class StandardEnv(object):
             if self.useTLS:
                 cmdArgs += ['--tls-cluster', 'yes']
         if self.useAof:
-            cmdArgs += ['--appendonly yes']
+            cmdArgs += ['--appendonly', 'yes']
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             if not self.useRdbPreamble:
                 cmdArgs += ['--aof-use-rdb-preamble', 'no']
