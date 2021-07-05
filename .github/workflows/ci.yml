@@ -56,7 +56,9 @@ jobs:
       uses: actions/cache@v1
       with:
         path: redis
-        key: ${{ runner.os }}-redis
+        key: ${{ matrix.platform }}-${{ matrix.python }}-redis
+        restore-keys: |
+          ${{ matrix.platform }}-${{ matrix.python }}-redis
 
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
