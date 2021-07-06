@@ -20,7 +20,7 @@ SLAVE = 'slave'
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
-                 useAof=False, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
+                 useAof=False, useRdbPreamble=True, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
                  tlsKeyFile=None, tlsCaCertFile=None):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
@@ -35,6 +35,7 @@ class StandardEnv(object):
         self.clusterEnabled = clusterEnabled
         self.decodeResponses = decodeResponses
         self.useAof = useAof
+        self.useRdbPreamble = useRdbPreamble
         self.envIsUp = False
         self.debugger = debugger
         self.noCatch = noCatch
@@ -187,9 +188,10 @@ class StandardEnv(object):
             if self.useTLS:
                 cmdArgs += ['--tls-cluster', 'yes']
         if self.useAof:
-            cmdArgs += ['--appendonly yes']
+            cmdArgs += ['--appendonly', 'yes']
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
-            cmdArgs += ['--aof-use-rdb-preamble', 'yes']
+            if not self.useRdbPreamble:
+                cmdArgs += ['--aof-use-rdb-preamble', 'no']
         if self.useTLS:
             cmdArgs += ['--tls-cert-file', self.getTLSCertFile()]
             cmdArgs += ['--tls-key-file', self.getTLSKeyFile()]

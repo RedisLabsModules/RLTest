@@ -151,6 +151,18 @@ class TestStandardEnv(TestCase):
                 '--dbfilename', module_std_env._getFileName(role, '.rdb')] == cmd_args
         shutil.rmtree(directory_name)
 
+    def test_create_cmd_args_aof_without_rdb_preamble(self):
+        port = 8000
+        aof_std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                  useAof=True, useRdbPreamble=False, port=8000)
+        role = 'master'
+        cmd_args = aof_std_env.createCmdArgs(role)
+        assert [REDIS_BINARY, '--port', '{}'.format(port), '--logfile',
+                aof_std_env._getFileName(role, '.log'), '--dbfilename',
+                aof_std_env._getFileName(role, '.rdb'), '--appendonly', 'yes',
+                '--appendfilename', aof_std_env._getFileName(role, '.aof'),
+                '--aof-use-rdb-preamble', 'no'] == cmd_args
+
     def test_wait_for_redis_to_start(self):
         pass
 

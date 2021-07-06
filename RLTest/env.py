@@ -109,6 +109,7 @@ class Defaults:
     re_libdir = None
     decode_responses = False
     use_aof = False
+    use_rdb_preamble = True
     use_TLS = False
     tls_cert_file = None
     tls_key_file = None
@@ -133,6 +134,7 @@ class Defaults:
             'moduleArgs': self.module_args,
             'useSlaves': self.use_slaves,
             'useAof': self.use_aof,
+            'useRdbPreamble': self.use_rdb_preamble,
             'dbDirPath': self.logdir,
             'debugger': self.debugger,
             'noCatch': self.no_capture_output,
@@ -148,7 +150,8 @@ class Defaults:
 
 class Env:
     RTestInstance = None
-    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof', 'forceTcp']
+    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
+                        'udsRdbPreamble', 'forceTcp']
 
     def compareEnvs(self, env):
         if env is None:
@@ -160,7 +163,7 @@ class Env:
 
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
-                 useAof=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
+                 useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False):
 
@@ -180,6 +183,7 @@ class Env:
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
         self.decodeResponses = decodeResponses if decodeResponses else Defaults.decode_responses
         self.useAof = useAof if useAof else Defaults.use_aof
+        self.useRdbPreamble = useRdbPreamble if useRdbPreamble is not None else Defaults.use_rdb_preamble
         self.verbose = Defaults.verbose
         self.logDir = logDir if logDir else Defaults.logdir
         self.forceTcp = forceTcp
@@ -278,6 +282,7 @@ class Env:
             'useSlaves': self.useSlaves,
             'decodeResponses': self.decodeResponses,
             'useAof': self.useAof,
+            'useRdbPreamble': self.useRdbPreamble,
             'dbDirPath': self.logDir,
             'debugger': Defaults.debugger,
             'noCatch': Defaults.no_capture_output,
