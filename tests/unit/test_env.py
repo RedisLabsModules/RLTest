@@ -40,15 +40,18 @@ class TestEnvOss(TestCase):
         self.env.stop()
         assert self.env.isUp() == False
 
-    '''def test_compare_env(self):
+    def test_compare_env(self):
         self.env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
                        redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
-        assert self.env.compareEnvs(Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                                        redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY,
-                                        dmcBinaryPath=DMC_PROXY_BINARY)) is True
-        assert self.env.compareEnvs(Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                                        redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY,
-                                        dmcBinaryPath=DMC_PROXY_BINARY, useAof=True)) is False'''
+        env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
+                  redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        assert self.env.compareEnvs(env) is True
+        env.stop()
+        env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
+                  redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY, useAof=True)
+        assert self.env.compareEnvs(env) is False
+        env.stop()
+        self.env.stop()
 
     def test_get_connection(self):
         pass
