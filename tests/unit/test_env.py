@@ -40,6 +40,11 @@ class TestEnvOss(TestCase):
         self.env.stop()
         assert self.env.isUp() == False
 
+    def test_compare_env(self):
+        self.env = Env()
+        assert self.env.compareEnvs(Env()) is True
+        assert self.env.compareEnvs(Env(useAof=True)) is False
+
     def test_get_connection(self):
         pass
 
