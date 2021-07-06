@@ -151,7 +151,7 @@ class Defaults:
 class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
-                        'udsRdbPreamble', 'forceTcp']
+                        'useRdbPreamble', 'forceTcp']
 
     def compareEnvs(self, env):
         if env is None:
