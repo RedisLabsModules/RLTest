@@ -52,7 +52,7 @@ class StandardEnv(object):
         self.tlsCertFile = tlsCertFile
         self.tlsKeyFile = tlsKeyFile
         self.tlsCaCertFile = tlsCaCertFile
-        self.clusterNondeTimeout = clusterNodeTimeout
+        self.clusterNodeTimeout = clusterNodeTimeout
 
         if port > 0:
             self.port = port
