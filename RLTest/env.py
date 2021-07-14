@@ -127,6 +127,7 @@ class Defaults:
     use_unix = False
     randomize_ports = False
     oss_password = None
+    cluster_node_timeout = None
 
     def getKwargs(self):
         kwargs = {
@@ -165,7 +166,7 @@ class Env:
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
-                 redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False):
+                 redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None):
 
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
@@ -196,6 +197,7 @@ class Env:
         self.redisBinaryPath = expandBinary(redisBinaryPath) if redisBinaryPath else Defaults.binary
         self.dmcBinaryPath = expandBinary(dmcBinaryPath) if dmcBinaryPath else Defaults.proxy_binary
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
+        self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
 
         self.assertionFailedSummary = []
 
@@ -291,6 +293,7 @@ class Env:
             'tlsCertFile': self.tlsCertFile,
             'tlsKeyFile': self.tlsKeyFile,
             'tlsCaCertFile': self.tlsCaCertFile,
+            'clusterNodeTimeout': self.clusterNodeTimeout
         }
         return kwargs
 

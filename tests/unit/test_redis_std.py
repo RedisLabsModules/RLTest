@@ -387,3 +387,10 @@ class TestStandardEnv(TestCase):
             con = std_env.getConnectionByKey(key, "set")
             assert(con.set(key, "1"))
         std_env.stopEnv()
+
+    def test_cluster_node_timeout(self):
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test', dbDirPath=self.test_dir, clusterNodeTimeout=60000)
+        std_env.startEnv()
+        con = std_env.getConnection()
+        assert(con.execute_command("CONFIG", "GET", "cluster-node-timeout"), "60000")
+        std_env.stopEnv()
