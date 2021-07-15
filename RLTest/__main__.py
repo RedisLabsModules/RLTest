@@ -135,7 +135,7 @@ parser.add_argument(
 
 parser.add_argument(
     '--cluster_node_timeout', default=5000,
-    help='sets the node timeout on cluster')
+    help='sets the node timeout on cluster in milliseconds')
 
 parser.add_argument(
     '--cluster_credentials',
