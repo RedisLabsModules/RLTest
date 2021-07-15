@@ -134,6 +134,10 @@ parser.add_argument(
     help='set redis password, relevant for oss and oss-cluster environment')
 
 parser.add_argument(
+    '--cluster_node_timeout', default=5000,
+    help='sets the node timeout on cluster')
+
+parser.add_argument(
     '--cluster_credentials',
     help='enterprise cluster cluster_credentials "username:password", relevent only when running with cluster_existing-env')
 
@@ -396,6 +400,7 @@ class RLTest:
         Defaults.tls_key_file = self.args.tls_key_file
         Defaults.tls_ca_cert_file = self.args.tls_ca_cert_file
         Defaults.oss_password = self.args.oss_password
+        Defaults.cluster_node_timeout = self.args.cluster_node_timeout
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 
