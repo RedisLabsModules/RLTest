@@ -32,6 +32,7 @@ usage: RLTest [-h] [--version] [--module MODULE] [--module-args MODULE_ARGS]
               [--cluster_address CLUSTER_ADDRESS]
               [--oss_password OSS_PASSWORD]
               [--cluster_credentials CLUSTER_CREDENTIALS]
+              [--cluster_node_timeout CLUSTER_NODE_TIMEOUT]
               [--internal_password INTERNAL_PASSWORD]
               [--oss-redis-path OSS_REDIS_PATH]
               [--enterprise-redis-path ENTERPRISE_REDIS_PATH]
@@ -83,6 +84,8 @@ optional arguments:
                         enterprise cluster cluster_credentials
                         "username:password", relevent only when running with
                         cluster_existing-env (default: None)
+  --cluster_node_timeout CLUSTER_NODE_TIMEOUT
+                        cluster node timeout in milliseconds
   --internal_password INTERNAL_PASSWORD
                         Give an ability to execute commands on shards
                         directly, relevent only when running with

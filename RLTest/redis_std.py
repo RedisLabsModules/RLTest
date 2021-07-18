@@ -21,7 +21,7 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
-                 tlsKeyFile=None, tlsCaCertFile=None):
+                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -52,6 +52,7 @@ class StandardEnv(object):
         self.tlsCertFile = tlsCertFile
         self.tlsKeyFile = tlsKeyFile
         self.tlsCaCertFile = tlsCaCertFile
+        self.clusterNodeTimeout = clusterNodeTimeout
 
         if port > 0:
             self.port = port
@@ -184,7 +185,7 @@ class StandardEnv(object):
         if self.clusterEnabled and role is not SLAVE:
             # creating .cluster.conf in /tmp as lock fails on NFS
             cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', '/tmp/' + self._getFileName(role, '.cluster.conf'),
-                        '--cluster-node-timeout', '5000']
+                        '--cluster-node-timeout', '5000' if self.clusterNodeTimeout is None else str(self.clusterNodeTimeout)]
             if self.useTLS:
                 cmdArgs += ['--tls-cluster', 'yes']
         if self.useAof:
