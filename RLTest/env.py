@@ -128,6 +128,7 @@ class Defaults:
     randomize_ports = False
     oss_password = None
     cluster_node_timeout = None
+    disable_rdb_checksum = False
 
     def getKwargs(self):
         kwargs = {
@@ -144,7 +145,8 @@ class Defaults:
             'tlsCertFile': self.tls_cert_file,
             'tlsKeyFile': self.tls_key_file,
             'tlsCaCertFile': self.tls_ca_cert_file,
-            'password': self.oss_password
+            'password': self.oss_password,
+            'rdbchecksum': self.disable_rdb_checksum
         }
         return kwargs
 
@@ -166,7 +168,7 @@ class Env:
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
-                 redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None):
+                 redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout=None, disableRdbChecksum=False):
 
         self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
@@ -185,6 +187,7 @@ class Env:
         self.decodeResponses = decodeResponses if decodeResponses else Defaults.decode_responses
         self.useAof = useAof if useAof else Defaults.use_aof
         self.useRdbPreamble = useRdbPreamble if useRdbPreamble is not None else Defaults.use_rdb_preamble
+        self.disableRdbChecksum = disableRdbChecksum if disableRdbChecksum else Defaults.disable_rdb_checksum
         self.verbose = Defaults.verbose
         self.logDir = logDir if logDir else Defaults.logdir
         self.forceTcp = forceTcp
@@ -293,7 +296,8 @@ class Env:
             'tlsCertFile': self.tlsCertFile,
             'tlsKeyFile': self.tlsKeyFile,
             'tlsCaCertFile': self.tlsCaCertFile,
-            'clusterNodeTimeout': self.clusterNodeTimeout
+            'clusterNodeTimeout': self.clusterNodeTimeout,
+            'rdbchecksum': self.disableRdbChecksum
         }
         return kwargs
 
