@@ -55,9 +55,18 @@ class ExistsRedisEnv(object):
 
     def getConnectionByKey(self, key, command):
         return self.getConnection()
+
+    def _waitForBgsaveToFinish(self):
+        # on new Redis version (6.2 and above)
+        # flush trigger background rdb save
+        # waiting for rdbsave to finish
+        while True:
+            if not self.getConnection().execute_command('info', 'Persistence')['rdb_bgsave_in_progress']:
+                break
         
     def flush(self):
         self.getConnection().flushall()
+        self._waitForBgsaveToFinish()
 
     def _waitForChild(self, conns):
         import time
@@ -71,6 +80,7 @@ class ExistsRedisEnv(object):
                     break
 
     def dumpAndReload(self, restart=False, shardId=1):
+        self._waitForBgsaveToFinish()
         conn = self.getConnection()
         conn.save()
         try:
