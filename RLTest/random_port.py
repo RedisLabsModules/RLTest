@@ -25,9 +25,8 @@ def register_port(port):
     else:
         fp.seek(0, 0)
         entries = json.load(fp)
-    for p, pid in entries.items():
-        if not _check_alive(pid):
-            del entries[p]
+    # remove not responsive processes
+    entries = { p:pid for p, pid in entries.items() if _check_alive(pid) }
 
     if str(port) in entries:
         ret = False
