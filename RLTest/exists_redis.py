@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 import redis
 import subprocess
@@ -12,10 +13,11 @@ SLAVE = 2
 
 
 class ExistsRedisEnv(object):
-    def __init__(self, addr='localhost:6379', password = None, **kargs):
+    def __init__(self, addr='localhost:6379', password = None, **kwargs):
         self.host, self.port = addr.split(':')
         self.port = int(self.port)
         self.password = password
+        self.useTLS = kwargs['useTLS']
 
     @property
     def has_interactive_debugger(self):
@@ -63,7 +65,7 @@ class ExistsRedisEnv(object):
         while True:
             if not self.getConnection().execute_command('info', 'Persistence')['rdb_bgsave_in_progress']:
                 break
-        
+
     def flush(self):
         self.getConnection().flushall()
         self._waitForBgsaveToFinish()
@@ -100,7 +102,10 @@ class ExistsRedisEnv(object):
     def isUp(self):
         return self.getConnection().ping()
 
-    def exists(self, val):
+    def isTLS(self):
+        return self.useTLS
+
+     def exists(self, val):
         return self.getConnection().exists(val)
 
     def hmset(self, *args):
