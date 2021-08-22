@@ -152,7 +152,7 @@ class Defaults:
 class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
-                        'useRdbPreamble', 'forceTcp']
+                        'useRdbPreamble', 'forceTcp', 'decodeResponses']
 
     def compareEnvs(self, env):
         if env is None:
@@ -182,7 +182,7 @@ class Env:
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
-        self.decodeResponses = decodeResponses if decodeResponses else Defaults.decode_responses
+        self.decodeResponses = decodeResponses if decodeResponses is not None else Defaults.decode_responses
         self.useAof = useAof if useAof else Defaults.use_aof
         self.useRdbPreamble = useRdbPreamble if useRdbPreamble is not None else Defaults.use_rdb_preamble
         self.verbose = Defaults.verbose
