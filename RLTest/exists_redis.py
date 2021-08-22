@@ -105,7 +105,7 @@ class ExistsRedisEnv(object):
     def isTLS(self):
         return self.useTLS
 
-     def exists(self, val):
+    def exists(self, val):
         return self.getConnection().exists(val)
 
     def hmset(self, *args):
