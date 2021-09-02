@@ -107,6 +107,7 @@ class Defaults:
     module_args = None
 
     env = 'oss'
+    env_factory = env_factory = lambda *args, **kwargs: Env(*args, **kwargs)
     binary = 'redis-server'
     proxy_binary = None
     re_binary = None
@@ -340,7 +341,7 @@ class Env:
         self.envRunner.flush()
 
     def isCluster(self):
-        return 'cluster' in self.env
+        return 'cluster' in self.env or os.getenv("RLEC_CLUSTER") == "1"
 
     def isEnterpiseCluster(self):
         return isinstance(self.envRunner, EnterpriseRedisClusterEnv)
@@ -518,6 +519,10 @@ class Env:
 
     def skipOnCluster(self):
         if self.isCluster():
+            self.skip()
+
+    def skipOnExistingEnv(self):
+        if self.env == 'existing-env':
             self.skip()
 
     def isUnixSocket(self):
