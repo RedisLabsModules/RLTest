@@ -26,9 +26,9 @@ classifiers = [
 python = "^2.7,<2.8 || >= 3.5.0"
 distro = "^1.5.0"
 # redis = "^3.5.3"
-redis = { git = "https://github.com/redisfab/redis-py.git", branch = "3.5" }
 # redis-py-cluster = "*"
-redis-py-cluster = { git = "https://github.com/redisfab/redis-py-cluster.git", branch = "rafi-conn-args1" }
+redis = { git = "https://github.com/redisfab/redis-py.git", branch = "3.5" }
+redis-py-cluster = { git = "https://github.com/redisfab/redis-py-cluster.git", branch = "2.1" }
 psutil = "^5.8.0"
 pytest-cov = "2.5"
 
