@@ -62,6 +62,14 @@ class Query:
         self.env.debugPrint('query: %s, result: %s' % (self.query, self.res), force=True)
         return self
 
+    def apply(self, fn):
+        self.res = fn(self.res)
+        return self
+
+    def map(self, fn):
+        self.res = list(map(fn, self.res))
+        return self
+
     def equal(self, expected):
         self.env.assertEqual(self.res, expected, 1)
         return self
