@@ -21,7 +21,7 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
-                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None):
+                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None, printServerCmd=False):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -47,6 +47,7 @@ class StandardEnv(object):
         self.slaveProcess = None
         self.slaveExitCode = None
         self.verbose = verbose
+        self.printServerCmd = printServerCmd
         self.role = MASTER
         self.useTLS = useTLS
         self.tlsCertFile = tlsCertFile
@@ -265,14 +266,14 @@ class StandardEnv(object):
             'env': self.environ
         }
 
-        if self.verbose:
+        if self.verbose or self.printServerCmd:
             print(Colors.Green("Redis master command: " + ' '.join(self.masterCmdArgs)))
         if masters and self.masterProcess is None:
             self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
             con = self.getConnection()
             self.waitForRedisToStart(con)
         if self.useSlaves and slaves and self.slaveProcess is None:
-            if self.verbose:
+            if self.verbose or self.printServerCmd:
                 print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
             con = self.getSlaveConnection()

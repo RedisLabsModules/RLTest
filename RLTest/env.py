@@ -302,6 +302,7 @@ class Env:
             'debugger': Defaults.debugger,
             'noCatch': Defaults.no_capture_output,
             'verbose': Defaults.verbose,
+            'printServerCmd': Defaults.print_server_cmd,
             'useTLS': self.useTLS,
             'tlsCertFile': self.tlsCertFile,
             'tlsKeyFile': self.tlsKeyFile,

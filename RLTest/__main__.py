@@ -167,6 +167,10 @@ parser.add_argument(
     help='print more information about the test')
 
 parser.add_argument(
+    '--print-server-cmd', action='store_true',
+    help='print redis-server incovation commands')
+
+parser.add_argument(
     '--debug', action='store_const', const=True, default=False,
     help='stop before each test allow gdb attachment')
 
@@ -378,6 +382,7 @@ class RLTest:
         Defaults.env = self.args.env
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose
+        Defaults.print_server_cmd = self.args.print_server_cmd
         Defaults.logdir = self.args.log_dir
         Defaults.use_slaves = self.args.use_slaves
         Defaults.num_shards = self.args.shards_count
