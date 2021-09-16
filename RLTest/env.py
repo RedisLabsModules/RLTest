@@ -433,13 +433,13 @@ class Env:
 
     def expect(self, *query, **kwargs):
         conn = kwargs.pop('conn', None)
-        return Query(self, conn=conn, *query)
+        return Query(self, conn=conn, *query, **kwargs)
 
     def cmd(self, *query, **kwargs):
         conn = kwargs.pop('conn', None)
         if conn is None:
             conn = self.con
-        res = conn.execute_command(*query)
+        res = conn.execute_command(*query, **kwargs)
         self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 
