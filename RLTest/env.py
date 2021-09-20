@@ -31,16 +31,15 @@ class Query:
     def __init__(self, env, *query, **kwargs):
         self.query = query
         self.env = env
-        self.conn = kwargs.pop('conn', None)
-        if self.conn is None:
-            self.conn = env.con
+        self.kwargs = kwargs
+        if 'conn' not in kwargs:
+            self.kwargs['conn'] = env.con
         self.errorRaised = False
         self._evaluate()
 
     def _evaluate(self):
-        kwargs = {'conn': self.conn}
         try:
-            self.res = self.env.cmd(*self.query, conn=self.conn)
+            self.res = self.env.cmd(*self.query, **self.kwargs)
         except Exception as e:
             self.res = str(e)
             self.errorRaised = True
@@ -115,7 +114,7 @@ class Defaults:
     module_args = None
 
     env = 'oss'
-    env_factory = env_factory = lambda *args, **kwargs: Env(*args, **kwargs)
+    env_factory = lambda *args, **kwargs: Env(*args, **kwargs)
     binary = 'redis-server'
     proxy_binary = None
     re_binary = None
@@ -454,9 +453,9 @@ class Env:
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
         self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
 
-    def executeCommand(self, *query):
+    def executeCommand(self, *query, **kwargs):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
-        return self.cmd(*query)
+        return self.cmd(*query, **kwargs)
 
     def reloadingIterator(self):
         yield 1
