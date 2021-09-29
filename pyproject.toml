@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "RLTest"
 version = "0.4.2"
-description="Redis Labs Test Framework, allow to run tests on redis and modules on a variety of environments"
-authors = ["RedisLabs <oss@redislabs.com>"]
+description="Redis Test Framework, allow to run tests on redis and modules on a variety of environments"
+authors = ["Redis <oss@.com>"]
 license = "BSD-3-Clause"
 readme = "README.md"
 
@@ -31,7 +31,7 @@ psutil = "^5.8.0"
 pytest-cov = "2.5"
 
 [tool.poetry.urls]
-repository = "https://github.com/RedisLabsModules/RLTest"
+repository = "https://github.com/RedisModules/RLTest"
 
 [tool.poetry.scripts]
 RLTest = 'RLTest.__main__:main'

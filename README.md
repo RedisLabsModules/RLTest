@@ -9,7 +9,7 @@
 
 # RLTest
 
-Redis Labs Test Framework, allow running tests on redis and modules on a variety of environments.
+Redis Test Framework, allow running tests on redis and modules on a variety of environments.
 
 Supported Environment: oss, oss-cluster, enterprise, enterprise-cluster
 
