@@ -28,15 +28,18 @@ def genDeprecated(name, target):
 
 
 class Query:
-    def __init__(self, env, *query):
+    def __init__(self, env, *query, **kwargs):
         self.query = query
         self.env = env
+        self.kwargs = kwargs
+        if 'conn' not in kwargs:
+            self.kwargs['conn'] = env.con
         self.errorRaised = False
         self._evaluate()
 
     def _evaluate(self):
         try:
-            self.res = self.env.cmd(*self.query)
+            self.res = self.env.cmd(*self.query, **self.kwargs)
         except Exception as e:
             self.res = str(e)
             self.errorRaised = True
@@ -56,6 +59,14 @@ class Query:
 
     def debugPrint(self):
         self.env.debugPrint('query: %s, result: %s' % (self.query, self.res), force=True)
+        return self
+
+    def apply(self, fn):
+        self.res = fn(self.res)
+        return self
+
+    def map(self, fn):
+        self.res = list(map(fn, self.res))
         return self
 
     def equal(self, expected):
@@ -103,6 +114,7 @@ class Defaults:
     module_args = None
 
     env = 'oss'
+    env_factory = lambda *args, **kwargs: Env(*args, **kwargs)
     binary = 'redis-server'
     proxy_binary = None
     re_binary = None
@@ -152,7 +164,7 @@ class Defaults:
 class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
-                        'useRdbPreamble', 'forceTcp']
+                        'useRdbPreamble', 'forceTcp', 'decodeResponses']
 
     def compareEnvs(self, env):
         if env is None:
@@ -182,7 +194,7 @@ class Env:
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
-        self.decodeResponses = decodeResponses if decodeResponses else Defaults.decode_responses
+        self.decodeResponses = decodeResponses if decodeResponses is not None else Defaults.decode_responses
         self.useAof = useAof if useAof else Defaults.use_aof
         self.useRdbPreamble = useRdbPreamble if useRdbPreamble is not None else Defaults.use_rdb_preamble
         self.verbose = Defaults.verbose
@@ -289,6 +301,7 @@ class Env:
             'debugger': Defaults.debugger,
             'noCatch': Defaults.no_capture_output,
             'verbose': Defaults.verbose,
+            'printServerCmd': Defaults.print_server_cmd,
             'useTLS': self.useTLS,
             'tlsCertFile': self.tlsCertFile,
             'tlsKeyFile': self.tlsKeyFile,
@@ -336,7 +349,7 @@ class Env:
         self.envRunner.flush()
 
     def isCluster(self):
-        return 'cluster' in self.env
+        return 'cluster' in self.env or os.getenv("RLEC_CLUSTER") == "1"
 
     def isEnterpiseCluster(self):
         return isinstance(self.envRunner, EnterpriseRedisClusterEnv)
@@ -417,11 +430,15 @@ class Env:
     def assertAlmostEqual(self, value1, value2, delta, depth=0):
         self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth)
 
-    def expect(self, *query):
-        return Query(self, *query)
+    def expect(self, *query, **kwargs):
+        conn = kwargs.pop('conn', None)
+        return Query(self, conn=conn, *query, **kwargs)
 
-    def cmd(self, *query):
-        res = self.con.execute_command(*query)
+    def cmd(self, *query, **kwargs):
+        conn = kwargs.pop('conn', None)
+        if conn is None:
+            conn = self.con
+        res = conn.execute_command(*query, **kwargs)
         self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 
@@ -436,9 +453,9 @@ class Env:
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
         self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
 
-    def executeCommand(self, *query):
+    def executeCommand(self, *query, **kwargs):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
-        return self.cmd(*query)
+        return self.cmd(*query, **kwargs)
 
     def reloadingIterator(self):
         yield 1
@@ -510,6 +527,10 @@ class Env:
 
     def skipOnCluster(self):
         if self.isCluster():
+            self.skip()
+
+    def skipOnExistingEnv(self):
+        if self.env == 'existing-env':
             self.skip()
 
     def isUnixSocket(self):
