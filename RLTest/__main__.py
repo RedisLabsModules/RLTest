@@ -308,7 +308,7 @@ class RLTest:
             sys.exit(0)
 
         if self.args.interactive_debugger:
-            if self.args.env != 'oss' and self.args.env != 'enterprise':
+            if self.args.env != 'oss' and not (self.args.env == 'oss-cluster' and Defaults.num_shards == 1) and self.args.env != 'enterprise':
                 print(Colors.Bred('interactive debugger can only be used on non cluster env'))
                 sys.exit(1)
             if self.args.use_valgrind:
