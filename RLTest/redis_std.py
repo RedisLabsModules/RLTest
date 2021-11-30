@@ -21,7 +21,7 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
-                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None):
+                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None, disableSave = False):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -53,6 +53,7 @@ class StandardEnv(object):
         self.tlsKeyFile = tlsKeyFile
         self.tlsCaCertFile = tlsCaCertFile
         self.clusterNodeTimeout = clusterNodeTimeout
+        self.disableSave = disableSave
 
         if port > 0:
             self.port = port
@@ -169,7 +170,8 @@ class StandardEnv(object):
                             if arg.strip() != '':
                                 args += arg.split(' ')
                         cmdArgs += args
-
+        if self.disableSave:
+            cmdArgs += ['--save', '']
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
         if self.outputFilesFormat is not None and not self.noCatch:
@@ -193,6 +195,7 @@ class StandardEnv(object):
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
             if not self.useRdbPreamble:
                 cmdArgs += ['--aof-use-rdb-preamble', 'no']
+               
         if self.useTLS:
             cmdArgs += ['--tls-cert-file', self.getTLSCertFile()]
             cmdArgs += ['--tls-key-file', self.getTLSKeyFile()]

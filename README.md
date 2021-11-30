@@ -41,7 +41,7 @@ usage: RLTest [-h] [--version] [--module MODULE] [--module-args MODULE_ARGS]
               [--shards-count SHARDS_COUNT] [--download-enterprise-binaries]
               [--proxy-binary-path PROXY_BINARY_PATH]
               [--enterprise-lib-path ENTERPRISE_LIB_PATH] [-r]
-              [--use-aof] [--use-rdb-preamble]
+              [--use-aof] [--use-rdb-preamble] [--disable-save]
               [--debug-print] [-V] [--vg-suppressions VG_SUPPRESSIONS]
               [--vg-options VG_OPTIONS] [--vg-no-leakcheck] [--vg-verbose]
               [--vg-no-fail-on-errors] [-i] [--debugger DEBUGGER] [-s]
@@ -125,6 +125,7 @@ optional arguments:
                         taken down. (default: False)
   --use-aof             use aof instead of rdb (default: False)
   --use-rdb-preamble    use rdb preamble when rewriting aof file (default: True)
+  --disable-save        disable redis save (default: False)
   --debug-print         print debug messages (default: False)
   -V, --vg, --use-valgrind
                         running redis under valgrind (assuming valgrind is

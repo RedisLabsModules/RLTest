@@ -280,6 +280,8 @@ parser.add_argument(
 parser.add_argument(
     '--tls-ca-cert-file', default=None, help='/path/to/ca.crt')
 
+parser.add_argument('--disable-save', action="store_true", help='Disable Redis save', default=False, dest='disable_save')
+
 class EnvScopeGuard:
     def __init__(self, runner):
         self.runner = runner
@@ -403,6 +405,7 @@ class RLTest:
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
+        Defaults.disable_save = self.args.disable_save
 
         self.tests = []
         self.testsFailed = []
