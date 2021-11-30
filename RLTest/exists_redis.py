@@ -12,10 +12,11 @@ SLAVE = 2
 
 
 class ExistsRedisEnv(object):
-    def __init__(self, addr='localhost:6379', password = None, **kargs):
+    def __init__(self, addr='localhost:6379', password = None, decodeResponses=False, **kargs):
         self.host, self.port = addr.split(':')
         self.port = int(self.port)
         self.password = password
+        self.decodeResponses = decodeResponses
 
     @property
     def has_interactive_debugger(self):
@@ -36,7 +37,7 @@ class ExistsRedisEnv(object):
         pass
 
     def getConnection(self, shardId=1):
-        return redis.StrictRedis(self.host, self.port, password=self.password)
+        return redis.StrictRedis(self.host, self.port, password=self.password, decode_responses=self.decodeResponses)
 
     def getSlaveConnection(self):
         raise Exception('asked for slave connection but no slave exists')
@@ -63,7 +64,7 @@ class ExistsRedisEnv(object):
         while True:
             if not self.getConnection().execute_command('info', 'Persistence')['rdb_bgsave_in_progress']:
                 break
-        
+
     def flush(self):
         self.getConnection().flushall()
         self._waitForBgsaveToFinish()
