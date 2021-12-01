@@ -14,6 +14,7 @@ from .redis_cluster import ClusterEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 from .redis_std import StandardEnv
 from .utils import Colors, expandBinary, fix_modules, fix_modulesArgs
+from packaging import version
 
 
 class TestAssertionFailure(Exception):
@@ -511,6 +512,11 @@ class Env:
     def skipOnCluster(self):
         if self.isCluster():
             self.skip()
+
+    def skipOnVersionSmaller(self, version):
+        res = self.con.execute_command('INFO')
+        if(version.parse(res['redis_version']) < version.parse(version)):
+            self.skip() # copy exists only from version 6
 
     def isUnixSocket(self):
         return self.envRunner.isUnixSocket()
