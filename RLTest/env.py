@@ -513,9 +513,9 @@ class Env:
         if self.isCluster():
             self.skip()
 
-    def skipOnVersionSmaller(self, version):
+    def skipOnVersionSmaller(self, _version):
         res = self.con.execute_command('INFO')
-        if(version.parse(res['redis_version']) < version.parse(version)):
+        if(version.parse(res['redis_version']) < version.parse(_version)):
             self.skip() # copy exists only from version 6
 
     def isUnixSocket(self):
