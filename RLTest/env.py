@@ -513,6 +513,10 @@ class Env:
         if self.isCluster():
             self.skip()
 
+    def skipOnSlave(self):
+        if self.useSlaves:
+            self.skip()
+
     def skipOnVersionSmaller(self, _version):
         res = self.con.execute_command('INFO')
         if(version.parse(res['redis_version']) < version.parse(_version)):
