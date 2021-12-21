@@ -513,6 +513,10 @@ class Env:
         if self.isCluster():
             self.skip()
 
+    def skipOnAOF(self):
+        if self.useAof:
+            self.skip()
+
     def skipOnSlave(self):
         if self.useSlaves:
             self.skip()
