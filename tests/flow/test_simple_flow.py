@@ -42,6 +42,8 @@ def test_skipOnSlave(env):
 def test_skipOnCluster(env):
     env.skipOnCluster()
 
+def test_skipOnAOF(env):
+    env.skipOnAOF()
 
 def test_skipOnDebugger(env):
     env.skipOnDebugger()
