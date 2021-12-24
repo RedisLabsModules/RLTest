@@ -12,11 +12,11 @@ SLAVE = 2
 
 
 class ExistsRedisEnv(object):
-    def __init__(self, addr='localhost:6379', password = None, **kargs):
+    def __init__(self, addr='localhost:6379', password = None, **kwargs):
         self.host, self.port = addr.split(':')
         self.port = int(self.port)
         self.password = password
-        self.decodeResponses = kargs.get('decodeResponses')
+        self.decodeResponses = kwargs.get('decodeResponses', False)
 
     @property
     def has_interactive_debugger(self):
