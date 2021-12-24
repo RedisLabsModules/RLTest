@@ -16,6 +16,7 @@ class ExistsRedisEnv(object):
         self.host, self.port = addr.split(':')
         self.port = int(self.port)
         self.password = password
+        self.decodeResponses = kargs.get('decodeResponses')
 
     @property
     def has_interactive_debugger(self):
@@ -36,7 +37,7 @@ class ExistsRedisEnv(object):
         pass
 
     def getConnection(self, shardId=1):
-        return redis.StrictRedis(self.host, self.port, password=self.password)
+        return redis.StrictRedis(self.host, self.port, password=self.password, decode_responses=self.decodeResponses)
 
     def getSlaveConnection(self):
         raise Exception('asked for slave connection but no slave exists')
