@@ -337,7 +337,7 @@ class Env:
         self.envRunner.flush()
 
     def isCluster(self):
-        return 'cluster' in self.env
+        return 'cluster' in self.env or os.getenv("RLEC_CLUSTER") == "1"
 
     def isEnterpiseCluster(self):
         return isinstance(self.envRunner, EnterpriseRedisClusterEnv)
