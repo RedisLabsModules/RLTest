@@ -446,8 +446,8 @@ class Env:
         self.dumpAndReload()
         yield 2
 
-    def dumpAndReload(self, restart=False, shardId=None):
-        self.envRunner.dumpAndReload(restart=restart, shardId=shardId)
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=40):
+        self.envRunner.dumpAndReload(restart=restart, shardId=shardId, timeout_sec=timeout_sec)
 
     def hmset(self, *args):
         warnings.warn("hmset is deprecated, use Cmd instead", DeprecationWarning)
@@ -483,8 +483,8 @@ class Env:
         else:
             self._assertion('Expected Response Error', False, depth=1)
 
-    def restartAndReload(self, shardId=None):
-        self.dumpAndReload(restart=True, shardId=shardId)
+    def restartAndReload(self, shardId=None, timeout_sec=40):
+        self.dumpAndReload(restart=True, shardId=shardId, timeout_sec=timeout_sec)
 
     def broadcast(self, *cmd):
         self.envRunner.broadcast(*cmd)

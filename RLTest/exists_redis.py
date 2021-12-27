@@ -80,7 +80,7 @@ class ExistsRedisEnv(object):
                 else:
                     break
 
-    def dumpAndReload(self, restart=False, shardId=1):
+    def dumpAndReload(self, restart=False, shardId=1, timeout_sec=0):
         self._waitForBgsaveToFinish()
         conn = self.getConnection()
         conn.save()
