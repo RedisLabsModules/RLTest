@@ -14,6 +14,7 @@ from .redis_cluster import ClusterEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 from .redis_std import StandardEnv
 from .utils import Colors, expandBinary, fix_modules, fix_modulesArgs
+from packaging import version
 
 
 class TestAssertionFailure(Exception):
@@ -336,7 +337,7 @@ class Env:
         self.envRunner.flush()
 
     def isCluster(self):
-        return 'cluster' in self.env
+        return 'cluster' in self.env or os.getenv("RLEC_CLUSTER") == "1"
 
     def isEnterpiseCluster(self):
         return isinstance(self.envRunner, EnterpriseRedisClusterEnv)
@@ -445,8 +446,8 @@ class Env:
         self.dumpAndReload()
         yield 2
 
-    def dumpAndReload(self, restart=False, shardId=None):
-        self.envRunner.dumpAndReload(restart=restart, shardId=shardId)
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=40):
+        self.envRunner.dumpAndReload(restart=restart, shardId=shardId, timeout_sec=timeout_sec)
 
     def hmset(self, *args):
         warnings.warn("hmset is deprecated, use Cmd instead", DeprecationWarning)
@@ -482,8 +483,8 @@ class Env:
         else:
             self._assertion('Expected Response Error', False, depth=1)
 
-    def restartAndReload(self, shardId=None):
-        self.dumpAndReload(restart=True, shardId=shardId)
+    def restartAndReload(self, shardId=None, timeout_sec=40):
+        self.dumpAndReload(restart=True, shardId=shardId, timeout_sec=timeout_sec)
 
     def broadcast(self, *cmd):
         self.envRunner.broadcast(*cmd)
@@ -511,6 +512,19 @@ class Env:
     def skipOnCluster(self):
         if self.isCluster():
             self.skip()
+
+    def skipOnAOF(self):
+        if self.useAof:
+            self.skip()
+
+    def skipOnSlave(self):
+        if self.useSlaves:
+            self.skip()
+
+    def skipOnVersionSmaller(self, _version):
+        res = self.con.execute_command('INFO')
+        if(version.parse(res['redis_version']) < version.parse(_version)):
+            self.skip() # copy exists only from version 6
 
     def isUnixSocket(self):
         return self.envRunner.isUnixSocket()

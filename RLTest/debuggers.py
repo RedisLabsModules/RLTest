@@ -14,7 +14,7 @@ class Valgrind(object):
     def generate_command(self, logfile=None):
         cmd = ['valgrind']
         if self.fail_on_errors == True:
-            cmd += ['--error-exitcode=1']
+            cmd += ['--error-exitcode=255']
         for option in self.options.split():
             cmd += [option]
         if self.leakcheck:

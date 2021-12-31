@@ -124,7 +124,7 @@ class EnterpriseClusterEnv():
     def flush(self):
         self.getConnection().flushall()
 
-    def dumpAndReload(self, restart=False, shardId=None):
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=40):
         if shardId is None:
             for shard in self.shards:
                 shard.dumpAndReload(restart=restart)
