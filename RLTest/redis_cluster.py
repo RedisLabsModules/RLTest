@@ -67,9 +67,10 @@ class ClusterEnv(object):
                 return
 
             time.sleep(0.1)
-        raise RuntimeError("Cluster OK wait loop timed out after %s seconds" % timeout_sec)
+        raise RuntimeError(
+            "Cluster OK wait loop timed out after %s seconds" % timeout_sec)
 
-    def startEnv(self, masters = True, slaves = True):
+    def startEnv(self, masters=True, slaves=True):
         if self.envIsUp == True:
             return  # env is already up
         try:
@@ -84,7 +85,8 @@ class ClusterEnv(object):
         for i, shard in enumerate(self.shards):
             con = shard.getConnection()
             for s in self.shards:
-                con.execute_command('CLUSTER', 'MEET', '127.0.0.1', s.getMasterPort())
+                con.execute_command('CLUSTER', 'MEET',
+                                    '127.0.0.1', s.getMasterPort())
 
             start_slot = i * slots_per_node
             end_slot = start_slot + slots_per_node
@@ -92,7 +94,8 @@ class ClusterEnv(object):
                 end_slot = 16384
 
             try:
-                con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x) for x in range(start_slot, end_slot)))
+                con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x)
+                                    for x in range(start_slot, end_slot)))
             except Exception:
                 pass
 
@@ -100,7 +103,7 @@ class ClusterEnv(object):
         self.envIsUp = True
         self.envIsHealthy = True
 
-    def stopEnv(self, masters = True, slaves = True):
+    def stopEnv(self, masters=True, slaves=True):
         self.envIsUp = False
         self.envIsHealthy = False
         for shard in self.shards:
@@ -130,7 +133,7 @@ class ClusterEnv(object):
                 startup_nodes=self.getMasterNodesList(),
                 connection_pool=pool,
                 decode_responses=self.decodeResponses
-                )
+            )
         else:
             return rediscluster.RedisCluster(
                 startup_nodes=self.getMasterNodesList(),
@@ -180,13 +183,14 @@ class ClusterEnv(object):
     def flush(self):
         self.getClusterConnection().flushall()
 
-    def dumpAndReload(self, restart=False, shardId=None):
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=40):
         if shardId is None:
             for shard in self.shards:
                 shard.dumpAndReload(restart=restart)
-            self.waitCluster()
+            self.waitCluster(timeout_sec=timeout_sec)
         else:
-            self.shards[shardId - 1].dumpAndReload(restart=restart, shardId=None)
+            self.shards[shardId -
+                        1].dumpAndReload(restart=restart, shardId=None, timeout_sec=timeout_sec)
 
     def broadcast(self, *cmd):
         for shard in self.shards:

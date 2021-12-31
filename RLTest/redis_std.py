@@ -412,7 +412,7 @@ class StandardEnv(object):
             else:
                 break
 
-    def dumpAndReload(self, restart=False, shardId=None):
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=0):
         conns = []
         conns.append(self.getConnection())
         if self.useSlaves:
