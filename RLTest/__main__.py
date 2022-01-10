@@ -11,6 +11,7 @@ import unittest
 import time
 import shlex
 
+
 from RLTest.env import Env, TestAssertionFailure, Defaults
 from RLTest.utils import Colors, fix_modules, fix_modulesArgs
 from RLTest.loader import TestLoader
@@ -516,10 +517,10 @@ class RLTest:
         else:
             self.addFailure(testname, '<No exception or environment>')
 
-    def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
+    def _runTest(self, test, index, totalTests, numberOfAssertionFailed=0, prefix='', before=None, after=None):
         msgPrefix = test.name
 
-        print(Colors.Cyan(prefix + test.name))
+        print(Colors.Cyan('%d/%d) %s' % (index, totalTests, prefix + test.name)))
 
         if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
             try:
@@ -623,7 +624,9 @@ class RLTest:
             print(Colors.Bred('only one test can be run on interactive-debugger use -t'))
             sys.exit(1)
 
-        for test in self.loader:
+        tests = [t for t in self.loader]
+        testCount = len(tests)
+        for i, test in enumerate(tests):
             with self.envScopeGuard():
                 if test.is_class:
                     try:
@@ -638,19 +641,19 @@ class RLTest:
                         self.addFailure(test.name + " [__init__]")
                         continue
 
-                    print(Colors.Cyan(test.name))
+                    print(Colors.Cyan('%d/%d) %s' %(i, testCount, test.name)))
 
                     failures = 0
                     before = getattr(obj, 'setUp', None)
                     after = getattr(obj, 'tearDown', None)
                     for subtest in test.get_functions(obj):
-                        failures += self._runTest(subtest, prefix='\t',
+                        failures += self._runTest(subtest, i, testCount, prefix='\t',
                                                 numberOfAssertionFailed=failures,
                                                 before=before, after=after)
                         done += 1
 
                 else:
-                    self._runTest(test)
+                    self._runTest(test, i, testCount)
                     done += 1
 
         self.takeEnvDown(fullShutDown=True)
