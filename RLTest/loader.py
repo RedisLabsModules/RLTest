@@ -16,7 +16,7 @@ class TestFunction(object):
         self.name = '{}:{}'.format(self.modulename, symbol)
 
     def initialize(self):
-        module_file = open(self.filename, 'r')
+        module_file = open(self.filename)
         module = imp.load_module(self.modulename, module_file, self.filename, ('.py', 'r', imp.PY_SOURCE))
         obj = getattr(module, self.symbol)
         self.target = obj
@@ -49,7 +49,7 @@ class TestClass(object):
         self.name = '{}:{}'.format(self.modulename, symbol)
 
     def initialize(self):
-        module_file = open(self.filename, 'r')
+        module_file = open(self.filename)
         module = imp.load_module(self.modulename, module_file, self.filename, ('.py', 'r', imp.PY_SOURCE))
         obj = getattr(module, self.symbol)
         self.clsname = obj.__name__
