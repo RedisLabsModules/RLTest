@@ -639,7 +639,7 @@ class RLTest:
             done = 0
             while True:
                 try:
-                    test = jobs.get(block=False)
+                    test = jobs.get(timeout=0.1)
                 except Exception as e:
                     break
 
@@ -690,7 +690,7 @@ class RLTest:
         # join results
         while True:
             try:
-                res = results.get(block=False)
+                res = results.get(timeout=0.1)
             except Exception as e:
                 break
             done += res['done']
