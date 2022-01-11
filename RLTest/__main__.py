@@ -589,7 +589,7 @@ class RLTest:
             if self.args.interactive_debugger:
                 while self.currEnv.isUp():
                     time.sleep(1)
-            raw_input('press any button to move to the next test')
+            input('press any button to move to the next test')
 
         if passed:
             self.printPass(testFullName)
