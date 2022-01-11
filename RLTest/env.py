@@ -223,7 +223,7 @@ class Env:
             Env.RTestInstance.currEnv = self
 
         if Defaults.debug_pause:
-            raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
+            input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
     def getEnvByName(self):
         verbose = False
