@@ -8,39 +8,64 @@ import inspect
 class TestFunction(object):
     is_class = False
 
-    def __init__(self, target, name=None, is_method=False):
-        self.target = target
-        if not name:
-            name = target.__name__
+    def __init__(self, filename, symbol, modulename):
+        self.filename = filename
+        self.symbol = symbol
+        self.modulename = modulename
+        self.is_method = False
+        self.name = '{}:{}'.format(self.modulename, symbol)
 
-        self.name = '{}:{}'.format(target.__module__, name)
-        self.is_method = is_method
+    def initialize(self):
+        module_file = open(self.filename)
+        module = imp.load_module(self.modulename, module_file, self.filename, ('.py', 'r', imp.PY_SOURCE))
+        obj = getattr(module, self.symbol)
+        self.target = obj
 
     def shortname(self):
         return self.target.__name__
 
+class TestMethod(object):
+    is_class = False
+
+    def __init__(self, obj, name):
+        self.target = obj
+        self.name = name
+        self.is_method = True
+
+    def initialize(self):
+        pass
+
+    def shortname(self):
+        return self.target.__name__
 
 class TestClass(object):
     is_class = True
 
-    def __init__(self, cls, names):
-        self.methnames = names
-        self.clsname = cls.__name__
-        self.cls = cls
-        self.name = '{}:{}'.format(cls.__module__, self.clsname)
+    def __init__(self, filename, symbol, modulename, functions):
+        self.filename = filename
+        self.symbol = symbol
+        self.modulename = modulename
+        self.functions = functions
+        self.name = '{}:{}'.format(self.modulename, symbol)
+
+    def initialize(self):
+        module_file = open(self.filename)
+        module = imp.load_module(self.modulename, module_file, self.filename, ('.py', 'r', imp.PY_SOURCE))
+        obj = getattr(module, self.symbol)
+        self.clsname = obj.__name__
+        self.cls = obj
 
     def create_instance(self, *args, **kwargs):
         return self.cls(*args, **kwargs)
 
     def get_functions(self, instance):
         fns = []
-        for mname in self.methnames:
+        for mname in self.functions:
             bound = getattr(instance, mname)
             if not callable(bound):
                 continue
-            fns.append(TestFunction(bound,
-                                    name='{}.{}'.format(self.clsname, mname),
-                                    is_method=True))
+            fns.append(TestMethod(bound,
+                                  name='{}:{}.{}'.format(self.modulename, self.clsname, mname)))
         return fns
 
 
@@ -92,9 +117,9 @@ class TestLoader(object):
             if inspect.isclass(obj):
                 methnames = [mname for mname in dir(obj)
                              if self.filter_method(mname)]
-                self.tests.append(TestClass(obj, methnames))
+                self.tests.append(TestClass(filename, symbol, module_name, methnames))
             elif inspect.isfunction(obj):
-                self.tests.append(TestFunction(obj))
+                self.tests.append(TestFunction(filename, symbol, module_name))
 
     def scan_dir(self, testdir):
         for filename in os.listdir(testdir):
@@ -126,7 +151,7 @@ class TestLoader(object):
             if t.is_class:
                 print("\tClass")
                 print("\tFunctions")
-                for m in t.methnames:
+                for m in t.functions:
                     print("\t\t", m)
             else:
                 print("\tFunction")

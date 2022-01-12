@@ -525,6 +525,8 @@ class RLTest:
             self.addFailure(testname, '<No exception or environment>')
 
     def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
+        test.initialize()
+        
         msgPrefix = test.name
 
         testFullName = prefix + test.name
@@ -645,6 +647,7 @@ class RLTest:
 
                 with self.envScopeGuard():
                     if test.is_class:
+                        test.initialize()
                         try:
                             obj = test.create_instance()
 
