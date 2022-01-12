@@ -28,7 +28,7 @@ python = "^2.7,<2.8 || >= 3.5.0"
 distro = "^1.5.0"
 redis = "^3.5.3"
 redis-py-cluster = "*"
-psutil = "^5.8.0"
+psutil = "5.8.0" # 5.9.0 currently broken on macOS
 pytest-cov = "2.5"
 
 [tool.poetry.urls]

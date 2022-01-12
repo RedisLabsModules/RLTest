@@ -63,7 +63,7 @@ jobs:
     - name: Install Redis Server test dependencies
       if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone git://github.com/antirez/redis.git --branch unstable --depth 1
+        git clone https://github.com/redis/redis.git --branch unstable --depth 1
         cd redis
         make BUILD_TLS=yes -j
         ./src/redis-server --version
