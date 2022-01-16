@@ -172,6 +172,8 @@ class Env:
                  freshEnv=False):
 
         self.testName = testName if testName else Defaults.curr_test_name
+        if self.testName is None:
+            self.testName = '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 
         if testDescription:
