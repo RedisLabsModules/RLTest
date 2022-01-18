@@ -531,6 +531,9 @@ class RLTest:
 
         testFullName = prefix + test.name
 
+        if not test.is_method:
+            Defaults.curr_test_name = testFullName
+
         if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
             try:
                 env = Env(testName=test.name)
@@ -648,6 +651,8 @@ class RLTest:
                 with self.envScopeGuard():
                     if test.is_class:
                         test.initialize()
+
+                        Defaults.curr_test_name = test.name
                         try:
                             obj = test.create_instance()
 
