@@ -182,12 +182,14 @@ class StandardEnv(object):
                 cmdArgs += ['--masterauth', self.password]
         if self.password:
             cmdArgs += ['--requirepass', self.password]
-        if self.clusterEnabled and role is not SLAVE:
-            # creating .cluster.conf in /tmp as lock fails on NFS
-            cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', '/tmp/' + self._getFileName(role, '.cluster.conf'),
+        if self.clusterEnabled:
+            cmdArgs += ['--cluster-enabled', 'yes',
                         '--cluster-node-timeout', '5000' if self.clusterNodeTimeout is None else str(self.clusterNodeTimeout)]
-            if self.useTLS:
-                cmdArgs += ['--tls-cluster', 'yes']
+            if role is not SLAVE:
+                # creating .cluster.conf in /tmp as lock fails on NFS
+                cmdArgs += ['--cluster-config-file', '/tmp/' + self._getFileName(role, '.cluster.conf')]
+                if self.useTLS:
+                    cmdArgs += ['--tls-cluster', 'yes']
         if self.useAof:
             cmdArgs += ['--appendonly', 'yes']
             cmdArgs += ['--appendfilename', self._getFileName(role, '.aof')]
