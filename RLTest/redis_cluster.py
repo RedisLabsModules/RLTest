@@ -156,8 +156,8 @@ class ClusterEnv(object):
     # Gets a cluster connection by key. On std redis the default connection is returned.
     def getConnectionByKey(self, key, command):
         clusterConn = self.getClusterConnection()
-        target_node = clusterConn._determine_nodes(command)
-        return clusterConn.get_redis_connection(target_node)
+        target_node = clusterConn._determine_nodes(command, key) # we will always which will give us the node responsible for the key
+        return clusterConn.get_redis_connection(target_node[0])
 
     def flush(self):
         self.getClusterConnection().flushall()
