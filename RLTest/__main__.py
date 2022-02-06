@@ -525,9 +525,14 @@ class RLTest:
             self.addFailure(testname, '<No exception or environment>')
 
     def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
+        test.initialize()
+        
         msgPrefix = test.name
 
         testFullName = prefix + test.name
+
+        if not test.is_method:
+            Defaults.curr_test_name = testFullName
 
         if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
             try:
@@ -645,6 +650,9 @@ class RLTest:
 
                 with self.envScopeGuard():
                     if test.is_class:
+                        test.initialize()
+
+                        Defaults.curr_test_name = test.name
                         try:
                             obj = test.create_instance()
 
