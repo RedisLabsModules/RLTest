@@ -432,7 +432,8 @@ class StandardEnv(object):
         else:
             [con.save() for con in conns]
             try:
-                [con.execute_command('DEBUG', 'RELOAD') for con in conns]
+                # Given we've already saved on the prior step, there is no need to SAVE again on the DEBUG RELOAD
+                [con.execute_command('DEBUG', 'RELOAD', 'NOSAVE') for con in conns]
             except redis.RedisError as err:
                 raise err
 
