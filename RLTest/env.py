@@ -130,6 +130,7 @@ class Defaults:
     oss_password = None
     cluster_node_timeout = None
     curr_test_name = None
+    port=6379
 
     def getKwargs(self):
         kwargs = {

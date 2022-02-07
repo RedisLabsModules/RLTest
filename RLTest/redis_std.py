@@ -12,13 +12,14 @@ import redis
 
 from .random_port import get_random_port
 from .utils import Colors, wait_for_conn, fix_modules, fix_modulesArgs
+import env
 
 MASTER = 'master'
 SLAVE = 'slave'
 
 
 class StandardEnv(object):
-    def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
+    def __init__(self, redisBinaryPath, port=None, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
                  tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None):
@@ -53,6 +54,9 @@ class StandardEnv(object):
         self.tlsKeyFile = tlsKeyFile
         self.tlsCaCertFile = tlsCaCertFile
         self.clusterNodeTimeout = clusterNodeTimeout
+
+        if port is None:
+            port = env.Defaults.port
 
         if port > 0:
             self.port = port
