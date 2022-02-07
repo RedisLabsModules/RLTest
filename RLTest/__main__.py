@@ -685,7 +685,7 @@ class RLTest:
             run_jobs(jobs, results, Defaults.port)
         else :
             processes = []
-            currPort = 6379
+            currPort = Defaults.port
             for i in range(self.parallelism):
                 p = Process(target=run_jobs, args=(jobs,results,currPort))
                 currPort += 30 # safe distance for cluster and replicas
