@@ -2,7 +2,6 @@ from __future__ import print_function
 
 from rediscluster.connection import SSLClusterConnection, ClusterConnectionPool
 
-import env
 from .redis_std import StandardEnv
 import rediscluster
 import redis
@@ -22,7 +21,7 @@ class ClusterEnv(object):
         useSlaves = kwargs.get('useSlaves', False)
         self.useTLS = kwargs['useTLS']
         self.decodeResponses = kwargs.get('decodeResponses', False)
-        startPort = env.Defaults.port
+        startPort = kwargs.pop('port', 10000)
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):

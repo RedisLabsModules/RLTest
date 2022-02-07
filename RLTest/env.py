@@ -204,6 +204,7 @@ class Env:
         self.dmcBinaryPath = expandBinary(dmcBinaryPath) if dmcBinaryPath else Defaults.proxy_binary
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
+        self.port = Defaults.port
 
         self.assertionFailedSummary = []
 
@@ -299,7 +300,8 @@ class Env:
             'tlsCertFile': self.tlsCertFile,
             'tlsKeyFile': self.tlsKeyFile,
             'tlsCaCertFile': self.tlsCaCertFile,
-            'clusterNodeTimeout': self.clusterNodeTimeout
+            'clusterNodeTimeout': self.clusterNodeTimeout,
+            'port': self.port
         }
         return kwargs
 
