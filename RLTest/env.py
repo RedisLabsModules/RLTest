@@ -303,7 +303,7 @@ class Env:
             'tlsKeyFile': self.tlsKeyFile,
             'tlsCaCertFile': self.tlsCaCertFile,
             'clusterNodeTimeout': self.clusterNodeTimeout,
-            'tlsPassphrase': self.tlsPassphrase
+            'tlsPassphrase': self.tlsPassphrase,
             'port': self.port
         }
         return kwargs
