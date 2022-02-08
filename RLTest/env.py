@@ -130,6 +130,7 @@ class Defaults:
     oss_password = None
     cluster_node_timeout = None
     curr_test_name = None
+    port=6379
 
     def getKwargs(self):
         kwargs = {
@@ -205,6 +206,7 @@ class Env:
         self.dmcBinaryPath = expandBinary(dmcBinaryPath) if dmcBinaryPath else Defaults.proxy_binary
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
+        self.port = Defaults.port
 
         self.assertionFailedSummary = []
 
@@ -302,6 +304,7 @@ class Env:
             'tlsCaCertFile': self.tlsCaCertFile,
             'clusterNodeTimeout': self.clusterNodeTimeout,
             'tlsPassphrase': self.tlsPassphrase
+            'port': self.port
         }
         return kwargs
 

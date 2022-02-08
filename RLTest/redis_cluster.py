@@ -20,7 +20,7 @@ class ClusterEnv(object):
         self.useTLS = kwargs['useTLS']
         self.decodeResponses = kwargs.get('decodeResponses', False)
         self.tlsPassphrase = kwargs.get('tlsPassphrase', None)
-        startPort = 20000
+        startPort = kwargs.pop('port', 10000)
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
         for i in range(0, totalRedises, (2 if useSlaves else 1)):

@@ -429,9 +429,6 @@ class RLTest:
             self.require_clean_exit = False
 
         self.parallelism = self.args.parallelism
-        if self.parallelism > 1:
-            self.args.randomize_ports = True
-            Defaults.randomize_ports = True
 
     def _convertArgsType(self):
         pass
@@ -644,7 +641,8 @@ class RLTest:
         for test in self.loader:
             jobs.put(test, block=False)
         
-        def run_jobs(jobs, results):
+        def run_jobs(jobs, results, port):
+            Defaults.port = port
             done = 0
             while True:
                 try:
@@ -688,11 +686,13 @@ class RLTest:
 
         results = Queue()
         if self.parallelism == 1:
-            run_jobs(jobs, results)
+            run_jobs(jobs, results, Defaults.port)
         else :
-            processes = []    
+            processes = []
+            currPort = Defaults.port
             for i in range(self.parallelism):
-                p = Process(target=run_jobs, args=(jobs,results))
+                p = Process(target=run_jobs, args=(jobs,results,currPort))
+                currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
             
