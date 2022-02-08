@@ -75,7 +75,7 @@ jobs:
         ./utils/gen-test-certs.sh
 
     - name: Unit Test with pytest
-      timeout-minutes: 20
+      timeout-minutes: 30
       run: |
         TLS_CERT=./redis/tests/tls/redis.crt \
         TLS_KEY=./redis/tests/tls/redis.key \
