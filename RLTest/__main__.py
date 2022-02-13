@@ -283,6 +283,9 @@ parser.add_argument(
 parser.add_argument(
     '--tls-ca-cert-file', default=None, help='/path/to/ca.crt')
 
+parser.add_argument(
+    '--tls-passphrase', default=None, help='passphrase to use on decript key file')
+
 class EnvScopeGuard:
     def __init__(self, runner):
         self.runner = runner
@@ -402,6 +405,7 @@ class RLTest:
         Defaults.tls_cert_file = self.args.tls_cert_file
         Defaults.tls_key_file = self.args.tls_key_file
         Defaults.tls_ca_cert_file = self.args.tls_ca_cert_file
+        Defaults.tls_passphrase = self.args.tls_passphrase
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
         if Defaults.use_unix and Defaults.use_slaves:

@@ -8,7 +8,6 @@ import sys
 import unittest
 import warnings
 
-from .Enterprise import EnterpriseClusterEnv
 from .exists_redis import ExistsRedisEnv
 from .redis_cluster import ClusterEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
@@ -115,6 +114,7 @@ class Defaults:
     tls_cert_file = None
     tls_key_file = None
     tls_ca_cert_file = None
+    tls_passphrase = None
     debugger = None
     debug_print = False
     debug_pause = False
@@ -147,6 +147,7 @@ class Defaults:
             'tlsCertFile': self.tls_cert_file,
             'tlsKeyFile': self.tls_key_file,
             'tlsCaCertFile': self.tls_ca_cert_file,
+            'tlsPassphrase': self.tls_passphrase,
             'password': self.oss_password
         }
         return kwargs
@@ -168,7 +169,7 @@ class Env:
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
-                 tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
+                 tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
                  freshEnv=False):
 
@@ -199,6 +200,7 @@ class Env:
         self.tlsCertFile = tlsCertFile if tlsCertFile else Defaults.tls_cert_file
         self.tlsKeyFile = tlsKeyFile if tlsKeyFile else Defaults.tls_key_file
         self.tlsCaCertFile = tlsCaCertFile if tlsCaCertFile else Defaults.tls_ca_cert_file
+        self.tlsPassphrase = tlsPassphrase if tlsPassphrase else Defaults.tls_passphrase
 
         self.redisBinaryPath = expandBinary(redisBinaryPath) if redisBinaryPath else Defaults.binary
         self.dmcBinaryPath = expandBinary(dmcBinaryPath) if dmcBinaryPath else Defaults.proxy_binary
@@ -301,6 +303,7 @@ class Env:
             'tlsKeyFile': self.tlsKeyFile,
             'tlsCaCertFile': self.tlsCaCertFile,
             'clusterNodeTimeout': self.clusterNodeTimeout,
+            'tlsPassphrase': self.tlsPassphrase,
             'port': self.port
         }
         return kwargs

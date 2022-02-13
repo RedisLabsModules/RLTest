@@ -1,9 +1,7 @@
 from __future__ import print_function
 
-from rediscluster.connection import SSLClusterConnection, ClusterConnectionPool
-
 from .redis_std import StandardEnv
-import rediscluster
+from redis.cluster import ClusterNode
 import redis
 import time
 from RLTest.utils import Colors
@@ -21,6 +19,7 @@ class ClusterEnv(object):
         useSlaves = kwargs.get('useSlaves', False)
         self.useTLS = kwargs['useTLS']
         self.decodeResponses = kwargs.get('decodeResponses', False)
+        self.tlsPassphrase = kwargs.get('tlsPassphrase', None)
         startPort = kwargs.pop('port', 10000)
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
@@ -51,7 +50,11 @@ class ClusterEnv(object):
             ok = 0
             for shard in self.shards:
                 con = shard.getConnection()
-                status = con.execute_command('CLUSTER', 'INFO')
+                try:
+                    status = con.execute_command('CLUSTER', 'INFO')
+                except Exception as e:
+                    print('got error on cluster info, will try again, %s' % str(e))
+                    continue
                 if 'cluster_state:ok' in str(status):
                     ok += 1
             if ok == len(self.shards):
@@ -115,28 +118,21 @@ class ClusterEnv(object):
         return self.shards[shardId - 1].getConnection()
 
     def getClusterConnection(self):
+        statupNode = [ClusterNode(a['host'], a['port']) for a in self.getMasterNodesList()]
         if self.useTLS:
-            # workaround for error on
-            # got an unexpected keyword argument 'ssl'
-            # we enforce the connection_class instead of setting ssl=True
-            pool = ClusterConnectionPool(
-                startup_nodes=self.getMasterNodesList(),
-                connection_class=SSLClusterConnection,
-                ssl_cert_reqs=None,
+            return redis.RedisCluster(
+                ssl=True,
                 ssl_keyfile=self.shards[0].getTLSKeyFile(),
                 ssl_certfile=self.shards[0].getTLSCertFile(),
+                ssl_cert_reqs=None,
                 ssl_ca_certs=self.shards[0].getTLSCACertFile(),
-            )
-            if pool.connection_kwargs:
-                pool.connection_kwargs.pop('ssl', None)
-            return rediscluster.RedisCluster(
-                startup_nodes=self.getMasterNodesList(),
-                connection_pool=pool,
+                ssl_password=self.tlsPassphrase,
+                startup_nodes=statupNode,
                 decode_responses=self.decodeResponses
             )
         else:
-            return rediscluster.RedisCluster(
-                startup_nodes=self.getMasterNodesList(),
+            return redis.RedisCluster(
+                startup_nodes=statupNode,
                 decode_responses=self.decodeResponses, password=self.password)
 
     def getSlaveConnection(self):
@@ -159,26 +155,9 @@ class ClusterEnv(object):
 
     # Gets a cluster connection by key. On std redis the default connection is returned.
     def getConnectionByKey(self, key, command):
-        if self.useTLS:
-            # workaround for error on
-            # got an unexpected keyword argument 'ssl'
-            # we enforce the connection_class instead of setting ssl=True
-            pool = ClusterConnectionPool(
-                startup_nodes=self.getMasterNodesList(),
-                connection_class=SSLClusterConnection,
-                ssl_cert_reqs=None,
-                ssl_keyfile=self.shards[0].getTLSKeyFile(),
-                ssl_certfile=self.shards[0].getTLSCertFile(),
-                ssl_ca_certs=self.shards[0].getTLSCACertFile(),
-            )
-            if pool.connection_kwargs:
-                pool.connection_kwargs.pop('ssl', None)
-        else:
-            pool = ClusterConnectionPool(
-                startup_nodes=self.getMasterNodesList()
-            )
-        con = pool.get_connection_by_key(key, command)
-        return redis.StrictRedis(host=con.host, port=con.port,  decode_responses=self.decodeResponses, password=self.password)
+        clusterConn = self.getClusterConnection()
+        target_node = clusterConn._determine_nodes(command, key) # we will always which will give us the node responsible for the key
+        return clusterConn.get_redis_connection(target_node[0])
 
     def flush(self):
         self.getClusterConnection().flushall()
