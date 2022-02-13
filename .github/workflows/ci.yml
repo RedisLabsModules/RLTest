@@ -81,7 +81,7 @@ jobs:
         TLS_KEY=./redis/tests/tls/redis.key \
         TLS_CACERT=./redis/tests/tls/ca.crt \
         REDIS_BINARY=./redis/src/redis-server \
-        pytest --ignore=tests/flow --ignore=test_example.py
+        pytest --ignore=tests/flow --ignore=test_example.py -v
 
     - name: Install RLTest
       run: |
