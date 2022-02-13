@@ -51,19 +51,19 @@ jobs:
         poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
         pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
 
-    - name: Cache Redis
-      id: cache-redis
-      uses: actions/cache@v1
-      with:
-        path: redis
-        key: ${{ matrix.platform }}-${{ matrix.python }}-redis
-        restore-keys: |
-          ${{ matrix.platform }}-${{ matrix.python }}-redis
+    # - name: Cache Redis
+    #   id: cache-redis
+    #   uses: actions/cache@v1
+    #   with:
+    #     path: redis
+    #     key: ${{ matrix.platform }}-${{ matrix.python }}-redis
+    #     restore-keys: |
+    #       ${{ matrix.platform }}-${{ matrix.python }}-redis
 
     - name: Install Redis Server test dependencies
-      if: steps.cache-redis.outputs.cache-hit != 'true'
+      # if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/redis/redis.git --branch unstable --depth 1
+        git clone https://github.com/redis/redis.git --branch 6.2.6 --depth 1
         cd redis
         make BUILD_TLS=yes -j
         ./src/redis-server --version
