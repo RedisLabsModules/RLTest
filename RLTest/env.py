@@ -28,15 +28,16 @@ def genDeprecated(name, target):
 
 
 class Query:
-    def __init__(self, env, *query):
+    def __init__(self, env, *query, **options):
         self.query = query
+        self.options = options
         self.env = env
         self.errorRaised = False
         self._evaluate()
 
     def _evaluate(self):
         try:
-            self.res = self.env.cmd(*self.query)
+            self.res = self.env.cmd(*self.query, **self.options)
         except Exception as e:
             self.res = str(e)
             self.errorRaised = True
@@ -428,11 +429,11 @@ class Env:
     def assertAlmostEqual(self, value1, value2, delta, depth=0):
         self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth)
 
-    def expect(self, *query):
-        return Query(self, *query)
+    def expect(self, *query, **options):
+        return Query(self, *query, **options)
 
-    def cmd(self, *query):
-        res = self.con.execute_command(*query)
+    def cmd(self, *query, **options):
+        res = self.con.execute_command(*query, **options)
         self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 
@@ -447,9 +448,9 @@ class Env:
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
         self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
 
-    def executeCommand(self, *query):
+    def executeCommand(self, *query, **options):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
-        return self.cmd(*query)
+        return self.cmd(*query, **options)
 
     def reloadingIterator(self):
         yield 1
