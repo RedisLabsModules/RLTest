@@ -102,7 +102,7 @@ class TestStandardEnv(TestCase):
                 tls_std_env._getFileName(role, '.log'), '--dbfilename',
                 tls_std_env._getFileName(role, '.rdb'), '--tls-cert-file', os.path.join(self.test_dir, tlsCertFile),
                 '--tls-key-file', os.path.join(self.test_dir, tlsKeyFile), '--tls-ca-cert-file',
-                os.path.join(self.test_dir, tlsCaCertFile)] == cmd_args
+                os.path.join(self.test_dir, tlsCaCertFile), '--tls-replication', 'yes'] == cmd_args
 
     def test_create_cmd_args_modules_default_behaviour(self):
         port = 8000

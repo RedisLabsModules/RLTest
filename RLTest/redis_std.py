@@ -201,6 +201,8 @@ class StandardEnv(object):
             if self.tlsPassphrase:
                 cmdArgs += ['--tls-key-file-pass', self.tlsPassphrase]
 
+            cmdArgs += ['--tls-replication', 'yes']
+
         return cmdArgs
 
     def waitForRedisToStart(self, con):
