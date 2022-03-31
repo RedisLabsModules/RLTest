@@ -10,6 +10,7 @@ import inspect
 import unittest
 import time
 import shlex
+from multiprocessing import Process, Queue
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
 from RLTest.utils import Colors, fix_modules, fix_modulesArgs
@@ -264,6 +265,8 @@ parser.add_argument('--randomize-ports',
                     'using default port',
                     default=False, action='store_true')
 
+parser.add_argument('--parallelism', help='Run tests in parallel', default=1, type=int)
+
 parser.add_argument(
     '--collect-only', action='store_true',
     help='Collect the tests and exit')
@@ -279,6 +282,9 @@ parser.add_argument(
 
 parser.add_argument(
     '--tls-ca-cert-file', default=None, help='/path/to/ca.crt')
+
+parser.add_argument(
+    '--tls-passphrase', default=None, help='passphrase to use on decript key file')
 
 class EnvScopeGuard:
     def __init__(self, runner):
@@ -308,7 +314,7 @@ class RLTest:
             sys.exit(0)
 
         if self.args.interactive_debugger:
-            if self.args.env != 'oss' and self.args.env != 'enterprise':
+            if self.args.env != 'oss' and not (self.args.env == 'oss-cluster' and Defaults.num_shards == 1) and self.args.env != 'enterprise':
                 print(Colors.Bred('interactive debugger can only be used on non cluster env'))
                 sys.exit(1)
             if self.args.use_valgrind:
@@ -399,6 +405,7 @@ class RLTest:
         Defaults.tls_cert_file = self.args.tls_cert_file
         Defaults.tls_key_file = self.args.tls_key_file
         Defaults.tls_ca_cert_file = self.args.tls_ca_cert_file
+        Defaults.tls_passphrase = self.args.tls_passphrase
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
         if Defaults.use_unix and Defaults.use_slaves:
@@ -420,6 +427,8 @@ class RLTest:
             self.require_clean_exit = True
         else:
             self.require_clean_exit = False
+
+        self.parallelism = self.args.parallelism
 
     def _convertArgsType(self):
         pass
@@ -483,7 +492,7 @@ class RLTest:
             ret += len(failures)
         return ret
 
-    def handleFailure(self, exception=None, prefix='', testname=None, env=None):
+    def handleFailure(self, testFullName=None, exception=None, prefix='', testname=None, env=None):
         """
         Failure omni-function.
 
@@ -504,10 +513,10 @@ class RLTest:
                 testname = '<unknown>'
 
         if exception:
-            self.printError()
+            self.printError(testFullName if testFullName is not None else '')
             self.printException(exception)
         else:
-            self.printFail()
+            self.printFail(testFullName if testFullName is not None else '')
 
         if env:
             self.addFailuresFromEnv(testname, env)
@@ -517,15 +526,20 @@ class RLTest:
             self.addFailure(testname, '<No exception or environment>')
 
     def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
+        test.initialize()
+        
         msgPrefix = test.name
 
-        print(Colors.Cyan(prefix + test.name))
+        testFullName = prefix + test.name
+
+        if not test.is_method:
+            Defaults.curr_test_name = testFullName
 
         if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
             try:
                 env = Env(testName=test.name)
             except Exception as e:
-                self.handleFailure(exception=e, prefix=msgPrefix, testname=test.name)
+                self.handleFailure(testFullName=testFullName, exception=e, prefix=msgPrefix, testname=test.name)
                 return 0
 
             fn = lambda: test.target(env)
@@ -543,7 +557,7 @@ class RLTest:
             fn()
             passed = True
         except unittest.SkipTest:
-            self.printSkip()
+            self.printSkip(testFullName)
             return 0
         except TestAssertionFailure:
             if self.args.exit_on_failure:
@@ -557,7 +571,7 @@ class RLTest:
                 after = None
                 raise
 
-            self.handleFailure(exception=err, prefix=msgPrefix,
+            self.handleFailure(testFullName=testFullName, exception=err, prefix=msgPrefix,
                                testname=test.name, env=self.currEnv)
             hasException = True
             passed = False
@@ -569,7 +583,7 @@ class RLTest:
         if self.currEnv:
             numFailed = self.currEnv.getNumberOfFailedAssertion()
             if numFailed > numberOfAssertionFailed:
-                self.handleFailure(prefix=msgPrefix,
+                self.handleFailure(testFullName=testFullName, prefix=msgPrefix,
                                    testname=test.name, env=self.currEnv)
                 passed = False
         elif not hasException:
@@ -581,24 +595,24 @@ class RLTest:
             if self.args.interactive_debugger:
                 while self.currEnv.isUp():
                     time.sleep(1)
-            raw_input('press any button to move to the next test')
+            input('press any button to move to the next test')
 
         if passed:
-            self.printPass()
+            self.printPass(testFullName)
 
         return numFailed
 
-    def printSkip(self):
-        print('\t' + Colors.Green('[SKIP]'))
+    def printSkip(self, name):
+        print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[SKIP]')))
 
-    def printFail(self):
-        print('\t' + Colors.Bred('[FAIL]'))
+    def printFail(self, name):
+        print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Bred('[FAIL]')))
 
-    def printError(self):
-        print('\t' + Colors.Yellow('[ERROR]'))
+    def printError(self, name):
+        print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Bred('[ERROR]')))
 
-    def printPass(self):
-        print('\t' + Colors.Green('[PASS]'))
+    def printPass(self, name):
+        print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[PASS]')))
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
@@ -623,37 +637,77 @@ class RLTest:
             print(Colors.Bred('only one test can be run on interactive-debugger use -t'))
             sys.exit(1)
 
+        jobs = Queue()
         for test in self.loader:
-            with self.envScopeGuard():
-                if test.is_class:
-                    try:
-                        obj = test.create_instance()
+            jobs.put(test, block=False)
+        
+        def run_jobs(jobs, results, port):
+            Defaults.port = port
+            done = 0
+            while True:
+                try:
+                    test = jobs.get(timeout=0.1)
+                except Exception as e:
+                    break
 
-                    except unittest.SkipTest:
-                        self.printSkip()
-                        continue
+                with self.envScopeGuard():
+                    if test.is_class:
+                        test.initialize()
 
-                    except Exception as e:
-                        self.printException(e)
-                        self.addFailure(test.name + " [__init__]")
-                        continue
+                        Defaults.curr_test_name = test.name
+                        try:
+                            obj = test.create_instance()
 
-                    print(Colors.Cyan(test.name))
+                        except unittest.SkipTest:
+                            self.printSkip(test.name)
+                            continue
 
-                    failures = 0
-                    before = getattr(obj, 'setUp', None)
-                    after = getattr(obj, 'tearDown', None)
-                    for subtest in test.get_functions(obj):
-                        failures += self._runTest(subtest, prefix='\t',
-                                                numberOfAssertionFailed=failures,
-                                                before=before, after=after)
+                        except Exception as e:
+                            self.printException(e)
+                            self.addFailure(test.name + " [__init__]")
+                            continue
+
+                        failures = 0
+                        before = getattr(obj, 'setUp', None)
+                        after = getattr(obj, 'tearDown', None)
+                        for subtest in test.get_functions(obj):
+                            failures += self._runTest(subtest, prefix='\t',
+                                                    numberOfAssertionFailed=failures,
+                                                    before=before, after=after)
+                            done += 1
+
+                    else:
+                        self._runTest(test)
                         done += 1
+            self.takeEnvDown(fullShutDown=True)
 
-                else:
-                    self._runTest(test)
-                    done += 1
+            # serialized the results back
+            results.put({'done': done, 'failures': self.testsFailed}, block=False)
 
-        self.takeEnvDown(fullShutDown=True)
+        results = Queue()
+        if self.parallelism == 1:
+            run_jobs(jobs, results, Defaults.port)
+        else :
+            processes = []
+            currPort = Defaults.port
+            for i in range(self.parallelism):
+                p = Process(target=run_jobs, args=(jobs,results,currPort))
+                currPort += 30 # safe distance for cluster and replicas
+                processes.append(p)
+                p.start()
+            
+            for p in processes:
+                p.join()
+
+        # join results
+        while True:
+            try:
+                res = results.get(timeout=0.1)
+            except Exception as e:
+                break
+            done += res['done']
+            self.testsFailed.extend(res['failures'])
+
         endTime = time.time()
 
         print(Colors.Bold('Test Took: %d sec' % (endTime - startTime)))

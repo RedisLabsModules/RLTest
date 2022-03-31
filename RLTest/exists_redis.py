@@ -18,6 +18,7 @@ class ExistsRedisEnv(object):
         self.port = int(self.port)
         self.password = password
         self.useTLS = kwargs['useTLS']
+        self.decodeResponses = kwargs.get('decodeResponses', False)
 
     @property
     def has_interactive_debugger(self):
@@ -38,7 +39,7 @@ class ExistsRedisEnv(object):
         pass
 
     def getConnection(self, shardId=1):
-        return redis.StrictRedis(self.host, self.port, password=self.password)
+        return redis.StrictRedis(self.host, self.port, password=self.password, decode_responses=self.decodeResponses)
 
     def getSlaveConnection(self):
         raise Exception('asked for slave connection but no slave exists')
@@ -81,7 +82,7 @@ class ExistsRedisEnv(object):
                 else:
                     break
 
-    def dumpAndReload(self, restart=False, shardId=1):
+    def dumpAndReload(self, restart=False, shardId=1, timeout_sec=0):
         self._waitForBgsaveToFinish()
         conn = self.getConnection()
         conn.save()

@@ -8,12 +8,12 @@ import sys
 import unittest
 import warnings
 
-from .Enterprise import EnterpriseClusterEnv
 from .exists_redis import ExistsRedisEnv
 from .redis_cluster import ClusterEnv
 from .redis_enterprise_cluster import EnterpriseRedisClusterEnv
 from .redis_std import StandardEnv
 from .utils import Colors, expandBinary, fix_modules, fix_modulesArgs
+from packaging import version
 
 
 class TestAssertionFailure(Exception):
@@ -30,6 +30,7 @@ def genDeprecated(name, target):
 class Query:
     def __init__(self, env, *query, **kwargs):
         self.query = query
+        self.options = options
         self.env = env
         self.conn = kwargs.pop('conn', None)
         if self.conn is None:
@@ -40,7 +41,7 @@ class Query:
     def _evaluate(self):
         kwargs = {'conn': self.conn}
         try:
-            self.res = self.env.cmd(*self.query, conn=self.conn)
+            self.res = self.env.cmd(*self.query, **self.options)
         except Exception as e:
             self.res = str(e)
             self.errorRaised = True
@@ -118,6 +119,7 @@ class Defaults:
     tls_cert_file = None
     tls_key_file = None
     tls_ca_cert_file = None
+    tls_passphrase = None
     debugger = None
     debug_print = False
     debug_pause = False
@@ -132,6 +134,8 @@ class Defaults:
     randomize_ports = False
     oss_password = None
     cluster_node_timeout = None
+    curr_test_name = None
+    port=6379
 
     def getKwargs(self):
         kwargs = {
@@ -148,6 +152,7 @@ class Defaults:
             'tlsCertFile': self.tls_cert_file,
             'tlsKeyFile': self.tls_key_file,
             'tlsCaCertFile': self.tls_ca_cert_file,
+            'tlsPassphrase': self.tls_passphrase,
             'password': self.oss_password
         }
         return kwargs
@@ -169,10 +174,13 @@ class Env:
     def __init__(self, testName=None, testDescription=None, module=None,
                  moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
-                 tlsCaCertFile=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
-                 redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None):
+                 tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
+                 redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
+                 freshEnv=False):
 
-        self.testName = testName if testName else '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
+        self.testName = testName if testName else Defaults.curr_test_name
+        if self.testName is None:
+            self.testName = '%s.%s' % (inspect.getmodule(inspect.currentframe().f_back).__name__, inspect.currentframe().f_back.f_code.co_name)
         self.testName = self.testName.replace(' ', '_')
 
         if testDescription:
@@ -197,15 +205,17 @@ class Env:
         self.tlsCertFile = tlsCertFile if tlsCertFile else Defaults.tls_cert_file
         self.tlsKeyFile = tlsKeyFile if tlsKeyFile else Defaults.tls_key_file
         self.tlsCaCertFile = tlsCaCertFile if tlsCaCertFile else Defaults.tls_ca_cert_file
+        self.tlsPassphrase = tlsPassphrase if tlsPassphrase else Defaults.tls_passphrase
 
         self.redisBinaryPath = expandBinary(redisBinaryPath) if redisBinaryPath else Defaults.binary
         self.dmcBinaryPath = expandBinary(dmcBinaryPath) if dmcBinaryPath else Defaults.proxy_binary
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
+        self.port = Defaults.port
 
         self.assertionFailedSummary = []
 
-        if Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
+        if (not freshEnv) and Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
         else:
             if Env.RTestInstance and Env.RTestInstance.currEnv:
@@ -226,7 +236,7 @@ class Env:
             Env.RTestInstance.currEnv = self
 
         if Defaults.debug_pause:
-            raw_input('\tenv is up, attach to any process with gdb and press any button to continue.')
+            input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
     def getEnvByName(self):
         verbose = False
@@ -297,7 +307,9 @@ class Env:
             'tlsCertFile': self.tlsCertFile,
             'tlsKeyFile': self.tlsKeyFile,
             'tlsCaCertFile': self.tlsCaCertFile,
-            'clusterNodeTimeout': self.clusterNodeTimeout
+            'clusterNodeTimeout': self.clusterNodeTimeout,
+            'tlsPassphrase': self.tlsPassphrase,
+            'port': self.port
         }
         return kwargs
 
@@ -340,7 +352,7 @@ class Env:
         self.envRunner.flush()
 
     def isCluster(self):
-        return 'cluster' in self.env
+        return 'cluster' in self.env or os.getenv("RLEC_CLUSTER") == "1"
 
     def isEnterpiseCluster(self):
         return isinstance(self.envRunner, EnterpriseRedisClusterEnv)
@@ -444,17 +456,17 @@ class Env:
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
         self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
 
-    def executeCommand(self, *query):
+    def executeCommand(self, *query, **options):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
-        return self.cmd(*query)
+        return self.cmd(*query, **options)
 
     def reloadingIterator(self):
         yield 1
         self.dumpAndReload()
         yield 2
 
-    def dumpAndReload(self, restart=False, shardId=None):
-        self.envRunner.dumpAndReload(restart=restart, shardId=shardId)
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=40):
+        self.envRunner.dumpAndReload(restart=restart, shardId=shardId, timeout_sec=timeout_sec)
 
     def hmset(self, *args):
         warnings.warn("hmset is deprecated, use Cmd instead", DeprecationWarning)
@@ -490,8 +502,8 @@ class Env:
         else:
             self._assertion('Expected Response Error', False, depth=1)
 
-    def restartAndReload(self, shardId=None):
-        self.dumpAndReload(restart=True, shardId=shardId)
+    def restartAndReload(self, shardId=None, timeout_sec=40):
+        self.dumpAndReload(restart=True, shardId=shardId, timeout_sec=timeout_sec)
 
     def broadcast(self, *cmd):
         self.envRunner.broadcast(*cmd)
@@ -519,6 +531,19 @@ class Env:
     def skipOnCluster(self):
         if self.isCluster():
             self.skip()
+
+    def skipOnAOF(self):
+        if self.useAof:
+            self.skip()
+
+    def skipOnSlave(self):
+        if self.useSlaves:
+            self.skip()
+
+    def skipOnVersionSmaller(self, _version):
+        res = self.con.execute_command('INFO')
+        if(version.parse(res['redis_version']) < version.parse(_version)):
+            self.skip() # copy exists only from version 6
 
     def isUnixSocket(self):
         return self.envRunner.isUnixSocket()

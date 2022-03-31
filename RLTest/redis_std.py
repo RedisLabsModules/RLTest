@@ -21,7 +21,7 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
-                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None):
+                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None, tlsPassphrase = None):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -53,6 +53,7 @@ class StandardEnv(object):
         self.tlsKeyFile = tlsKeyFile
         self.tlsCaCertFile = tlsCaCertFile
         self.clusterNodeTimeout = clusterNodeTimeout
+        self.tlsPassphrase = tlsPassphrase
 
         if port > 0:
             self.port = port
@@ -197,6 +198,10 @@ class StandardEnv(object):
             cmdArgs += ['--tls-cert-file', self.getTLSCertFile()]
             cmdArgs += ['--tls-key-file', self.getTLSKeyFile()]
             cmdArgs += ['--tls-ca-cert-file', self.getTLSCACertFile()]
+            if self.tlsPassphrase:
+                cmdArgs += ['--tls-key-file-pass', self.tlsPassphrase]
+
+            cmdArgs += ['--tls-replication', 'yes']
 
         return cmdArgs
 
@@ -362,6 +367,7 @@ class StandardEnv(object):
             return redis.StrictRedis('localhost', self.getPort(role),
                                      password=self.password,
                                      ssl=True,
+                                     ssl_password=self.tlsPassphrase,
                                      ssl_keyfile=self.getTLSKeyFile(),
                                      ssl_certfile=self.getTLSCertFile(),
                                      ssl_cert_reqs=None,
@@ -412,7 +418,7 @@ class StandardEnv(object):
             else:
                 break
 
-    def dumpAndReload(self, restart=False, shardId=None):
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=0):
         conns = []
         conns.append(self.getConnection())
         if self.useSlaves:
@@ -428,7 +434,8 @@ class StandardEnv(object):
         else:
             [con.save() for con in conns]
             try:
-                [con.execute_command('DEBUG', 'RELOAD') for con in conns]
+                # Given we've already saved on the prior step, there is no need to SAVE again on the DEBUG RELOAD
+                [con.execute_command('DEBUG', 'RELOAD', 'NOSAVE') for con in conns]
             except redis.RedisError as err:
                 raise err
 

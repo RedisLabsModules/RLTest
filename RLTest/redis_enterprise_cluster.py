@@ -1,4 +1,3 @@
-import rediscluster
 from redis import StrictRedis
 from .exists_redis import ExistsRedisEnv
 
@@ -14,7 +13,7 @@ class Shard(StrictRedis):
         StrictRedis.__init__(self, host = self.host, port = self.port, password = self.password,
                              decode_responses=self.decodeResponses, **kwargs)
 
-    def dumpAndReload(self, restart=False, shardId=1):
+    def dumpAndReload(self, restart=False, shardId=1, timeout_sec=0):
         self.save()
         try:
             self.execute_command('DEBUG', 'RELOAD')
@@ -86,13 +85,13 @@ class EnterpriseRedisClusterEnv(ExistsRedisEnv):
             time.sleep(0.1)
         raise RuntimeError("Cluster OK wait loop timed out after %s seconds" % timeout_sec)
 
-    def dumpAndReload(self, restart=False, shardId=None):
+    def dumpAndReload(self, restart=False, shardId=None, timeout_sec=40):
         if shardId is None:
             for shard in self.shards:
-                shard.dumpAndReload(restart=restart)
+                shard.dumpAndReload(restart=restart, timeout_sec=timeout_sec)
             self.waitCluster()
         else:
-            self.shards[shardId - 1].dumpAndReload(restart=restart, shardId=None)
+            self.shards[shardId - 1].dumpAndReload(restart=restart, shardId=None, timeout_sec=timeout_sec)
 
     def getClusterConnection(self):
         return self.getConnection()

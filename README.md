@@ -3,7 +3,7 @@
 [![CI](https://github.com/RedisLabsModules/RLTest/workflows/CI/badge.svg)](https://github.com/RedisLabsModules/RLTest/actions)
 [![Version](https://img.shields.io/github/release/RedisLabsModules/RLTest.svg)](https://github.com/RedisLabsModules/RLTest/releases/latest)
 [![Codecov](https://codecov.io/gh/RedisLabsModules/RLTest/branch/master/graph/badge.svg)](https://codecov.io/gh/RedisLabsModules/RLTest)
-[![Known Vulnerabilities](https://snyk.io/test/github/RedisLabsModules/RLTest/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/RedisLabsModules/RLTest?targetFile=requirements.txt)
+[![Known Vulnerabilities](https://snyk.io/test/github/RedisLabsModules/RLTest/badge.svg?targetFile=pyproject.toml)](https://snyk.io/test/github/RedisLabsModules/RLTest?targetFile=pyproject.toml)
 
 
 

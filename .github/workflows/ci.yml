@@ -15,8 +15,8 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        platform: ['ubuntu-20.04', 'ubuntu-18.04', 'ubuntu-16.04']
-        python: ['2.7', '3.6', '3.7', '3.8', '3.9']
+        platform: ['ubuntu-20.04']
+        python: ['3.6', '3.7', '3.8', '3.9']
 
     steps:
     - uses: actions/checkout@v2
@@ -51,19 +51,19 @@ jobs:
         poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
         pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
 
-    - name: Cache Redis
-      id: cache-redis
-      uses: actions/cache@v1
-      with:
-        path: redis
-        key: ${{ matrix.platform }}-${{ matrix.python }}-redis
-        restore-keys: |
-          ${{ matrix.platform }}-${{ matrix.python }}-redis
+    # - name: Cache Redis
+    #   id: cache-redis
+    #   uses: actions/cache@v1
+    #   with:
+    #     path: redis
+    #     key: ${{ matrix.platform }}-${{ matrix.python }}-redis
+    #     restore-keys: |
+    #       ${{ matrix.platform }}-${{ matrix.python }}-redis
 
     - name: Install Redis Server test dependencies
-      if: steps.cache-redis.outputs.cache-hit != 'true'
+      # if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone git://github.com/antirez/redis.git --branch unstable --depth 1
+        git clone https://github.com/redis/redis.git --branch 6.2.6 --depth 1
         cd redis
         make BUILD_TLS=yes -j
         ./src/redis-server --version
@@ -76,13 +76,13 @@ jobs:
         ./utils/gen-test-certs.sh
 
     - name: Unit Test with pytest
-      timeout-minutes: 10
+      timeout-minutes: 30
       run: |
         TLS_CERT=./redis/tests/tls/redis.crt \
         TLS_KEY=./redis/tests/tls/redis.key \
         TLS_CACERT=./redis/tests/tls/ca.crt \
         REDIS_BINARY=./redis/src/redis-server \
-        pytest --ignore=tests/flow --ignore=test_example.py
+        pytest --ignore=tests/flow --ignore=test_example.py -v
 
     - name: Install RLTest
       run: |
@@ -188,7 +188,7 @@ jobs:
         cd ../..
 
     - name: Generate coverage report
-      if: matrix.platform == 'ubuntu-18.04' && matrix.python == '3.6'
+      if: matrix.python == '3.6'
       run: |
         TLS_CERT=./redis/tests/tls/redis.crt \
         TLS_KEY=./redis/tests/tls/redis.key \
@@ -198,7 +198,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
-      if: matrix.platform == 'ubuntu-18.04' && matrix.python == '3.6'
+      if: matrix.python == '3.6'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
