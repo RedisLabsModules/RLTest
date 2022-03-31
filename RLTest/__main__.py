@@ -22,7 +22,6 @@ from RLTest._version import __version__
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-
 RLTest_CONFIG_FILE_PREFIX = '@'
 RLTest_CONFIG_FILE_NAME = 'config.txt'
 

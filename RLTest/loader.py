@@ -73,13 +73,14 @@ class TestClass(object):
 class TestLoader(object):
     def __init__(self):
         self.tests = []
-        # self.subfilter = None
 
     def load_spec(self, arg):
+        # if arg is a list, load its elements
         if isinstance(arg, list):
             for spec in arg:
                 self.load_spec(spec)
             return
+
         # See what kind of spec this is!
         """
         Load tests from single argument form, e.g. foo.py:BarBaz
