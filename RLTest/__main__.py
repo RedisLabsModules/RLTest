@@ -22,6 +22,7 @@ from RLTest._version import __version__
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+
 RLTest_CONFIG_FILE_PREFIX = '@'
 RLTest_CONFIG_FILE_NAME = 'config.txt'
 
@@ -171,7 +172,13 @@ parser.add_argument(
     help='stop before each test allow gdb attachment')
 
 parser.add_argument(
-    '-t', '--test', help='Specify test to run, in the form of "file:test"')
+    '-t', '--test', action='append', help='test to run, in the form of "file:test"')
+
+parser.add_argument(
+    '-f', '--tests-file', action='append', help='file containing test to run, in the form of "file:test"')
+
+parser.add_argument(
+    '-F', '--failed-tests-file', help='destination file for failed tests')
 
 parser.add_argument(
     '--env-only', action='store_const', const=True, default=False,
@@ -417,7 +424,14 @@ class RLTest:
         self.loader = TestLoader()
         if self.args.test:
             self.loader.load_spec(self.args.test)
-        else:
+        if self.args.tests_file:
+            for f in self.args.tests_file:
+                with open(f, 'r') as file:
+                    for line in file.readlines():
+                        if line.startswith('#') or line.strip() == "":
+                            continue
+                        self.loader.load_spec(line.strip())
+        if not self.args.test and not self.args.tests_file:
             self.loader.scan_dir(os.getcwd())
 
         if self.args.collect_only:
@@ -713,6 +727,11 @@ class RLTest:
         print(Colors.Bold('Test Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount())))
         if self.testsFailed:
+            if self.args.failed_tests_file:
+                with open(self.args.failed_tests_file, 'w') as file:
+                    for test, _ in self.testsFailed:
+                        file.write(test + "\n")
+
             print(Colors.Bold('Failed Tests Summary:'))
             for group, failures in self.testsFailed:
                 print('\t' + Colors.Bold(group))
@@ -721,6 +740,10 @@ class RLTest:
                 for failure in failures:
                     print('\t\t' + failure)
             sys.exit(1)
+        else:
+            if self.args.failed_tests_file:
+                with open(self.args.failed_tests_file, 'w') as file:
+                    file.write('')
 
 
 def main():
