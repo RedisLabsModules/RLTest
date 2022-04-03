@@ -423,14 +423,21 @@ class RLTest:
         self.loader = TestLoader()
         if self.args.test:
             self.loader.load_spec(self.args.test)
-        if self.args.tests_file:
-            for f in self.args.tests_file:
-                with open(f, 'r') as file:
-                    for line in file.readlines():
-                        if line.startswith('#') or line.strip() == "":
-                            continue
-                        self.loader.load_spec(line.strip())
-        if not self.args.test and not self.args.tests_file:
+        if self.args.tests_file is not None:
+            for fname in self.args.tests_file:
+                try:
+                    with open(fname, 'r') as file:
+                        for line in file.readlines():
+                            if line.startswith('#') or line.strip() == "":
+                                continue
+                            try:
+                                line = line.strip()
+                                self.loader.load_spec(line)
+                            except:
+                                print(Colors.Red('Invalid test {TEST} in file {FILE}'.format(TEST=line, FILE=fname)))
+                except:
+                    print(Colors.Red('Test file {} not found'.format(fname)))
+        if self.args.test is not None and self.args.tests_file is not None:
             self.loader.scan_dir(os.getcwd())
 
         if self.args.collect_only:
