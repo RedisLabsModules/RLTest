@@ -114,22 +114,25 @@ class TestLoader(object):
     def load_files(self, module_dir, module_name, toplevel_filter=None, subfilter=None):
         filename = '%s/%s.py' % (module_dir, module_name)
         try:
-            module_file = open(filename, 'r')
-            module = imp.load_module(module_name, module_file, filename,
-                                     ('.py', 'r', imp.PY_SOURCE))
-            for symbol in dir(module):
-                if not self.filter_modulevar(symbol, toplevel_filter):
-                    continue
+            with open(filename, 'r') as module_file:
+                try:
+                    module = imp.load_module(module_name, module_file, filename,
+                                             ('.py', 'r', imp.PY_SOURCE))
+                    for symbol in dir(module):
+                        if not self.filter_modulevar(symbol, toplevel_filter):
+                            continue
 
-                obj = getattr(module, symbol)
-                if inspect.isclass(obj):
-                    methnames = [mname for mname in dir(obj)
-                                 if self.filter_method(mname, subfilter)]
-                    self.tests.append(TestClass(filename, symbol, module_name, methnames))
-                elif inspect.isfunction(obj):
-                    self.tests.append(TestFunction(filename, symbol, module_name))
+                        obj = getattr(module, symbol)
+                        if inspect.isclass(obj):
+                            methnames = [mname for mname in dir(obj)
+                                         if self.filter_method(mname, subfilter)]
+                            self.tests.append(TestClass(filename, symbol, module_name, methnames))
+                        elif inspect.isfunction(obj):
+                            self.tests.append(TestFunction(filename, symbol, module_name))
+                except as x:
+                    print(Colors.Red("Problems in file %s: %s" % (filename, x)))
         except:
-            print(Colors.Bred("File %s not found: skipping" % filename))
+            print(Colors.Red("File %s not found: skipping" % filename))
 
     def scan_dir(self, testdir):
         for filename in os.listdir(testdir):
