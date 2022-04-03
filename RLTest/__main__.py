@@ -749,7 +749,7 @@ class RLTest:
         else:
             if self.args.failed_tests_file:
                 with open(self.args.failed_tests_file, 'w') as file:
-                    file.write('')
+                    pass
 
 
 def main():

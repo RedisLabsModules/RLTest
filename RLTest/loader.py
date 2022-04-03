@@ -101,8 +101,7 @@ class TestLoader(object):
             sys.path.append(dirname)
 
         module_name, _ = os.path.splitext(os.path.basename(filename))
-        toplevel_filter = None
-        subfilter = None
+        toplevel_filter, subfilter = None, None
         if varname:
             if '.' in varname:
                 toplevel_filter, subfilter = varname.split('.')
