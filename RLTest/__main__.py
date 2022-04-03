@@ -171,13 +171,13 @@ parser.add_argument(
     help='stop before each test allow gdb attachment')
 
 parser.add_argument(
-    '-t', '--test', action='append', help='test to run, in the form of "file:test"')
+    '-t', '--test', metavar='TEST', action='append', help='test to run, in the form of "file:test"')
 
 parser.add_argument(
-    '-f', '--tests-file', action='append', help='file containing test to run, in the form of "file:test"')
+    '-f', '--tests-file', metavar='FILE', action='append', help='file containing test to run, in the form of "file:test"')
 
 parser.add_argument(
-    '-F', '--failed-tests-file', help='destination file for failed tests')
+    '-F', '--failed-tests-file', metavar='FILE', help='destination file for failed tests')
 
 parser.add_argument(
     '--env-only', action='store_const', const=True, default=False,
