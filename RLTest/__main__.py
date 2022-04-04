@@ -171,7 +171,13 @@ parser.add_argument(
     help='stop before each test allow gdb attachment')
 
 parser.add_argument(
-    '-t', '--test', help='Specify test to run, in the form of "file:test"')
+    '-t', '--test', metavar='TEST', action='append', help='test to run, in the form of "file:test"')
+
+parser.add_argument(
+    '-f', '--tests-file', metavar='FILE', action='append', help='file containing test to run, in the form of "file:test"')
+
+parser.add_argument(
+    '-F', '--failed-tests-file', metavar='FILE', help='destination file for failed tests')
 
 parser.add_argument(
     '--env-only', action='store_const', const=True, default=False,
@@ -415,9 +421,23 @@ class RLTest:
         self.testsFailed = []
         self.currEnv = None
         self.loader = TestLoader()
-        if self.args.test:
+        if self.args.test is not None:
             self.loader.load_spec(self.args.test)
-        else:
+        if self.args.tests_file is not None:
+            for fname in self.args.tests_file:
+                try:
+                    with open(fname, 'r') as file:
+                        for line in file.readlines():
+                            line = line.strip()
+                            if line.startswith('#') or line == "":
+                                continue
+                            try:
+                                self.loader.load_spec(line)
+                            except:
+                                print(Colors.Red('Invalid test {TEST} in file {FILE}'.format(TEST=line, FILE=fname)))
+                except:
+                    print(Colors.Red('Test file {} not found'.format(fname)))
+        if self.args.test is None and self.args.tests_file is None:
             self.loader.scan_dir(os.getcwd())
 
         if self.args.collect_only:
@@ -713,6 +733,11 @@ class RLTest:
         print(Colors.Bold('Test Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount())))
         if self.testsFailed:
+            if self.args.failed_tests_file:
+                with open(self.args.failed_tests_file, 'w') as file:
+                    for test, _ in self.testsFailed:
+                        file.write(test.split(' ')[0] + "\n")
+
             print(Colors.Bold('Failed Tests Summary:'))
             for group, failures in self.testsFailed:
                 print('\t' + Colors.Bold(group))
@@ -721,6 +746,10 @@ class RLTest:
                 for failure in failures:
                     print('\t\t' + failure)
             sys.exit(1)
+        else:
+            if self.args.failed_tests_file:
+                with open(self.args.failed_tests_file, 'w') as file:
+                    pass
 
 
 def main():
