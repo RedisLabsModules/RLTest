@@ -246,6 +246,10 @@ parser.add_argument(
                                                   "By default on RLTest the return value from Valgrind will be used to fail the tests."
                                                   "Use this option when you wish to dry-run valgrind but not fail the test on valgrind reported errors."
 )
+
+parser.add_argument(
+    '--sanitizer', default=None, help='type of CLang sanitizer (addr|mem)')
+
 parser.add_argument(
     '-i', '--interactive-debugger', action='store_const', const=True, default=False,
     help='runs the redis on a debuger (gdb/lldb) interactivly.'
@@ -370,6 +374,10 @@ class RLTest:
         elif self.args.interactive_debugger:
             debugger = debuggers.default_interactive_debugger
 
+        sanitizer = None
+        if self.args.sanitizer:
+            sanitizer = self.args.sanitizer
+
         if self.args.env.endswith('existing-env'):
             # when running on existing env we always reuse it
             self.args.env_reuse = True
@@ -403,6 +411,7 @@ class RLTest:
         Defaults.debug_print = self.args.debug_print
         Defaults.no_capture_output = self.args.no_output_catch
         Defaults.debugger = debugger
+        Defaults.sanitizer = sanitizer
         Defaults.exit_on_failure = self.args.exit_on_failure
         Defaults.external_addr = self.args.existing_env_addr
         Defaults.use_unix = self.args.unix
