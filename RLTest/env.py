@@ -121,6 +121,7 @@ class Defaults:
     tls_ca_cert_file = None
     tls_passphrase = None
     debugger = None
+    sanitizer = None
     debug_print = False
     debug_pause = False
     no_capture_output = False
@@ -146,6 +147,7 @@ class Defaults:
             'useRdbPreamble': self.use_rdb_preamble,
             'dbDirPath': self.logdir,
             'debugger': self.debugger,
+            'sanitizer': self.sanitizer,
             'noCatch': self.no_capture_output,
             'verbose': self.verbose,
             'useTLS': self.use_TLS,
@@ -201,6 +203,7 @@ class Env:
         self.logDir = logDir if logDir else Defaults.logdir
         self.forceTcp = forceTcp
         self.debugger = Defaults.debugger
+        self.sanitizer = Defaults.sanitizer
         self.useTLS = useTLS if useTLS else Defaults.use_TLS
         self.tlsCertFile = tlsCertFile if tlsCertFile else Defaults.tls_cert_file
         self.tlsKeyFile = tlsKeyFile if tlsKeyFile else Defaults.tls_key_file
@@ -301,6 +304,7 @@ class Env:
             'useRdbPreamble': self.useRdbPreamble,
             'dbDirPath': self.logDir,
             'debugger': Defaults.debugger,
+            'sanitizer': Defaults.sanitizer,
             'noCatch': Defaults.no_capture_output,
             'verbose': Defaults.verbose,
             'useTLS': self.useTLS,
