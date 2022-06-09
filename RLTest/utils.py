@@ -45,6 +45,10 @@ class Colors(object):
         return '\033[1m' + data + '\033[0m'
 
     @staticmethod
+    def Red(data):
+        return '\033[31m' + data + '\033[0m'
+
+    @staticmethod
     def Bred(data):
         return '\033[31;1m' + data + '\033[0m'
 

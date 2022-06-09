@@ -3,6 +3,7 @@ import os
 import sys
 import imp
 import inspect
+from RLTest.utils import Colors
 
 
 class TestFunction(object):
@@ -70,12 +71,16 @@ class TestClass(object):
 
 
 class TestLoader(object):
-    def __init__(self, filter=None):
+    def __init__(self):
         self.tests = []
-        self.toplevel_filter = filter
-        self.subfilter = None
 
     def load_spec(self, arg):
+        # if arg is a list, load its elements
+        if isinstance(arg, list):
+            for spec in arg:
+                self.load_spec(spec)
+            return
+
         # See what kind of spec this is!
         """
         Load tests from single argument form, e.g. foo.py:BarBaz
@@ -96,30 +101,37 @@ class TestLoader(object):
             sys.path.append(dirname)
 
         module_name, _ = os.path.splitext(os.path.basename(filename))
+        toplevel_filter, subfilter = None, None
         if varname:
             if '.' in varname:
-                self.toplevel_filter, self.subfilter = varname.split('.')
+                toplevel_filter, subfilter = varname.split('.')
             else:
-                self.toplevel_filter = varname
+                toplevel_filter = varname
 
-        self.load_files(dirname, module_name)
+        self.load_files(dirname, module_name, toplevel_filter, subfilter)
 
-    def load_files(self, module_dir, module_name):
+    def load_files(self, module_dir, module_name, toplevel_filter=None, subfilter=None):
         filename = '%s/%s.py' % (module_dir, module_name)
-        module_file = open(filename, 'r')
-        module = imp.load_module(module_name, module_file, filename,
-                                 ('.py', 'r', imp.PY_SOURCE))
-        for symbol in dir(module):
-            if not self.filter_modulevar(symbol):
-                continue
+        try:
+            with open(filename, 'r') as module_file:
+                try:
+                    module = imp.load_module(module_name, module_file, filename,
+                                             ('.py', 'r', imp.PY_SOURCE))
+                    for symbol in dir(module):
+                        if not self.filter_modulevar(symbol, toplevel_filter):
+                            continue
 
-            obj = getattr(module, symbol)
-            if inspect.isclass(obj):
-                methnames = [mname for mname in dir(obj)
-                             if self.filter_method(mname)]
-                self.tests.append(TestClass(filename, symbol, module_name, methnames))
-            elif inspect.isfunction(obj):
-                self.tests.append(TestFunction(filename, symbol, module_name))
+                        obj = getattr(module, symbol)
+                        if inspect.isclass(obj):
+                            methnames = [mname for mname in dir(obj)
+                                         if self.filter_method(mname, subfilter)]
+                            self.tests.append(TestClass(filename, symbol, module_name, methnames))
+                        elif inspect.isfunction(obj):
+                            self.tests.append(TestFunction(filename, symbol, module_name))
+                except Exception as x:
+                    print(Colors.Red("Problems in file %s: %s" % (filename, x)))
+        except:
+            print(Colors.Red("File %s not found: skipping" % filename))
 
     def scan_dir(self, testdir):
         for filename in os.listdir(testdir):
@@ -127,17 +139,17 @@ class TestLoader(object):
                 module_name, ext = os.path.splitext(filename)
                 self.load_files(testdir, module_name)
 
-    def filter_modulevar(self, candidate):
+    def filter_modulevar(self, candidate, toplevel_filter):
         if not candidate.lower().startswith('test'):
             return False
-        if self.toplevel_filter and candidate != self.toplevel_filter:
+        if toplevel_filter and candidate != toplevel_filter:
             return False
         return True
 
-    def filter_method(self, candidate):
+    def filter_method(self, candidate, subfilter):
         if not candidate.lower().startswith('test'):
             return False
-        if self.subfilter and candidate != self.subfilter:
+        if subfilter and candidate != subfilter:
             return False
 
         return True

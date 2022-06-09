@@ -20,8 +20,8 @@ SLAVE = 'slave'
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
-                 useAof=False, useRdbPreamble=True, debugger=None, noCatch=False, unix=False, verbose=False, useTLS=False, tlsCertFile=None,
-                 tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout = None, tlsPassphrase = None, enableDebugCommand=False):
+                 useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, unix=False, verbose=False, useTLS=False,
+                 tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -38,6 +38,7 @@ class StandardEnv(object):
         self.useRdbPreamble = useRdbPreamble
         self.envIsUp = False
         self.debugger = debugger
+        self.sanitizer = sanitizer
         self.noCatch = noCatch
         self.environ = os.environ.copy()
         self.useUnix = unix
@@ -104,9 +105,11 @@ class StandardEnv(object):
                 self.environ['LD_LIBRARY_PATH'] = self.libPath
 
         self.masterCmdArgs = self.createCmdArgs(MASTER)
+        self.masterOSEnv = self.createCmdOSEnv(MASTER)
         if self.useSlaves:
             self.slaveServerId = serverId + 1
             self.slaveCmdArgs = self.createCmdArgs(SLAVE)
+            self.slaveOSEnv = self.createCmdOSEnv(SLAVE)
 
         self.envIsHealthy = True
 
@@ -209,6 +212,15 @@ class StandardEnv(object):
 
         return cmdArgs
 
+    def createCmdOSEnv(self, role):
+        if self.sanitizer != 'addr' and self.sanitizer != 'address':
+            return self.environ
+        osenv = self.environ.copy()
+        san_log = self._getFileName(role, '.asan.log')
+        asan_options = osenv.get("ASAN_OPTIONS")
+        osenv["ASAN_OPTIONS"] = "{OPT}:log_path={DIR}".format(OPT=asan_options, DIR=san_log)
+        return osenv
+
     def waitForRedisToStart(self, con):
         wait_for_conn(con, retries=1000 if self.debugger else 200)
         self._waitForAOFChild(con)
@@ -271,19 +283,18 @@ class StandardEnv(object):
             'stderr': stderrPipe,
             'stdin': stdinPipe,
             'stdout': stdoutPipe,
-            'env': self.environ
         }
 
         if self.verbose:
             print(Colors.Green("Redis master command: " + ' '.join(self.masterCmdArgs)))
         if masters and self.masterProcess is None:
-            self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, **options)
+            self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, env=self.masterOSEnv, **options)
             con = self.getConnection()
             self.waitForRedisToStart(con)
         if self.useSlaves and slaves and self.slaveProcess is None:
             if self.verbose:
                 print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
-            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, **options)
+            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, **options)
             con = self.getSlaveConnection()
             self.waitForRedisToStart(con)
         self.envIsUp = True
