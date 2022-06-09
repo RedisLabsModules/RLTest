@@ -254,6 +254,10 @@ parser.add_argument(
     '-s', '--no-output-catch', action='store_const', const=True, default=False,
     help='all output will be written to the stdout, no log files.')
 
+parser.add_argument(
+    '--enable-debug-command', action='store_const', const=True, default=False,
+    help='On Redis 7, debug command need to be enabled in order to be used.')
+
 parser.add_argument('--check-exitcode', help='Check redis process exit code',
                     default=False, action='store_true')
 
@@ -408,6 +412,7 @@ class RLTest:
         Defaults.tls_passphrase = self.args.tls_passphrase
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
+        Defaults.enableDebugCommand = self.args.enable_debug_command
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 

@@ -132,6 +132,7 @@ class Defaults:
     cluster_node_timeout = None
     curr_test_name = None
     port=6379
+    enable_debug_command=False
 
     def getKwargs(self):
         kwargs = {
@@ -157,7 +158,7 @@ class Defaults:
 class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
-                        'useRdbPreamble', 'forceTcp']
+                        'useRdbPreamble', 'forceTcp', 'enableDebugCommand']
 
     def compareEnvs(self, env):
         if env is None:
@@ -172,7 +173,7 @@ class Env:
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
-                 freshEnv=False):
+                 freshEnv=False, enableDebugCommand=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -208,6 +209,7 @@ class Env:
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
         self.port = Defaults.port
+        self.enableDebugCommand = enableDebugCommand if enableDebugCommand else Defaults.enable_debug_command
 
         self.assertionFailedSummary = []
 
@@ -305,7 +307,8 @@ class Env:
             'tlsCaCertFile': self.tlsCaCertFile,
             'clusterNodeTimeout': self.clusterNodeTimeout,
             'tlsPassphrase': self.tlsPassphrase,
-            'port': self.port
+            'port': self.port,
+            'enableDebugCommand': self.enableDebugCommand
         }
         return kwargs
 
