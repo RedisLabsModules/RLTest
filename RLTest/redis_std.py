@@ -21,7 +21,7 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, unix=False, verbose=False, useTLS=False,
-                 tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None):
+                 tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -55,6 +55,7 @@ class StandardEnv(object):
         self.tlsCaCertFile = tlsCaCertFile
         self.clusterNodeTimeout = clusterNodeTimeout
         self.tlsPassphrase = tlsPassphrase
+        self.enableDebugCommand = enableDebugCommand
 
         if port > 0:
             self.port = port
@@ -205,6 +206,9 @@ class StandardEnv(object):
                 cmdArgs += ['--tls-key-file-pass', self.tlsPassphrase]
 
             cmdArgs += ['--tls-replication', 'yes']
+        
+        if self.enableDebugCommand:
+            cmdArgs += ['--enable-debug-command', 'yes']
 
         return cmdArgs
 
