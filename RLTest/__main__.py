@@ -427,7 +427,7 @@ class RLTest:
         Defaults.tls_passphrase = self.args.tls_passphrase
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
-        Defaults.enableDebugCommand = self.args.enable_debug_command
+        Defaults.enable_debug_command = self.args.enable_debug_command
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 
