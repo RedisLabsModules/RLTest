@@ -331,8 +331,8 @@ class StandardEnv(object):
                         p.wait()
                     except:
                         pass
+            process.terminate()
             while True:
-                process.terminate()
                 if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
                     time.sleep(0.1)
                 else:
