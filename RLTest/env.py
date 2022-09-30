@@ -433,8 +433,8 @@ class Env:
     def assertIsInstance(self, value, instance, depth=0):
         self._assertion('%s instance of %s' % (repr(value), repr(instance)), isinstance(value, instance), depth)
 
-    def assertAlmostEqual(self, value1, value2, delta, depth=0):
-        self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth)
+    def assertAlmostEqual(self, value1, value2, delta, depth=0, message=None):
+        self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth, message)
 
     def expect(self, *query, **options):
         return Query(self, *query, **options)
