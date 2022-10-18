@@ -57,6 +57,8 @@ class StandardEnv(object):
         self.clusterNodeTimeout = clusterNodeTimeout
         self.tlsPassphrase = tlsPassphrase
         self.enableDebugCommand = enableDebugCommand
+        self.terminateRetries = None
+        self.terminateRetrySecs = None
 
         if port > 0:
             self.port = port
@@ -227,7 +229,7 @@ class StandardEnv(object):
                 cmdArgs += ['--tls-key-file-pass', self.tlsPassphrase]
 
             cmdArgs += ['--tls-replication', 'yes']
-        
+
         if self.enableDebugCommand:
             if self._getRedisVersion() > 70000:
                 cmdArgs += ['--enable-debug-command', 'yes']
@@ -353,12 +355,29 @@ class StandardEnv(object):
                         p.wait()
                     except:
                         pass
-            process.terminate()
-            while True:
-                if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
-                    time.sleep(0.1)
-                else:
-                    break
+
+            if self.terminateRetries is None:
+                # ask once, then wait for process to exit
+                process.terminate()
+                while True:
+                    if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                        time.sleep(0.1)
+                    else:
+                        break
+            else:
+                # keep asking every few seconds until process has exited, otherwise kill
+                if self.terminateRetrySecs is None:
+                    self.terminateRetrySecs = 1
+                done = False
+                for i in range(0, self.terminateRetries):
+                    process.terminate()
+                    if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                        time.sleep(self.terminateRetrySecs)
+                    else:
+                        done = True
+                        break
+                if not done:
+                    process.kill()
 
             if role == MASTER:
                 self.masterExitCode = process.poll()
@@ -516,3 +535,7 @@ class StandardEnv(object):
 
     def keys(self, reg):
         return self.getConnection().keys(reg)
+
+    def setTerminateRetries(self, retries=3, seconds=1):
+        self.terminateRetries = retries
+        self.terminateRetrySecs = seconds
