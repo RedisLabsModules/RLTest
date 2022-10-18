@@ -28,14 +28,18 @@ def genDeprecated(name, target):
 
 
 class Query:
-    def __init__(self, env, *query, **options):
+    def __init__(self, env, *query, **kwargs):
         self.query = query
         self.options = options
         self.env = env
+        self.conn = kwargs.pop('conn', None)
+        if self.conn is None:
+            self.conn = env.con
         self.errorRaised = False
         self._evaluate()
 
     def _evaluate(self):
+        kwargs = {'conn': self.conn}
         try:
             self.res = self.env.cmd(*self.query, **self.options)
         except Exception as e:
@@ -447,11 +451,15 @@ class Env:
     def assertAlmostEqual(self, value1, value2, delta, depth=0, message=None):
         self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth, message)
 
-    def expect(self, *query, **options):
-        return Query(self, *query, **options)
+    def expect(self, *query, **kwargs):
+        conn = kwargs.pop('conn', None)
+        return Query(self, conn=conn, *query)
 
-    def cmd(self, *query, **options):
-        res = self.con.execute_command(*query, **options)
+    def cmd(self, *query, **kwargs):
+        conn = kwargs.pop('conn', None)
+        if conn is None:
+            conn = self.con
+        res = conn.execute_command(*query)
         self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 

@@ -68,6 +68,7 @@ jobs:
         make BUILD_TLS=yes -j
         ./src/redis-server --version
         cd ..
+
     - name: Generate test certificates
       run: |
         cd redis

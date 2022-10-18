@@ -1,3 +1,4 @@
+
 from __future__ import print_function
 import redis
 import subprocess
@@ -16,6 +17,7 @@ class ExistsRedisEnv(object):
         self.host, self.port = addr.split(':')
         self.port = int(self.port)
         self.password = password
+        self.useTLS = kwargs['useTLS']
         self.decodeResponses = kwargs.get('decodeResponses', False)
 
     @property
@@ -64,7 +66,7 @@ class ExistsRedisEnv(object):
         while True:
             if not self.getConnection().execute_command('info', 'Persistence')['rdb_bgsave_in_progress']:
                 break
-        
+
     def flush(self):
         self.getConnection().flushall()
         self._waitForBgsaveToFinish()
@@ -100,6 +102,9 @@ class ExistsRedisEnv(object):
 
     def isUp(self):
         return self.getConnection().ping()
+
+    def isTLS(self):
+        return self.useTLS
 
     def exists(self, val):
         return self.getConnection().exists(val)
