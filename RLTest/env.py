@@ -121,6 +121,7 @@ class Defaults:
     debug_print = False
     debug_pause = False
     no_capture_output = False
+    no_log = False
     exit_on_failure = False
     verbose = 0
     logdir = None
@@ -146,6 +147,7 @@ class Defaults:
             'debugger': self.debugger,
             'sanitizer': self.sanitizer,
             'noCatch': self.no_capture_output,
+            'noLog': self.no_log,
             'verbose': self.verbose,
             'useTLS': self.use_TLS,
             'tlsCertFile': self.tls_cert_file,
@@ -304,6 +306,7 @@ class Env:
             'debugger': Defaults.debugger,
             'sanitizer': Defaults.sanitizer,
             'noCatch': Defaults.no_capture_output,
+            'noLog': Defaults.no_log,
             'verbose': Defaults.verbose,
             'useTLS': self.useTLS,
             'tlsCertFile': self.tlsCertFile,
