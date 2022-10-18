@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "RLTest"
-version = "0.5.3"
+version = "0.5.6"
 description="Redis Labs Test Framework, allow to run tests on redis and modules on a variety of environments"
 authors = ["RedisLabs <oss@redislabs.com>"]
 license = "BSD-3-Clause"

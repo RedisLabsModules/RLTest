@@ -117,6 +117,7 @@ class Defaults:
     tls_ca_cert_file = None
     tls_passphrase = None
     debugger = None
+    sanitizer = None
     debug_print = False
     debug_pause = False
     no_capture_output = False
@@ -132,6 +133,7 @@ class Defaults:
     cluster_node_timeout = None
     curr_test_name = None
     port=6379
+    enable_debug_command=False
 
     def getKwargs(self):
         kwargs = {
@@ -142,6 +144,7 @@ class Defaults:
             'useRdbPreamble': self.use_rdb_preamble,
             'dbDirPath': self.logdir,
             'debugger': self.debugger,
+            'sanitizer': self.sanitizer,
             'noCatch': self.no_capture_output,
             'verbose': self.verbose,
             'useTLS': self.use_TLS,
@@ -157,7 +160,7 @@ class Defaults:
 class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
-                        'useRdbPreamble', 'forceTcp']
+                        'useRdbPreamble', 'forceTcp', 'enableDebugCommand']
 
     def compareEnvs(self, env):
         if env is None:
@@ -172,7 +175,7 @@ class Env:
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
-                 freshEnv=False):
+                 freshEnv=False, enableDebugCommand=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -197,6 +200,7 @@ class Env:
         self.logDir = logDir if logDir else Defaults.logdir
         self.forceTcp = forceTcp
         self.debugger = Defaults.debugger
+        self.sanitizer = Defaults.sanitizer
         self.useTLS = useTLS if useTLS else Defaults.use_TLS
         self.tlsCertFile = tlsCertFile if tlsCertFile else Defaults.tls_cert_file
         self.tlsKeyFile = tlsKeyFile if tlsKeyFile else Defaults.tls_key_file
@@ -208,6 +212,7 @@ class Env:
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
         self.port = Defaults.port
+        self.enableDebugCommand = enableDebugCommand if enableDebugCommand else Defaults.enable_debug_command
 
         self.assertionFailedSummary = []
 
@@ -297,6 +302,7 @@ class Env:
             'useRdbPreamble': self.useRdbPreamble,
             'dbDirPath': self.logDir,
             'debugger': Defaults.debugger,
+            'sanitizer': Defaults.sanitizer,
             'noCatch': Defaults.no_capture_output,
             'verbose': Defaults.verbose,
             'useTLS': self.useTLS,
@@ -305,7 +311,8 @@ class Env:
             'tlsCaCertFile': self.tlsCaCertFile,
             'clusterNodeTimeout': self.clusterNodeTimeout,
             'tlsPassphrase': self.tlsPassphrase,
-            'port': self.port
+            'port': self.port,
+            'enableDebugCommand': self.enableDebugCommand
         }
         return kwargs
 
@@ -426,8 +433,8 @@ class Env:
     def assertIsInstance(self, value, instance, depth=0):
         self._assertion('%s instance of %s' % (repr(value), repr(instance)), isinstance(value, instance), depth)
 
-    def assertAlmostEqual(self, value1, value2, delta, depth=0):
-        self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth)
+    def assertAlmostEqual(self, value1, value2, delta, depth=0, message=None):
+        self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth, message)
 
     def expect(self, *query, **options):
         return Query(self, *query, **options)
