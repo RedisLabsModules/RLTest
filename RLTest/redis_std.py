@@ -20,7 +20,7 @@ SLAVE = 'slave'
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
-                 useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, unix=False, verbose=False, useTLS=False,
+                 useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
@@ -40,6 +40,7 @@ class StandardEnv(object):
         self.debugger = debugger
         self.sanitizer = sanitizer
         self.noCatch = noCatch
+        self.noLog = noLog
         self.environ = os.environ.copy()
         self.useUnix = unix
         self.dbDirPath = dbDirPath
@@ -168,6 +169,7 @@ class StandardEnv(object):
             cmdArgs += self.debugger.generate_command(self._getValgrindFilePath(role) if not self.noCatch else None)
 
         cmdArgs += [self.redisBinaryPath]
+
         if self.port > -1:
             if self.useTLS:
                 cmdArgs += ['--port', str(0), '--tls-port', str(self.getPort(role))]
@@ -196,7 +198,9 @@ class StandardEnv(object):
 
         if self.dbDirPath is not None:
             cmdArgs += ['--dir', self.dbDirPath]
-        if self.outputFilesFormat is not None and not self.noCatch:
+        if self.noLog:
+            cmdArgs += ['--logfile', '/dev/null']
+        elif self.outputFilesFormat is not None and not self.noCatch:
             cmdArgs += ['--logfile', self._getFileName(role, '.log')]
         if self.outputFilesFormat is not None:
             cmdArgs += ['--dbfilename', self._getFileName(role, '.rdb')]
