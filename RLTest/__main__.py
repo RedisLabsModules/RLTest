@@ -483,9 +483,13 @@ class RLTest:
 
         if needShutdown:
             if self.currEnv.isUp():
-                self.currEnv.flush()
+                try:
+                    self.currEnv.flush()
+                    flush_ok = True
+                except:
+                    flush_ok = False
             self.currEnv.stop()
-            if self.require_clean_exit and self.currEnv and not self.currEnv.checkExitCode():
+            if self.require_clean_exit and self.currEnv and (not self.currEnv.checkExitCode() or not flush_ok):
                 print(Colors.Bred('\tRedis did not exit cleanly'))
                 self.addFailure(self.currEnv.testName, ['redis process failure'])
                 if self.args.check_exitcode:
@@ -561,7 +565,7 @@ class RLTest:
 
     def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
         test.initialize()
-        
+
         msgPrefix = test.name
 
         testFullName = prefix + test.name
@@ -674,7 +678,7 @@ class RLTest:
         jobs = Queue()
         for test in self.loader:
             jobs.put(test, block=False)
-        
+
         def run_jobs(jobs, results, port):
             Defaults.port = port
             done = 0
@@ -729,7 +733,7 @@ class RLTest:
                 currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
-            
+
             for p in processes:
                 p.join()
 
