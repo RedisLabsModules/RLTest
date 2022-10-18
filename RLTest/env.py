@@ -28,18 +28,14 @@ def genDeprecated(name, target):
 
 
 class Query:
-    def __init__(self, env, *query, **kwargs):
+    def __init__(self, env, *query, **options):
         self.query = query
         self.options = options
         self.env = env
-        self.conn = kwargs.pop('conn', None)
-        if self.conn is None:
-            self.conn = env.con
         self.errorRaised = False
         self._evaluate()
 
     def _evaluate(self):
-        kwargs = {'conn': self.conn}
         try:
             self.res = self.env.cmd(*self.query, **self.options)
         except Exception as e:
