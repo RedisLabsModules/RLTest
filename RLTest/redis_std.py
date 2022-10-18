@@ -365,7 +365,7 @@ class StandardEnv(object):
                 if self.terminateRetrySecs is None:
                     self.terminateRetrySecs = 1
                 done = False
-                for i in range(1, self.terminateRetries):
+                for i in range(0, self.terminateRetries):
                     process.terminate()
                     if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
                         time.sleep(self.terminateRetrySecs)
