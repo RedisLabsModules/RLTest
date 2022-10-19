@@ -4,13 +4,13 @@ on:
     types: [ published ]
 
 jobs:
-  pytest:
+  publish_to_pypi:
     name: Publish to PyPi
     runs-on: ubuntu-latest
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
 
       - name: get version from tag
         id: get_version
@@ -26,29 +26,36 @@ jobs:
           key: "tool.poetry.version"
           value: "${{ steps.get_version.outputs.VERSION }}"
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v1
+      - name: Install Python
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
-      - name: Cache Poetry virtualenv
-        uses: actions/cache@v1
-        id: cache
-        with:
-          path: ~/.virtualenvs
-          key: poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            poetry-${{ hashFiles('**/poetry.lock') }}
+#      - name: Cache Poetry virtualenv
+#        uses: actions/cache@v1
+#        id: cache
+#        with:
+#          path: ~/.virtualenvs
+#          key: poetry-${{ hashFiles('**/poetry.lock') }}
+#          restore-keys: |
+#            poetry-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install Python dependencies
         run: |
           sudo apt-get install -y python-setuptools python3-setuptools
           pip install poetry
           poetry config virtualenvs.create false
-          poetry export --dev --without-hashes -o requirements.txt
-          pip install -r requirements.txt
+          poetry export --dev --without-hashes -o dev_requirements.txt
+          pip install -r dev_requirements.txt
+          pip install twine wheel
 
-      - name: Publish to PyPI
-        if: github.event_name == 'release'
+      - name: Build package
         run: |
-          poetry publish -u __token__ -p ${{ secrets.PYPI_TOKEN }} --build
+          python setup.py build
+          python setup.py sdist bdist_wheel
+
+      - name: Publish to Pypi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
