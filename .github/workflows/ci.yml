@@ -34,36 +34,15 @@ jobs:
         python-version: ${{ matrix.python }}
         architecture: x64
 
-    - name: Cache pip
-      uses: actions/cache@v1
-      with:
-        path: ~/.cache/pip # This path is specific to Ubuntu
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{ hashFiles('pyproject.toml') }}
-        restore-keys: |
-          ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
-
     - name: Install Python dependencies
       run: |
         sudo apt-get install -y python-setuptools python3-setuptools
-        pip install poetry
-        poetry config virtualenvs.create false
-        poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
-        pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
-
-    # - name: Cache Redis
-    #   id: cache-redis
-    #   uses: actions/cache@v1
-    #   with:
-    #     path: redis
-    #     key: ${{ matrix.platform }}-${{ matrix.python }}-redis
-    #     restore-keys: |
-    #       ${{ matrix.platform }}-${{ matrix.python }}-redis
+        pip install -r requirements.txt
+        pip install -r dev_requirements.txt
 
     - name: Install Redis Server test dependencies
-      # if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/redis/redis.git --branch 6.2.6 --depth 1
+        git clone https://github.com/redis/redis.git --branch 6.2.7 --depth 1
         cd redis
         make BUILD_TLS=yes -j
         ./src/redis-server --version
@@ -72,7 +51,7 @@ jobs:
     - name: Generate test certificates
       run: |
         cd redis
-        rm -rf ./tests/unit/tls/
+        rm -rf tests/unit/tls
         ./utils/gen-test-certs.sh
 
     - name: Unit Test with pytest
