@@ -9,7 +9,7 @@ setup(
     long_description_content_type="text/markdown",
     keywords=["Redis", "key-value store", "database"],
     license="BSD-3-Clause",
-    version="0.5.7",
+    version="0.5.8",
     packages=find_packages(
         include=[
             "RLTest",
