@@ -27,6 +27,9 @@ setup(
     author_email="oss@redis.com",
     python_requires=">=3.6",
     install_requires=[
+        "distro ~= 1.5.0",
+        "redis ~= 4.2.2",
+        "psutil ~= 5.8.0",
     ],
     classifiers=[
         'Topic :: Database',
