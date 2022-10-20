@@ -45,7 +45,7 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        sudo apt-get install -y python-setuptools python3-setuptools
+        sudo apt-get install -y python3-setuptools
         pip install poetry
         poetry config virtualenvs.create false
         poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
@@ -63,7 +63,7 @@ jobs:
     - name: Install Redis Server test dependencies
       # if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/redis/redis.git --branch 6.2.6 --depth 1
+        git clone https://github.com/redis/redis.git --branch 6.2.7 --depth 1
         cd redis
         make BUILD_TLS=yes -j
         ./src/redis-server --version
