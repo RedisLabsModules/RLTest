@@ -13,6 +13,7 @@ setup(
     packages=find_packages(
         include=[
             "RLTest",
+            "RLTest.Enterprise",
         ]
     ),
     url="https://github.com/RedisLabsModules/RLTest",
