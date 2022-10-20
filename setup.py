@@ -28,7 +28,7 @@ setup(
     python_requires=">=3.6",
     install_requires=[
         "distro ~= 1.5.0",
-        "redis ~= 4.2.2",
+        "redis ~= 4.3.4",
         "psutil ~= 5.8.0",
     ],
     classifiers=[
