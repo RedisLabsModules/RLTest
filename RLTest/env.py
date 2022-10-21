@@ -447,15 +447,11 @@ class Env:
     def assertAlmostEqual(self, value1, value2, delta, depth=0, message=None):
         self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth, message)
 
-    def expect(self, *query, **kwargs):
-        conn = kwargs.pop('conn', None)
-        return Query(self, conn=conn, *query)
+    def expect(self, *query, **options):
+        return Query(self, *query, **options)
 
-    def cmd(self, *query, **kwargs):
-        conn = kwargs.pop('conn', None)
-        if conn is None:
-            conn = self.con
-        res = conn.execute_command(*query)
+    def cmd(self, *query, **options):
+        res = self.con.execute_command(*query, **options)
         self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 
