@@ -29,6 +29,7 @@ distro = "^1.5.0"
 redis = "^4.2.2"
 psutil = "5.8.0" # 5.9.0 currently broken on macOS
 pytest-cov = "2.5"
+poetry = "^1.1.15"
 
 [tool.poetry.urls]
 repository = "https://github.com/RedisLabsModules/RLTest"
