@@ -50,7 +50,7 @@ jobs:
           ~/.cache/poetry
           ~/Library/Caches/pip
           ~/Library/Caches/poetry
-        key: ${{ matrix.platform }}-${{ matrix.python }}-${{hashFiles('**/requirements.txt')}-python
+        key: ${{ matrix.platform }}-${{ matrix.python }}-${{hashFiles('**/requirements.txt')}}-python
         restore-keys: |
           ${{ matrix.platform }}-${{ matrix.python }}-${{hashFiles('**/requirements.txt')}}-python
 
