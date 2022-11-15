@@ -573,7 +573,7 @@ class RLTest:
         if not test.is_method:
             Defaults.curr_test_name = testFullName
 
-        if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
+        if len(inspect.getfullargspec(test.target).args) > 0 and not test.is_method:
             try:
                 env = Env(testName=test.name)
             except Exception as e:

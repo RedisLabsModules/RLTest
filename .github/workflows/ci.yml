@@ -32,7 +32,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '${{ matrix.python }}'
-        cache: 'pip'
 
     - name: Install Python dependencies
       run: |
@@ -41,6 +40,20 @@ jobs:
         poetry config virtualenvs.create false
         poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
         pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
+
+    - name: Cache pyton
+      id: cache-pythonbits
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.cache/poetry
+          ~/Library/Caches/pip
+          ~/Library/Caches/poetry
+        key: ${{ matrix.platform }}-${{ matrix.python }}-${{hashFiles('**/requirements.txt')-python
+        restore-keys: |
+          ${{ matrix.platform }}-${{ matrix.python }}-${{hashFiles('**/requirements.txt')-python
+
 
     - name: Cache Redis
       id: cache-redis
