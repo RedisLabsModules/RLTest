@@ -331,7 +331,7 @@ class RLTest:
             print(Colors.Green('RLTest version {}'.format(__version__)))
             sys.exit(0)
 
-        if self.args.redis_port not in range(0, pow(2, 16)):
+        if self.args.redis_port not in range(1, pow(2, 16)):
             print(Colors.Bred(f'requested port {self.args.redis_port} is not valid'))
             sys.exit(1)
 
