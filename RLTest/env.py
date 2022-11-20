@@ -148,6 +148,7 @@ class Defaults:
         kwargs = {
             'modulePath': self.module,
             'moduleArgs': self.module_args,
+            'port': self.port,
             'useSlaves': self.use_slaves,
             'useAof': self.use_aof,
             'useRdbPreamble': self.use_rdb_preamble,

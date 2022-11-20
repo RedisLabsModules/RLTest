@@ -119,6 +119,10 @@ parser.add_argument(
     help='env on which to run the test')
 
 parser.add_argument(
+    '-p', '--redis-port', type=int, default=6379,
+    help='Redis server port')
+
+parser.add_argument(
     '--existing-env-addr', default='localhost:6379',
     help='Address of existing env, relevent only when running with existing-env, cluster_existing-env')
 
@@ -417,6 +421,7 @@ class RLTest:
         Defaults.debugger = debugger
         Defaults.sanitizer = sanitizer
         Defaults.exit_on_failure = self.args.exit_on_failure
+        Defaults.port = self.args.redis_port
         Defaults.external_addr = self.args.existing_env_addr
         Defaults.use_unix = self.args.unix
         Defaults.randomize_ports = self.args.randomize_ports
