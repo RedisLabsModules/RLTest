@@ -331,6 +331,10 @@ class RLTest:
             print(Colors.Green('RLTest version {}'.format(__version__)))
             sys.exit(0)
 
+        if self.args.redis_port not in range(0, pow(2, 16)):
+            print(Colors.Bred(f'requested port {self.args.redis_port} is not valid'))
+            sys.exit(1)
+
         if self.args.interactive_debugger:
             if self.args.env != 'oss' and not (self.args.env == 'oss-cluster' and Defaults.num_shards == 1) and self.args.env != 'enterprise':
                 print(Colors.Bred('interactive debugger can only be used on non cluster env'))
