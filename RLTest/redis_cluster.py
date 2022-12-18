@@ -127,6 +127,7 @@ class ClusterEnv(object):
                 ssl_cert_reqs=None,
                 ssl_ca_certs=self.shards[0].getTLSCACertFile(),
                 ssl_password=self.tlsPassphrase,
+                password=self.password,
                 startup_nodes=statupNode,
                 decode_responses=self.decodeResponses
             )
