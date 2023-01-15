@@ -245,8 +245,8 @@ class StandardEnv(object):
         osenv["ASAN_OPTIONS"] = "{OPT}:log_path={DIR}".format(OPT=asan_options, DIR=san_log)
         return osenv
 
-    def waitForRedisToStart(self, con):
-        wait_for_conn(con, retries=1000 if self.debugger else 200)
+    def waitForRedisToStart(self, con, proc):
+        wait_for_conn(con, proc, retries=1000 if self.debugger else 200)
         self._waitForAOFChild(con)
 
     def getPid(self, role):
@@ -313,22 +313,30 @@ class StandardEnv(object):
             print(Colors.Green("Redis master command: " + ' '.join(self.masterCmdArgs)))
         if masters and self.masterProcess is None:
             self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, env=self.masterOSEnv, **options)
-            con = self.getConnection()
-            self.waitForRedisToStart(con)
+            time.sleep(0.1)
+            if self._isAlive(self.masterProcess):
+                con = self.getConnection()
+                self.waitForRedisToStart(con, self.masterProcess)
+            else:
+                self.masterProcess = None
         if self.useSlaves and slaves and self.slaveProcess is None:
             if self.verbose:
                 print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, **options)
-            con = self.getSlaveConnection()
-            self.waitForRedisToStart(con)
-        self.envIsUp = True
+            time.sleep(0.1)
+            if self._isAlive(self.slaveProcess):
+                con = self.getSlaveConnection()
+                self.waitForRedisToStart(con, self.slaveProcess)
+            else:
+                self.slaveProcess = None
+
+        self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
         self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
 
     def _isAlive(self, process):
         if not process:
             return False
-        # Check if child process has terminated. Set and return returncode
-        # attribute
+        # check if child process has terminated
         if process.poll() is None:
             return True
         return False
