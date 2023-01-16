@@ -183,7 +183,7 @@ class ClusterEnv(object):
         return True
 
     def isUp(self):
-        return self.envIsUp or self.waitCluster()
+        return self.envIsUp or self.envIsHealthy and self.waitCluster()
 
     def isHealthy(self):
         return self.envIsHealthy

@@ -6,10 +6,12 @@ import copy
 import redis
 import itertools
 
-def wait_for_conn(conn, retries=20, command='PING', shouldBe=True):
+def wait_for_conn(conn, proc, retries=20, command='PING', shouldBe=True):
     """Wait until a given Redis connection is ready"""
     err1 = ''
     while retries > 0:
+        if proc.poll() is not None:
+            raise Exception(f'Redis server is dead (pid={proc.pid})')
         try:
             if conn.execute_command(command) == shouldBe:
                 return conn
