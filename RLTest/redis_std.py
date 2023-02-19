@@ -332,6 +332,8 @@ class StandardEnv(object):
 
         self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
         self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
+        if not self.envIsUp or not self.envIsHealthy:
+            raise Exception('Failed to start environment')
 
     def _isAlive(self, process):
         if not process:

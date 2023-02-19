@@ -452,7 +452,8 @@ class Env:
         return Query(self, *query, **options)
 
     def cmd(self, *query, **options):
-        res = self.con.execute_command(*query, **options)
+        conn = options.pop('conn', self.con)
+        res = conn.execute_command(*query, **options)
         self.debugPrint('query: %s, result: %s' % (repr(query), repr(res)))
         return res
 
