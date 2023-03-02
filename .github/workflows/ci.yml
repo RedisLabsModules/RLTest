@@ -25,13 +25,6 @@ jobs:
       with:
         fetch-depth: ''
 
-    - name: Install OpenSSL development libraries
-      run: |
-        if is_command apt-get; then
-            # sudo apt-get install -y libssl-dev
-            :
-        fi
-
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -49,10 +42,6 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        if is_command apt-get; then
-            # sudo apt-get install -y python3-setuptools
-            :
-        fi
         pip install poetry
         poetry config virtualenvs.create false
         poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
