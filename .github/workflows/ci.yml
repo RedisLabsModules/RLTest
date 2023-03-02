@@ -28,7 +28,8 @@ jobs:
     - name: Install OpenSSL development libraries
       run: |
         if is_command apt-get; then
-            sudo apt-get install -y libssl-dev
+            # sudo apt-get install -y libssl-dev
+            :
         fi
 
     - name: Setup Python
@@ -49,21 +50,13 @@ jobs:
     - name: Install Python dependencies
       run: |
         if is_command apt-get; then
-            sudo apt-get install -y python3-setuptools
+            # sudo apt-get install -y python3-setuptools
+            :
         fi
         pip install poetry
         poetry config virtualenvs.create false
         poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
         pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
-
-    # - name: Cache Redis
-    #   id: cache-redis
-    #   uses: actions/cache@v1
-    #   with:
-    #     path: redis
-    #     key: ${{ matrix.platform }}-${{ matrix.python }}-redis
-    #     restore-keys: |
-    #       ${{ matrix.platform }}-${{ matrix.python }}-redis
 
     - name: Install Redis Server test dependencies
       # if: steps.cache-redis.outputs.cache-hit != 'true'
@@ -72,7 +65,6 @@ jobs:
         cd redis
         make BUILD_TLS=yes -j
         ./src/redis-server --version
-        cd ..
 
     - name: Generate test certificates
       run: |
@@ -97,9 +89,7 @@ jobs:
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
-          --module modules/module1.so
-        cd ..
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server --module modules/module1.so
 
     - name: Flow Test OSS Multiple Modules  --use-slaves
       run: |
@@ -108,7 +98,6 @@ jobs:
         CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
           --module modules/module1.so --module-args '' --module modules/module2.so --module-args '' \
           --use-slaves
-        cd ..
 
     - name: Flow Test OSS Multiple Modules  --use-aof
       run: |
@@ -117,7 +106,6 @@ jobs:
         CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
           --module modules/module1.so --module-args '' --module modules/module2.so --module-args '' \
           --use-aof
-        cd ..
 
     - name: Flow Test OSS Multiple Modules
       run: |
@@ -125,7 +113,6 @@ jobs:
         make -C modules
         CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
           --module modules/module1.so --module-args '' --module modules/module2.so --module-args ''
-        cd ..
 
     - name: Flow Test OSS-CLUSTER Modules
       run: |
@@ -133,31 +120,26 @@ jobs:
         make -C modules
         CONTAINS_MODULES=1 RLTest --env oss-cluster -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
           --module modules/module1.so --module-args '' --module modules/module2.so --module-args ''
-        cd ..
 
     - name: Flow Test OSS TCP
       run: |
         cd tests/flow
         RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
-        cd ..
 
     - name: Flow Test OSS UNIX SOCKETS
       run: |
         cd tests/flow
         RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
-        cd ..
 
     - name: Flow Test OSS TCP SLAVES
       run: |
         cd tests/flow
         RLTest --env oss -v --unix --clear-logs --oss-redis-path ../../redis/src/redis-server
-        cd ..
 
     - name: Flow Test OSS-CLUSTER TCP
       run: |
         cd tests/flow
         RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ../../redis/src/redis-server
-        cd ..
 
     - name: Flow Test OSS TCP with TLS
       run: |
@@ -168,7 +150,6 @@ jobs:
         --tls-key-file ../../redis/tests/tls/redis.key \
         --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
         --tls
-        cd ..
 
     - name: Flow Test OSS-CLUSTER with TLS
       run: |
@@ -179,7 +160,6 @@ jobs:
         --tls-key-file ../../redis/tests/tls/redis.key \
         --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
         --tls
-        cd ..
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
       run: |
@@ -190,10 +170,9 @@ jobs:
         --tls-key-file ../../redis/tests/tls/redis.key \
         --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
         --tls
-        cd ../..
 
     - name: Generate coverage report
-      if: matrix.python == '3.6'
+      if: matrix.python == '3.9' && matrix.platform != 'macos-11'
       run: |
         TLS_CERT=./redis/tests/tls/redis.crt \
         TLS_KEY=./redis/tests/tls/redis.key \
@@ -203,7 +182,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
-      if: matrix.python == '3.6'
+      if: matrix.python == '3.9' && matrix.platform != 'macos-11'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
