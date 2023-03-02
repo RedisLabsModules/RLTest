@@ -15,10 +15,10 @@ CC=gcc
 all: module1.so module2.so
 
 module1.so: module1.o
-	$(LD) -o $@ module1.o $(SHOBJ_LDFLAGS) $(LIBS) -lc 
+	$(LD) -o $@ module1.o $(SHOBJ_LDFLAGS) $(LIBS)
 
 module2.so: module2.o
-	$(LD) -o $@ module2.o $(SHOBJ_LDFLAGS) $(LIBS) -lc 
+	$(LD) -o $@ module2.o $(SHOBJ_LDFLAGS) $(LIBS)
 
 clean:
 	rm -rf *.xo *.so *.o
