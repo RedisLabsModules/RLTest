@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "RLTest"
-version = "0.4.2"
-description="Redis Labs Test Framework, allow to run tests on redis and modules on a variety of environments"
-authors = ["RedisLabs <oss@redislabs.com>"]
+version = "0.4.3"
+description="Redis Modules Test Framework, allow to run tests on redis and modules on a variety of environments"
+authors = ["Redis, Inc. <oss@redis.com>"]
 license = "BSD-3-Clause"
 readme = "README.md"
 
@@ -19,6 +19,7 @@ classifiers = [
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
     'License :: OSI Approved :: BSD License',
     'Development Status :: 5 - Production/Stable'
 ]

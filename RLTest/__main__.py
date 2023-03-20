@@ -523,7 +523,7 @@ class RLTest:
 
     def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
         test.initialize()
-        
+
         msgPrefix = test.name
 
         testFullName = prefix + test.name
@@ -531,7 +531,13 @@ class RLTest:
         if not test.is_method:
             Defaults.curr_test_name = testFullName
 
-        if len(inspect.getargspec(test.target).args) > 0 and not test.is_method:
+        try:
+            # Python < 3.11
+            test_args = inspect.getargspec(test.target).args
+        except:
+            test_args = inspect.getfullargspec(test.target).args
+
+        if len(test_args) > 0 and not test.is_method:
             try:
                 env = Env(testName=test.name)
             except Exception as e:
@@ -636,7 +642,7 @@ class RLTest:
         jobs = Queue()
         for test in self.loader:
             jobs.put(test, block=False)
-        
+
         def run_jobs(jobs, results, port):
             Defaults.port = port
             done = 0
@@ -691,7 +697,7 @@ class RLTest:
                 currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
-            
+
             for p in processes:
                 p.join()
 
