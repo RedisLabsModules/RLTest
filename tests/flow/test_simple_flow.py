@@ -20,8 +20,7 @@ def test_getTLSConnection(env):
         port = node_0['port']
         password = node_0['password']
         try:
-            insecure_redis = redis.StrictRedis(host, port,
-                              password=password)
+            insecure_redis = redis.StrictRedis(host, port, password=password)
             insecure_redis.execute_command("info")
         except redis.exceptions.ConnectionError as exc:
             # we where expecting this exception
@@ -59,3 +58,6 @@ def test_skipOnTcp(env):
 
 def test_skipOnUnixSocket(env):
     env.skipOnUnixSocket()
+
+def test_resp3(env):
+    env = Env(protocol=3)
