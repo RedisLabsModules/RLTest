@@ -21,7 +21,7 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
-                 tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False):
+                 tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -57,6 +57,7 @@ class StandardEnv(object):
         self.clusterNodeTimeout = clusterNodeTimeout
         self.tlsPassphrase = tlsPassphrase
         self.enableDebugCommand = enableDebugCommand
+        self.protocol = protocol
         self.terminateRetries = None
         self.terminateRetrySecs = None
 
@@ -426,7 +427,7 @@ class StandardEnv(object):
     def _getConnection(self, role):
         if self.useUnix:
             return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
-                                     password=self.password, decode_responses=self.decodeResponses)
+                                     password=self.password, decode_responses=self.decodeResponses, protocol=self.protocol)
         elif self.useTLS:
             return redis.StrictRedis('localhost', self.getPort(role),
                                      password=self.password,
@@ -436,11 +437,12 @@ class StandardEnv(object):
                                      ssl_certfile=self.getTLSCertFile(),
                                      ssl_cert_reqs=None,
                                      ssl_ca_certs=self.getTLSCACertFile(),
-                                     decode_responses=self.decodeResponses
+                                     decode_responses=self.decodeResponses,
+                                     protocol=self.protocol
                                      )
         else:
             return redis.StrictRedis('localhost', self.getPort(role),
-                                     password=self.password, decode_responses=self.decodeResponses)
+                                     password=self.password, decode_responses=self.decodeResponses, protocol=self.protocol)
 
     def getConnection(self, shardId=1):
         return self._getConnection(MASTER)
