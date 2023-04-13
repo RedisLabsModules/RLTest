@@ -47,14 +47,11 @@ def test_skipOnAOF(env):
 def test_skipOnDebugger(env):
     env.skipOnDebugger()
 
-
 def test_skipOnEnterpriseCluster(env):
     env.skipOnEnterpriseCluster()
 
-
 def test_skipOnTcp(env):
     env.skipOnTcp()
-
 
 def test_skipOnUnixSocket(env):
     env.skipOnUnixSocket()
