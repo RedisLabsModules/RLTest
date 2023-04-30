@@ -50,7 +50,7 @@ jobs:
     - name: Install Redis Server test dependencies
       # if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/redis/redis.git --branch 6.2.7 --depth 1
+        git clone https://github.com/redis/redis.git --branch 7.2-rc1 --depth 1
         cd redis
         make BUILD_TLS=yes -j
         ./src/redis-server --version
