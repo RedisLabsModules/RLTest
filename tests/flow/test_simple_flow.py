@@ -58,3 +58,5 @@ def test_skipOnUnixSocket(env):
 
 def test_resp3(env):
     env = Env(protocol=3)
+    res = env.cmd('client', 'list')
+    env.assertEqual("resp=3" in res)
