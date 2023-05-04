@@ -9,7 +9,7 @@ on:
   - cron: "0 0 * * *"
 
 jobs:
-  build-ubuntu:
+  build:
     name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }}
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
@@ -43,17 +43,17 @@ jobs:
         restore-keys: |
           ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
 
+    - name: Setup automation
+      run: |
+        git clone --recursive https://github.com/RedisLabsModules/readies.git
+        ./readies/bin/getpy3
+
     - name: Install Python dependencies
       run: |
         python3 -m pip install poetry
         python3 -m poetry config virtualenvs.create false
         python3 -m poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
         python3 -m pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
-
-    - name: Setup automation
-      run: |
-        git clone --recursive https://github.com/RedisLabsModules/readies.git
-        ./readies/bin/getpy3
 
     - name: Install Redis Server test dependencies
       run: |
@@ -79,7 +79,7 @@ jobs:
 
     - name: Install RLTest
       run: |
-        pip install .
+        python3 -m pip install .
 
     - name: Flow Test OSS Single Module
       run: |
