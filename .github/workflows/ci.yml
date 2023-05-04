@@ -45,10 +45,10 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        pip install poetry
-        poetry config virtualenvs.create false
-        poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
-        pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
+        python3 -m pip install poetry
+        python3 -m poetry config virtualenvs.create false
+        python3 -m poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
+        python3 -m pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
 
     - name: Setup automation
       run: |
