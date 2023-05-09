@@ -21,7 +21,8 @@ class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
-                 tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2):
+                 tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
+                 terminateRetries=None, terminateRetrySecs=None):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -58,8 +59,8 @@ class StandardEnv(object):
         self.tlsPassphrase = tlsPassphrase
         self.enableDebugCommand = enableDebugCommand
         self.protocol = protocol
-        self.terminateRetries = None
-        self.terminateRetrySecs = None
+        self.terminateRetries = terminateRetries
+        self.terminateRetrySecs = terminateRetrySecs
 
         if port > 0:
             self.port = port

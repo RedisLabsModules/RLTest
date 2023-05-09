@@ -143,6 +143,8 @@ class Defaults:
     curr_test_name = None
     port=6379
     enable_debug_command=False
+    terminate_retries=None
+    terminate_retry_secs=None
 
     def getKwargs(self):
         kwargs = {
@@ -163,7 +165,9 @@ class Defaults:
             'tlsKeyFile': self.tls_key_file,
             'tlsCaCertFile': self.tls_ca_cert_file,
             'tlsPassphrase': self.tls_passphrase,
-            'password': self.oss_password
+            'password': self.oss_password,
+            'terminateRetries': self.terminate_retries,
+            'terminateRetrySecs': self.terminate_retry_secs,
         }
         return kwargs
 
@@ -224,6 +228,8 @@ class Env:
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
         self.port = Defaults.port
         self.enableDebugCommand = enableDebugCommand if enableDebugCommand else Defaults.enable_debug_command
+        self.terminateRetries = Defaults.terminate_retries
+        self.terminateRetrySecs = Defaults.terminate_retry_secs
 
         self.protocol = protocol
 
@@ -327,7 +333,9 @@ class Env:
             'tlsPassphrase': self.tlsPassphrase,
             'port': self.port,
             'enableDebugCommand': self.enableDebugCommand,
-            'protocol': self.protocol
+            'protocol': self.protocol,
+            'terminateRetries': self.terminateRetries,
+            'terminateRetrySecs': self.terminateRetrySecs,
         }
         return kwargs
 
