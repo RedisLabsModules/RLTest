@@ -190,7 +190,7 @@ class Env:
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
-                 freshEnv=False, enableDebugCommand=None, protocol=2):
+                 freshEnv=False, enableDebugCommand=None, protocol=2, terminateRetries=None, terminateRetrySecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -228,8 +228,8 @@ class Env:
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
         self.port = Defaults.port
         self.enableDebugCommand = enableDebugCommand if enableDebugCommand else Defaults.enable_debug_command
-        self.terminateRetries = Defaults.terminate_retries
-        self.terminateRetrySecs = Defaults.terminate_retry_secs
+        self.terminateRetries = terminateRetries
+        self.terminateRetrySecs = terminateRetrySecs
 
         self.protocol = protocol
 
