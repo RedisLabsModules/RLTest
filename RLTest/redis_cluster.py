@@ -21,6 +21,8 @@ class ClusterEnv(object):
         self.decodeResponses = kwargs.get('decodeResponses', False)
         self.tlsPassphrase = kwargs.get('tlsPassphrase', None)
         self.protocol = kwargs.get('protocol', 2)
+        self.terminateRetries = kwargs.get('terminateRetries', None)
+        self.terminateRetrySecs = kwargs.get('terminateRetrySecs', None)
         startPort = kwargs.pop('port', 10000)
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
@@ -130,13 +132,15 @@ class ClusterEnv(object):
                 password=self.password,
                 startup_nodes=statupNode,
                 decode_responses=self.decodeResponses,
-                protocol=self.protocol
+                protocol=self.protocol,
+                terminateRetries=self.terminateRetries, terminateRetrySecs=self.terminateRetrySecs
             )
         else:
             return redis.RedisCluster(
                 startup_nodes=statupNode,
                 decode_responses=self.decodeResponses, password=self.password,
-                protocol=self.protocol)
+                protocol=self.protocol,
+                terminateRetries=self.terminateRetries, terminateRetrySecs=self.terminateRetrySecs)
 
     def getSlaveConnection(self):
         raise Exception('unsupported')
