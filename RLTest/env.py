@@ -112,6 +112,7 @@ class Defaults:
     module_args = None
 
     env = 'oss'
+    env_factory = lambda *args, **kwargs: Env(*args, **kwargs)
     binary = 'redis-server'
     proxy_binary = None
     re_binary = None
@@ -235,7 +236,7 @@ class Env:
 
         self.assertionFailedSummary = []
 
-        if (not freshEnv) and Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
+        if not freshEnv and Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
         else:
             if Env.RTestInstance and Env.RTestInstance.currEnv:

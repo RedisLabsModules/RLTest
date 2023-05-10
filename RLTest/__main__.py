@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import argparse
+import io
 import os
 import cmd
 import traceback
@@ -587,10 +588,11 @@ class RLTest:
             test_args = inspect.getargspec(test.target).args
         except:
             test_args = inspect.getfullargspec(test.target).args
-        
+
         if len(test_args) > 0 and not test.is_method:
             try:
-                env = Env(testName=test.name)
+                # env = Env(testName=test.name)
+                env = Defaults.env_factory(testName=test.name)
             except Exception as e:
                 self.handleFailure(testFullName=testFullName, exception=e, prefix=msgPrefix, testname=test.name)
                 return 0
@@ -674,7 +676,8 @@ class RLTest:
         Env.RTestInstance = self
         if self.args.env_only:
             Defaults.verbose = 2
-            env = Env(testName='manual test env')
+            # env = Env(testName='manual test env')
+            env = Defaults.env_factory(testName='manual test env')
             if self.args.interactive_debugger:
                 while env.isUp():
                     time.sleep(1)
@@ -786,6 +789,9 @@ class RLTest:
 
 
 def main():
+    # Aviod "UnicodeEncodeError: 'ascii' codec can't encode character" errors
+    sys.stdout = io.open(sys.stdout.fileno(), 'w', encoding='utf8')
+    sys.stderr = io.open(sys.stderr.fileno(), 'w', encoding='utf8')
     RLTest().execute()
 
 
