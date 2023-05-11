@@ -57,7 +57,7 @@ jobs:
 
     - name: Install Redis Server test dependencies
       run: |
-        ./readies/bin/getredis --workdir /tmp/redis -v 7
+        ./readies/bin/getredis --workdir /tmp/redis -v 7 --keep
         ln -s /tmp/redis/redis redis
         redis-server --version
 
