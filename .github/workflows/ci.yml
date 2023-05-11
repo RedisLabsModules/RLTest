@@ -9,7 +9,7 @@ on:
   - cron: "0 0 * * *"
 
 jobs:
-  build-ubuntu:
+  build:
     name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }}
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
@@ -18,6 +18,9 @@ jobs:
         platform: ['ubuntu-20.04', 'macos-11']
         python: ['3.7', '3.8', '3.9', '3.10', '3.11']
       fail-fast: false
+    defaults:
+      run:
+        shell: bash -l -eo pipefail {0}
 
     steps:
     - uses: actions/checkout@v3
@@ -40,20 +43,23 @@ jobs:
         restore-keys: |
           ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
 
+    - name: Setup automation
+      run: |
+        git clone --recursive https://github.com/RedisLabsModules/readies.git
+        ./readies/bin/getpy3
+
     - name: Install Python dependencies
       run: |
-        pip install poetry
-        poetry config virtualenvs.create false
-        poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
-        pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
+        python3 -m pip install poetry
+        python3 -m poetry config virtualenvs.create false
+        python3 -m poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
+        python3 -m pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
 
     - name: Install Redis Server test dependencies
-      # if: steps.cache-redis.outputs.cache-hit != 'true'
       run: |
-        git clone https://github.com/redis/redis.git --branch 6.2.7 --depth 1
-        cd redis
-        make BUILD_TLS=yes -j
-        ./src/redis-server --version
+        ./readies/bin/getredis --workdir /tmp/redis -v 7 --keep
+        ln -s /tmp/redis/redis redis
+        redis-server --version
 
     - name: Generate test certificates
       run: |
@@ -64,109 +70,115 @@ jobs:
     - name: Unit Test with pytest
       timeout-minutes: 30
       run: |
-        TLS_CERT=./redis/tests/tls/redis.crt \
-        TLS_KEY=./redis/tests/tls/redis.key \
-        TLS_CACERT=./redis/tests/tls/ca.crt \
-        REDIS_BINARY=./redis/src/redis-server \
+        TLS="$PWD/redis/tests/tls"
+        TLS_CERT=$TLS/redis.crt \
+        TLS_KEY=$TLS/redis.key \
+        TLS_CACERT=$TLS/ca.crt \
+        REDIS_BINARY=`command -v redis-server` \
         pytest --ignore=tests/flow --ignore=test_example.py -v
 
     - name: Install RLTest
       run: |
-        pip install .
+        python3 -m pip install .
 
     - name: Flow Test OSS Single Module
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server --module modules/module1.so
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --module modules/module1.so
 
     - name: Flow Test OSS Multiple Modules  --use-slaves
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
-          --module modules/module1.so --module-args '' --module modules/module2.so --module-args '' \
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
+          --module modules/module1.so --module-args '' \
+          --module modules/module2.so --module-args '' \
           --use-slaves
 
     - name: Flow Test OSS Multiple Modules  --use-aof
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
-          --module modules/module1.so --module-args '' --module modules/module2.so --module-args '' \
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
+          --module modules/module1.so --module-args '' \
+          --module modules/module2.so --module-args '' \
           --use-aof
 
     - name: Flow Test OSS Multiple Modules
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
-          --module modules/module1.so --module-args '' --module modules/module2.so --module-args ''
+        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
+          --module modules/module1.so --module-args '' \
+          --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS-CLUSTER Modules
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss-cluster -v --clear-logs --oss-redis-path ../../redis/src/redis-server \
-          --module modules/module1.so --module-args '' --module modules/module2.so --module-args ''
+        CONTAINS_MODULES=1 RLTest --env oss-cluster -v --clear-logs \
+          --module modules/module1.so --module-args '' \
+          --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS TCP
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
+        RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS UNIX SOCKETS
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs --oss-redis-path ../../redis/src/redis-server
+        RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS TCP SLAVES
       run: |
         cd tests/flow
-        RLTest --env oss -v --unix --clear-logs --oss-redis-path ../../redis/src/redis-server
+        RLTest --env oss -v --unix --clear-logs
 
     - name: Flow Test OSS-CLUSTER TCP
       run: |
         cd tests/flow
-        RLTest --env oss-cluster -v --clear-logs --shards-count 3 --oss-redis-path ../../redis/src/redis-server
+        RLTest --env oss-cluster -v --clear-logs --shards-count 3
 
     - name: Flow Test OSS TCP with TLS
       run: |
+        TLS="$PWD/redis/tests/tls"
         cd tests/flow
         RLTest --env oss -v --clear-logs \
-        --oss-redis-path ../../redis/src/redis-server \
-        --tls-cert-file ../../redis/tests/tls/redis.crt \
-        --tls-key-file ../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+        --tls-cert-file $TLS/redis.crt \
+        --tls-key-file $TLS/redis.key \
+        --tls-ca-cert-file $TLS/ca.crt \
         --tls
 
     - name: Flow Test OSS-CLUSTER with TLS
       run: |
+        TLS="$PWD/redis/tests/tls"
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
-        --oss-redis-path ../../redis/src/redis-server \
-        --tls-cert-file ../../redis/tests/tls/redis.crt \
-        --tls-key-file ../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+        --tls-cert-file $TLS/redis.crt \
+        --tls-key-file $TLS/redis.key \
+        --tls-ca-cert-file $TLS/ca.crt \
         --tls
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
       run: |
+        TLS="$PWD/redis/tests/tls"
         cd tests/flow
         RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
-        --oss-redis-path ../../redis/src/redis-server \
-        --tls-cert-file ../../redis/tests/tls/redis.crt \
-        --tls-key-file ../../redis/tests/tls/redis.key \
-        --tls-ca-cert-file ../../redis/tests/tls/ca.crt \
+        --tls-cert-file $TLS/redis.crt \
+        --tls-key-file $TLS/redis.key \
+        --tls-ca-cert-file $TLS/ca.crt \
         --tls
 
     - name: Generate coverage report
       if: matrix.python == '3.9' && matrix.platform != 'macos-11'
       run: |
-        TLS_CERT=./redis/tests/tls/redis.crt \
-        TLS_KEY=./redis/tests/tls/redis.key \
-        TLS_CACERT=./redis/tests/tls/ca.crt \
-        REDIS_BINARY=./redis/src/redis-server \
+        TLS="$PWD/redis/tests/tls"
+        TLS_CERT=$TLS/redis.crt \
+        TLS_KEY=$TLS/redis.key \
+        TLS_CACERT=$TLS/ca.crt \
+        REDIS_BINARY=`command -v redis-server` \
         pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
 
     - name: Upload coverage to Codecov
