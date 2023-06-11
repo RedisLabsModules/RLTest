@@ -146,6 +146,7 @@ class Defaults:
     enable_debug_command=False
     terminate_retries=None
     terminate_retry_secs=None
+    protocol=2
 
     def getKwargs(self):
         kwargs = {
@@ -191,7 +192,7 @@ class Env:
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
-                 freshEnv=False, enableDebugCommand=None, protocol=2, terminateRetries=None, terminateRetrySecs=None):
+                 freshEnv=False, enableDebugCommand=None, protocol=None, terminateRetries=None, terminateRetrySecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -232,7 +233,7 @@ class Env:
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
 
-        self.protocol = protocol
+        self.protocol = protocol if protocol is not None else Defaults.protocol
 
         self.assertionFailedSummary = []
 
