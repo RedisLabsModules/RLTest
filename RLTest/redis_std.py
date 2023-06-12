@@ -77,9 +77,6 @@ class StandardEnv(object):
                 raise ValueError('Unix sockets cannot be used with cluster mode')
             self.port = -1
 
-        if self.has_interactive_debugger and serverId > 1:
-            assert self.noCatch and not self.useSlaves and not self.clusterEnabled
-
         if self.useTLS:
             if self.useUnix:
                 raise ValueError('Unix sockets cannot be used with TLS enabled mode')
@@ -167,7 +164,7 @@ class StandardEnv(object):
 
     def createCmdArgs(self, role):
         cmdArgs = []
-        if self.debugger:
+        if self.debugger and role == MASTER and self.masterServerId == 1:
             cmdArgs += self.debugger.generate_command(self._getValgrindFilePath(role) if not self.noCatch else None)
 
         cmdArgs += [self.redisBinaryPath]
