@@ -746,12 +746,13 @@ class RLTest:
                     if failures > 0 and Defaults.print_verbose_information_on_failure:
                         lastEnv = self.currEnv
                         verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
+                
+                # here the env is down so lets collect more info and print it
+                if failures > 0 and Defaults.print_verbose_information_on_failure:
+                    verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
+                    lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
 
             self.takeEnvDown(fullShutDown=True)
-
-            if failures > 0 and Defaults.print_verbose_information_on_failure:
-                verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
-                lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
 
             # serialized the results back
             results.put({'done': done, 'failures': self.testsFailed}, block=False)
