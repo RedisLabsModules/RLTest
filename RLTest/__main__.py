@@ -11,6 +11,7 @@ import inspect
 import unittest
 import time
 import shlex
+import json
 from multiprocessing import Process, Queue
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
@@ -270,6 +271,10 @@ parser.add_argument(
     help='all output will be written to the stdout, no log files.')
 
 parser.add_argument(
+    '--verbose-information-on-failure', action='store_const', const=True, default=False,
+    help='Print a verbose information on test failure')
+
+parser.add_argument(
     '--enable-debug-command', action='store_const', const=True, default=False,
     help='On Redis 7, debug command need to be enabled in order to be used.')
 
@@ -423,6 +428,7 @@ class RLTest:
         Defaults.debug_pause = self.args.debug
         Defaults.debug_print = self.args.debug_print
         Defaults.no_capture_output = self.args.no_output_catch
+        Defaults.print_verbose_information_on_failure = self.args.verbose_information_on_failure
         Defaults.debugger = debugger
         Defaults.sanitizer = sanitizer
         Defaults.exit_on_failure = self.args.exit_on_failure
@@ -733,9 +739,19 @@ class RLTest:
                             done += 1
 
                     else:
-                        self._runTest(test)
+                        failures = self._runTest(test)
                         done += 1
+
+                    verboseInfo = {}
+                    if failures > 0 and Defaults.print_verbose_information_on_failure:
+                        lastEnv = self.currEnv
+                        verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
+
             self.takeEnvDown(fullShutDown=True)
+
+            if failures > 0 and Defaults.print_verbose_information_on_failure:
+                verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
+                lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
 
             # serialized the results back
             results.put({'done': done, 'failures': self.testsFailed}, block=False)
