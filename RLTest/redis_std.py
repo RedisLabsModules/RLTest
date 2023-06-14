@@ -307,11 +307,11 @@ class StandardEnv(object):
             try:
                 with open(os.path.join(self.dbDirPath, self._getFileName(role, '.log'))) as f:
                     logs = f.read()
-            except Exception as e:
+            except os.FileNoteFoundError:
                 pass
             try:
                 info = conn.execute_command('info', 'everything')
-            except Exception:
+            except redis.exceptions.RedisError:
                 pass
             res[role] = {
                 'info': info,
@@ -329,12 +329,12 @@ class StandardEnv(object):
             stderrStr = None
             try:
                 stdoutStr = stdout.read().decode('utf8')
-            except Exception:
+            except (NameError, AttributeError):
                 pass
 
             try:
                 stderrStr = stderr.read().decode('utf8')
-            except Exception:
+            except (NameError, AttributeError):
                 pass
 
             res[role] = {
