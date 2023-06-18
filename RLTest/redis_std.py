@@ -386,12 +386,12 @@ class StandardEnv(object):
         self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
         self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
 
-        self.masterStdout = self.masterProcess.stdout
-        self.masterStderr = self.masterProcess.stderr
+        # self.masterStdout = self.masterProcess.stdout if self.masterProcess else None
+        # self.masterStderr = self.masterProcess.stderr if self.masterProcess else None
 
-        if self.slaveProcess is not None:
-            self.slaveStdout = self.slaveProcess.stdout
-            self.slaveStderr = self.slaveProcess.stderr
+        # if self.slaveProcess is not None:
+        #     self.slaveStdout = self.slaveProcess.stdout if self.slaveProcess else None
+        #     self.slaveStderr = self.slaveProcess.stderr if self.slaveProcess else None
 
     def _isAlive(self, process):
         if not process:
