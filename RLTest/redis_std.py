@@ -46,8 +46,12 @@ class StandardEnv(object):
         self.useUnix = unix
         self.dbDirPath = dbDirPath
         self.masterProcess = None
+        self.masterStdout = None
+        self.masterStderr = None
         self.masterExitCode = None
         self.slaveProcess = None
+        self.slaveStdout = None
+        self.slaveStderr = None
         self.slaveExitCode = None
         self.verbose = verbose
         self.role = MASTER
@@ -292,11 +296,58 @@ class StandardEnv(object):
             print(Colors.Yellow(prefix + 'slave:'))
             self._printEnvData(prefix + '\t', SLAVE)
 
+    def getInformationBeforeDispose(self):
+        res = {}
+        instances = [(MASTER, self.getConnection(), self.masterProcess)]
+        if self.useSlaves:
+            instances.append((SLAVE, self.getSlaveConnection(), self.slaveProcess))
+        for role, conn, proc in instances:
+            logs = None
+            info = None
+            try:
+                with open(os.path.join(self.dbDirPath, self._getFileName(role, '.log'))) as f:
+                    logs = f.read()
+            except os.FileNoteFoundError:
+                pass
+            try:
+                info = conn.execute_command('info', 'everything')
+            except redis.exceptions.RedisError:
+                pass
+            res[role] = {
+                'info': info,
+                'logs': logs,
+            }
+        return res
+
+    def getInformationAfterDispose(self):
+        res = {}
+        instances = [(MASTER, self.masterStdout, self.masterStderr)]
+        if self.useSlaves:
+            instances.append((SLAVE, self.slaveStdout, self.slaveStderr))
+        for role, stdout, stderr in instances:
+            stdoutStr = None
+            stderrStr = None
+            try:
+                stdoutStr = stdout.read().decode('utf8')
+            except (NameError, AttributeError):
+                pass
+
+            try:
+                stderrStr = stderr.read().decode('utf8')
+            except (NameError, AttributeError):
+                pass
+
+            res[role] = {
+                'stdout': stdoutStr,
+                'stderr': stderrStr,
+            }
+        return res
+
     def startEnv(self, masters = True, slaves = True):
         if self.envIsUp and self.envIsHealthy:
             return  # env is already up
         stdoutPipe = subprocess.PIPE
-        stderrPipe = subprocess.STDOUT
+        stderrPipe = subprocess.PIPE
         stdinPipe = subprocess.PIPE
         if self.noCatch:
             stdoutPipe = sys.stdout
@@ -334,6 +385,13 @@ class StandardEnv(object):
 
         self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
         self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
+
+        # self.masterStdout = self.masterProcess.stdout if self.masterProcess else None
+        # self.masterStderr = self.masterProcess.stderr if self.masterProcess else None
+
+        # if self.slaveProcess is not None:
+        #     self.slaveStdout = self.slaveProcess.stdout if self.slaveProcess else None
+        #     self.slaveStderr = self.slaveProcess.stderr if self.slaveProcess else None
 
     def _isAlive(self, process):
         if not process:
