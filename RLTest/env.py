@@ -130,6 +130,7 @@ class Defaults:
     debug_print = False
     debug_pause = False
     no_capture_output = False
+    print_verbose_information_on_failure = False
     no_log = False
     exit_on_failure = False
     verbose = 0
@@ -259,6 +260,16 @@ class Env:
 
         if Defaults.debug_pause:
             input('\tenv is up, attach to any process with gdb and press any button to continue.')
+    
+    def getInformationBeforeDispose(self):
+        return {
+            "env": self.env,
+            "test": self.testName,
+            "env_info": self.envRunner.getInformationBeforeDispose()
+        }
+    
+    def getInformationAfterDispose(self):
+        return self.envRunner.getInformationAfterDispose()
 
     def getEnvByName(self):
         verbose = False
