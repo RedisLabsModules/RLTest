@@ -158,12 +158,11 @@ class TestLoader(object):
         return iter(self.tests)
 
     def print_tests(self):
+        tests = []
         for t in self.tests:
-            print("Test: ", t.name)
             if t.is_class:
-                print("\tClass")
-                print("\tFunctions")
                 for m in t.functions:
-                    print("\t\t", m)
+                    tests.append(f"{t.name}.{m}")
             else:
-                print("\tFunction")
+                tests.append(t.name)
+        print(*sorted(tests), sep='\n')
