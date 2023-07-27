@@ -135,6 +135,7 @@ class Defaults:
     exit_on_failure = False
     verbose = 0
     logdir = None
+    loglevel = None
     use_slaves = False
     num_shards = 1
     external_addr = 'localhost:6379'
@@ -260,14 +261,14 @@ class Env:
 
         if Defaults.debug_pause:
             input('\tenv is up, attach to any process with gdb and press any button to continue.')
-    
+
     def getInformationBeforeDispose(self):
         return {
             "env": self.env,
             "test": self.testName,
             "env_info": self.envRunner.getInformationBeforeDispose()
         }
-    
+
     def getInformationAfterDispose(self):
         return self.envRunner.getInformationAfterDispose()
 
@@ -333,6 +334,7 @@ class Env:
             'useAof': self.useAof,
             'useRdbPreamble': self.useRdbPreamble,
             'dbDirPath': self.logDir,
+            'loglevel': Defaults.loglevel,
             'debugger': Defaults.debugger,
             'sanitizer': Defaults.sanitizer,
             'noCatch': Defaults.no_capture_output,

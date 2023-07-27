@@ -22,7 +22,7 @@ class StandardEnv(object):
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
-                 terminateRetries=None, terminateRetrySecs=None):
+                 terminateRetries=None, terminateRetrySecs=None, loglevel=None):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -42,6 +42,7 @@ class StandardEnv(object):
         self.sanitizer = sanitizer
         self.noCatch = noCatch
         self.noLog = noLog
+        self.loglevel = loglevel
         self.environ = os.environ.copy()
         self.useUnix = unix
         self.dbDirPath = dbDirPath
@@ -205,6 +206,8 @@ class StandardEnv(object):
             cmdArgs += ['--logfile', '/dev/null']
         elif self.outputFilesFormat is not None and not self.noCatch:
             cmdArgs += ['--logfile', self._getFileName(role, '.log')]
+        if self.loglevel is not None:
+            cmdArgs += ['--loglevel', self.loglevel]
         if self.outputFilesFormat is not None:
             cmdArgs += ['--dbfilename', self._getFileName(role, '.rdb')]
         if role == SLAVE:
