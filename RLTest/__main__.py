@@ -198,6 +198,10 @@ parser.add_argument(
     help='directory to write logs to')
 
 parser.add_argument(
+    '--log-level', default=None, metavar='LEVEL', choices=['debug', 'verbose', 'notice', 'warning'],
+    help='sets the server log level')
+
+parser.add_argument(
     '--use-slaves', action='store_const', const=True, default=False,
     help='run env with slaves enabled')
 
@@ -415,6 +419,7 @@ class RLTest:
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose
         Defaults.logdir = self.args.log_dir
+        Defaults.loglevel = self.args.log_level
         Defaults.use_slaves = self.args.use_slaves
         Defaults.num_shards = self.args.shards_count
         Defaults.shards_ports = self.args.shards_ports.split(',') if self.args.shards_ports is not None else None
@@ -746,7 +751,7 @@ class RLTest:
                     if failures > 0 and Defaults.print_verbose_information_on_failure:
                         lastEnv = self.currEnv
                         verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
-                
+
                 # here the env is down so lets collect more info and print it
                 if failures > 0 and Defaults.print_verbose_information_on_failure:
                     verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
