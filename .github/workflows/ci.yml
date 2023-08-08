@@ -37,6 +37,11 @@ jobs:
         ref: ${{matrix.redis-version}}
         path: redis
 
+    - name: install openssl
+      run: |
+        sudo apt update -qq
+        sudo apt install -qqy libssl-dev
+
     - name: Install Redis Server test dependencies
       run: |
         cd redis/src
