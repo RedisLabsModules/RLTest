@@ -41,7 +41,7 @@ jobs:
       run: |
         cd redis/src
         make redis-server
-        cp redis/src/redis-server /usr/local/bin
+        cp redis-server /usr/local/bin
         chmod a+x /usr/local/bin/redis-server
 
     - name: Setup Python
