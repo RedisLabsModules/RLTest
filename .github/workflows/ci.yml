@@ -29,6 +29,19 @@ jobs:
       with:
         fetch-depth: ''
 
+    - uses: actions/checkout@v3
+      # Number of commits to fetch. 0 indicates all history for all branches and tags.
+      with:
+        fetch-depth: ''
+        repository: 'redis/redis'
+        ref: ${{matrix.redis-version}}
+        path: redis
+
+    - name: Install Redis Server test dependencies
+      run: |
+        cd redis/src
+        make redis-server
+
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
@@ -50,13 +63,6 @@ jobs:
         python3 -m poetry config virtualenvs.create false
         python3 -m poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
         python3 -m pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
-
-    - name: Install Redis Server test dependencies
-      run: |
-        sudo apt update -q && sudo apt install -yqq gcc make
-        git clone git@github.com:redis/redis -b ${{matrix.redis-version}}
-        cd redis/src
-        make redis-server
 
     - name: Generate test certificates
       run: |
