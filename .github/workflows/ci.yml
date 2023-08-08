@@ -15,8 +15,9 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        platform: ['ubuntu-20.04', 'macos-11']
+        platform: ['ubuntu-22.04']
         python: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        redis-version: ['7.0']
       fail-fast: false
     defaults:
       run:
@@ -43,11 +44,6 @@ jobs:
         restore-keys: |
           ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
 
-    - name: Setup automation
-      run: |
-        git clone --recursive https://github.com/RedisLabsModules/readies.git
-        ./readies/bin/getpy3
-
     - name: Install Python dependencies
       run: |
         python3 -m pip install poetry
@@ -57,9 +53,10 @@ jobs:
 
     - name: Install Redis Server test dependencies
       run: |
-        ./readies/bin/getredis --workdir /tmp/redis -v 7 --keep
-        ln -s /tmp/redis/redis redis
-        redis-server --version
+        sudo apt update -q && sudo apt install -yqq gcc make
+        git clone git@github.com:redis/redis -b ${{matrix.redis-version}}
+        cd redis/src
+        make redis-server
 
     - name: Generate test certificates
       run: |
@@ -172,7 +169,7 @@ jobs:
         --tls
 
     - name: Generate coverage report
-      if: matrix.python == '3.9' && matrix.platform != 'macos-11'
+      if: matrix.python == '3.9'
       run: |
         TLS="$PWD/redis/tests/tls"
         TLS_CERT=$TLS/redis.crt \
@@ -183,7 +180,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
-      if: matrix.python == '3.9' && matrix.platform != 'macos-11'
+      if: matrix.python == '3.9'
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
