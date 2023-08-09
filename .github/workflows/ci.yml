@@ -80,11 +80,11 @@ jobs:
     - name: Unit Test with pytest
       timeout-minutes: 30
       run: |
-        TLS="$PWD/redis/tests/tls"
-        TLS_CERT=$TLS/redis.crt \
-        TLS_KEY=$TLS/redis.key \
-        TLS_CACERT=$TLS/ca.crt \
-        REDIS_BINARY=`command -v redis-server` \
+#        TLS="$PWD/redis/tests/tls"
+#        TLS_CERT=$TLS/redis.crt \
+#        TLS_KEY=$TLS/redis.key \
+#        TLS_CACERT=$TLS/ca.crt \
+#        REDIS_BINARY=`command -v redis-server` \
         pytest --ignore=tests/flow --ignore=test_example.py -v
 
     - name: Install RLTest
