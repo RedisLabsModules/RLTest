@@ -15,24 +15,43 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        platform: ['ubuntu-20.04', 'macos-11']
+        platform: ['ubuntu-22.04', 'macos-11']
         python: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        redis-version: ['7.0']
       fail-fast: false
     defaults:
       run:
         shell: bash -l -eo pipefail {0}
 
     steps:
-    - uses: actions/checkout@v3
+    - name: checkout
+      uses: actions/checkout@v3
       # Number of commits to fetch. 0 indicates all history for all branches and tags.
       with:
         fetch-depth: ''
+
+    - name: clone redis
+      uses: actions/checkout@v3
+      # Number of commits to fetch. 0 indicates all history for all branches and tags.
+      with:
+        fetch-depth: ''
+        repository: 'redis/redis'
+        ref: ${{matrix.redis-version}}
+        path: redis
 
     - name: Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python }}
         architecture: x64
+
+    - name: Setup Poetry
+      uses: snok/install-poetry@v1
+      with:
+          version: latest
+          virtualenvs-in-project: true
+          virtualenvs-create: true
+          installer-parallel: true
 
     - name: Cache pip
       uses: actions/cache@v3
@@ -43,28 +62,19 @@ jobs:
         restore-keys: |
           ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
 
-    - name: Setup automation
-      run: |
-        git clone --recursive https://github.com/RedisLabsModules/readies.git
-        ./readies/bin/getpy3
 
     - name: Install Python dependencies
-      run: |
-        python3 -m pip install poetry
-        python3 -m poetry config virtualenvs.create false
-        python3 -m poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
-        python3 -m pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
+      run: poetry install -q
 
-    - name: Install Redis Server test dependencies
-      run: |
-        ./readies/bin/getredis --workdir /tmp/redis -v 7 --keep
-        ln -s /tmp/redis/redis redis
-        redis-server --version
-
-    - name: Generate test certificates
+    - name: Install Redis Server 
       run: |
         cd redis
-        rm -rf ./tests/unit/tls/
+        make BUILD_TLS=yes -j 4
+        make install
+
+    - name: Generate test certificates #this step needs the redis repo to be cloned
+      run: |
+        cd redis
         ./utils/gen-test-certs.sh
 
     - name: Unit Test with pytest
@@ -75,23 +85,20 @@ jobs:
         TLS_KEY=$TLS/redis.key \
         TLS_CACERT=$TLS/ca.crt \
         REDIS_BINARY=`command -v redis-server` \
-        pytest --ignore=tests/flow --ignore=test_example.py -v
+        poetry run pytest --ignore=tests/flow --ignore=test_example.py -v
 
-    - name: Install RLTest
-      run: |
-        python3 -m pip install .
 
     - name: Flow Test OSS Single Module
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --module modules/module1.so
+        poetry run RLTest --env oss -v --clear-logs --module modules/module1.so --module-args "DUPLICATE_POLICY BLOCK"
 
     - name: Flow Test OSS Multiple Modules  --use-slaves
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
+        poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
           --use-slaves
@@ -100,7 +107,7 @@ jobs:
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
+        poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
           --use-aof
@@ -109,7 +116,7 @@ jobs:
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
+        poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args ''
 
@@ -117,35 +124,35 @@ jobs:
       run: |
         cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss-cluster -v --clear-logs \
+        poetry run RLTest --env oss-cluster -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS TCP
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs
+        poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS UNIX SOCKETS
       run: |
         cd tests/flow
-        RLTest --env oss -v --clear-logs
+        poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS TCP SLAVES
       run: |
         cd tests/flow
-        RLTest --env oss -v --unix --clear-logs
+        poetry run RLTest --env oss -v --unix --clear-logs
 
     - name: Flow Test OSS-CLUSTER TCP
       run: |
         cd tests/flow
-        RLTest --env oss-cluster -v --clear-logs --shards-count 3
+        poetry run RLTest --env oss-cluster -v --clear-logs --shards-count 3
 
     - name: Flow Test OSS TCP with TLS
       run: |
         TLS="$PWD/redis/tests/tls"
         cd tests/flow
-        RLTest --env oss -v --clear-logs \
+        poetry run RLTest --env oss -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
         --tls-ca-cert-file $TLS/ca.crt \
@@ -155,7 +162,7 @@ jobs:
       run: |
         TLS="$PWD/redis/tests/tls"
         cd tests/flow
-        RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
+        poetry run RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
         --tls-ca-cert-file $TLS/ca.crt \
@@ -165,7 +172,7 @@ jobs:
       run: |
         TLS="$PWD/redis/tests/tls"
         cd tests/flow
-        RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
+        poetry run RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
         --tls-ca-cert-file $TLS/ca.crt \
@@ -179,7 +186,7 @@ jobs:
         TLS_KEY=$TLS/redis.key \
         TLS_CACERT=$TLS/ca.crt \
         REDIS_BINARY=`command -v redis-server` \
-        pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
+        poetry run pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
