@@ -17,7 +17,7 @@ jobs:
       matrix:
         platform: ['ubuntu-22.04', 'macos-11']
         python: ['3.7', '3.8', '3.9', '3.10', '3.11']
-        redis-version: ['7.0']
+        redis-version: ['7.0', '7.2']
       fail-fast: false
     defaults:
       run:
@@ -53,10 +53,10 @@ jobs:
           virtualenvs-create: true
           installer-parallel: true
 
-    - name: Cache pip
+    - name: Cache poetry
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip # This path is specific to Ubuntu
+        path: ~/.cache/poetry # This path is specific to Ubuntu
         # Look to see if there is a cache hit for the corresponding requirements file
         key: ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
@@ -66,92 +66,86 @@ jobs:
     - name: Install Python dependencies
       run: poetry install -q
 
-    - name: Install Redis Server 
-      run: |
-        cd redis
-        make BUILD_TLS=yes -j 4
+    - name: Install Redis Server
+      working-directory: redis
+      run: make BUILD_TLS=yes -j `nproc` all install
         make install
 
     - name: Generate test certificates #this step needs the redis repo to be cloned
+      working-directory: redis
+      run: ./utils/gen-test-certs.sh
+
+    - name: Copy certificates to tests/flow
       run: |
-        cd redis
-        ./utils/gen-test-certs.sh
+        mkdir -p tests/flow/tls
+        cp redis/tests/tls/redis.crt tests/flow/tls
+        cp redis/tests/tls/redis.key tests/flow/tls
+        cp redis/tests/tls/ca.crt tests/flow/tls
 
     - name: Unit Test with pytest
       timeout-minutes: 30
       run: |
-        TLS="$PWD/redis/tests/tls"
+        TLS="tests/flow/tls"
         TLS_CERT=$TLS/redis.crt \
         TLS_KEY=$TLS/redis.key \
         TLS_CACERT=$TLS/ca.crt \
         REDIS_BINARY=`command -v redis-server` \
         poetry run pytest --ignore=tests/flow --ignore=test_example.py -v
 
+    - name: Built RLTest test modules
+      working-directory: tests/flow
+      run: make -C modules
 
     - name: Flow Test OSS Single Module
-      run: |
-        cd tests/flow
-        make -C modules
-        poetry run RLTest --env oss -v --clear-logs --module modules/module1.so --module-args "DUPLICATE_POLICY BLOCK"
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss -v --clear-logs --module modules/module1.so --module-args "DUPLICATE_POLICY BLOCK"
 
     - name: Flow Test OSS Multiple Modules  --use-slaves
-      run: |
-        cd tests/flow
-        make -C modules
-        poetry run RLTest --env oss -v --clear-logs \
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
           --use-slaves
 
     - name: Flow Test OSS Multiple Modules  --use-aof
-      run: |
-        cd tests/flow
-        make -C modules
-        poetry run RLTest --env oss -v --clear-logs \
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
           --use-aof
 
     - name: Flow Test OSS Multiple Modules
-      run: |
-        cd tests/flow
-        make -C modules
-        poetry run RLTest --env oss -v --clear-logs \
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS-CLUSTER Modules
-      run: |
-        cd tests/flow
-        make -C modules
-        poetry run RLTest --env oss-cluster -v --clear-logs \
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss-cluster -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS TCP
-      run: |
-        cd tests/flow
-        poetry run RLTest --env oss -v --clear-logs
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS UNIX SOCKETS
-      run: |
-        cd tests/flow
-        poetry run RLTest --env oss -v --clear-logs
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS TCP SLAVES
-      run: |
-        cd tests/flow
-        poetry run RLTest --env oss -v --unix --clear-logs
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss -v --unix --clear-logs
 
     - name: Flow Test OSS-CLUSTER TCP
-      run: |
-        cd tests/flow
-        poetry run RLTest --env oss-cluster -v --clear-logs --shards-count 3
+      working-directory: tests/flow
+      run: poetry run RLTest --env oss-cluster -v --clear-logs --shards-count 3
 
     - name: Flow Test OSS TCP with TLS
+      working-directory: tests/flow
       run: |
-        TLS="$PWD/redis/tests/tls"
-        cd tests/flow
+        TLS="tls"
         poetry run RLTest --env oss -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
@@ -159,9 +153,9 @@ jobs:
         --tls
 
     - name: Flow Test OSS-CLUSTER with TLS
+      working-directory: tests/flow
       run: |
-        TLS="$PWD/redis/tests/tls"
-        cd tests/flow
+        TLS="tls"
         poetry run RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
@@ -169,9 +163,9 @@ jobs:
         --tls
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
+      working-directory: tests/flow
       run: |
-        TLS="$PWD/redis/tests/tls"
-        cd tests/flow
+        TLS="tls"
         poetry run RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
@@ -181,7 +175,7 @@ jobs:
     - name: Generate coverage report
       if: matrix.python == '3.9' && matrix.platform != 'macos-11'
       run: |
-        TLS="$PWD/redis/tests/tls"
+        TLS="tests/flow/tls"
         TLS_CERT=$TLS/redis.crt \
         TLS_KEY=$TLS/redis.key \
         TLS_CACERT=$TLS/ca.crt \
