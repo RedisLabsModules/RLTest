@@ -92,7 +92,7 @@ jobs:
         poetry run pytest --ignore=tests/flow --ignore=test_example.py -v
 
     - name: Built RLTest test modules
-      working-directory: tests/flow
+      working-directory: tests/flow/modules
       run: make -C modules
 
     - name: Flow Test OSS Single Module
