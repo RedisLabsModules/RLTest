@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }}
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }} with Redis ${{ matrix.redis-version }}}
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
     strategy:
