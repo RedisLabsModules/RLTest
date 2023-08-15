@@ -69,7 +69,6 @@ jobs:
     - name: Install Redis Server
       working-directory: redis
       run: make BUILD_TLS=yes -j `nproc` all install
-        make install
 
     - name: Generate test certificates #this step needs the redis repo to be cloned
       working-directory: redis
