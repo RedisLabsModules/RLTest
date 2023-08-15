@@ -91,18 +91,18 @@ jobs:
         REDIS_BINARY=`command -v redis-server` \
         poetry run pytest --ignore=tests/flow --ignore=test_example.py -v
 
-    - name: Built RLTest test modules
-      working-directory: tests/flow/modules
-      run: make
-
     - name: Flow Test OSS Single Module
       working-directory: tests/flow
-      run: poetry run RLTest --env oss -v --clear-logs --module modules/module1.so --module-args "DUPLICATE_POLICY BLOCK"
+      run: |
+        make -C modules
+        poetry run RLTest --env oss -v --clear-logs --module modules/module1.so --module-args "DUPLICATE_POLICY BLOCK"
 
     - name: Flow Test OSS Multiple Modules  --use-slaves
       working-directory: tests/flow
       if: (success() || failure())
-      run: poetry run RLTest --env oss -v --clear-logs \
+      run: |
+        make -C modules
+        poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
           --use-slaves
@@ -110,24 +110,30 @@ jobs:
     - name: Flow Test OSS Multiple Modules  --use-aof
       working-directory: tests/flow
       if: (success() || failure())
-      run: poetry run RLTest --env oss -v --clear-logs \
-          --module modules/module1.so --module-args '' \
-          --module modules/module2.so --module-args '' \
-          --use-aof
+      run: |
+        make -C modules
+         poetry run RLTest --env oss -v --clear-logs \
+        --module modules/module1.so --module-args '' \
+        --module modules/module2.so --module-args '' \
+        --use-aof
 
     - name: Flow Test OSS Multiple Modules
       working-directory: tests/flow
       if: (success() || failure())
-      run: poetry run RLTest --env oss -v --clear-logs \
-          --module modules/module1.so --module-args '' \
-          --module modules/module2.so --module-args ''
+      run: |
+        make -C modules
+        poetry run RLTest --env oss -v --clear-logs \
+        --module modules/module1.so --module-args '' \
+        --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS-CLUSTER Modules
       working-directory: tests/flow
       if: (success() || failure())
-      run: poetry run RLTest --env oss-cluster -v --clear-logs \
-          --module modules/module1.so --module-args '' \
-          --module modules/module2.so --module-args ''
+      run: |
+        make -C modules
+        poetry run RLTest --env oss-cluster -v --clear-logs \
+        --module modules/module1.so --module-args '' \
+        --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS TCP
       working-directory: tests/flow
