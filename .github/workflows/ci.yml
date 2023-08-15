@@ -68,7 +68,7 @@ jobs:
 
     - name: Install Redis Server
       working-directory: redis
-      run: make BUILD_TLS=yes -j `nproc` all install
+      run: make BUILD_TLS=yes -j `nproc` install
 
     - name: Generate test certificates #this step needs the redis repo to be cloned
       working-directory: redis
@@ -101,6 +101,7 @@ jobs:
 
     - name: Flow Test OSS Multiple Modules  --use-slaves
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
@@ -108,6 +109,7 @@ jobs:
 
     - name: Flow Test OSS Multiple Modules  --use-aof
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
@@ -115,34 +117,41 @@ jobs:
 
     - name: Flow Test OSS Multiple Modules
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS-CLUSTER Modules
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss-cluster -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS TCP
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS UNIX SOCKETS
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS TCP SLAVES
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss -v --unix --clear-logs
 
     - name: Flow Test OSS-CLUSTER TCP
       working-directory: tests/flow
+      if: (success() || failure())
       run: poetry run RLTest --env oss-cluster -v --clear-logs --shards-count 3
 
     - name: Flow Test OSS TCP with TLS
       working-directory: tests/flow
+      if: (success() || failure())
       run: |
         TLS="tls"
         poetry run RLTest --env oss -v --clear-logs \
@@ -153,6 +162,7 @@ jobs:
 
     - name: Flow Test OSS-CLUSTER with TLS
       working-directory: tests/flow
+      if: (success() || failure())
       run: |
         TLS="tls"
         poetry run RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
@@ -163,6 +173,7 @@ jobs:
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
       working-directory: tests/flow
+      if: (success() || failure())
       run: |
         TLS="tls"
         poetry run RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
