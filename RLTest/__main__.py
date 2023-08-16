@@ -666,6 +666,8 @@ class RLTest:
         if passed:
             self.printPass(testFullName)
 
+        if hasException:
+            numFailed += 1 # exception should be counted as failure
         return numFailed
 
     def printSkip(self, name):
