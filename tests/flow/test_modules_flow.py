@@ -2,8 +2,6 @@ import os
 
 from RLTest import Env
 
-CONTAINS_MODULES = os.environ.get("CONTAINS_MODULES", None)
-
 
 def checkSampleModules(env):
     redis_conn = env.getConnection()
@@ -26,10 +24,4 @@ def test_modulesSimpleFlow(env):
     checkSampleModules(env)
 
 
-class test_modulesWithArgs():
-    def __init__(self):
-        if CONTAINS_MODULES is not None:
-            self.env = Env(moduleArgs='DUPLICATE_POLICY BLOCK')
-            checkSampleModules(self.env)
-        else:
-            print("Skipping test given there is no module")
+
