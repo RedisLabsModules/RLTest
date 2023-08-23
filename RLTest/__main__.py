@@ -591,6 +591,8 @@ class RLTest:
 
         testFullName = prefix + test.name
 
+        self.printRunningTest(testFullName)
+
         if not test.is_method:
             Defaults.curr_test_name = testFullName
 
@@ -681,6 +683,9 @@ class RLTest:
 
     def printPass(self, name):
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[PASS]')))
+
+    def printRunningTest(self, name):
+        print('%s:%s' % (Colors.Cyan(name), Colors.Gray(' Executing...')))
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
