@@ -685,7 +685,8 @@ class RLTest:
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[PASS]')))
 
     def printRunningTest(self, name):
-        print('%s:%s' % (Colors.Cyan(name), Colors.Gray(' Executing...')))
+        if self.parallelism > 1:
+            print('%s: %s' % (Colors.Cyan(name), Colors.Gray('Running...')))
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
