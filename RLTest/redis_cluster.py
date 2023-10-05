@@ -44,6 +44,12 @@ class ClusterEnv(object):
             print(Colors.Yellow(prefix + 'shard: %d' % (i + 1)))
             shard.printEnvData(prefix + '\t')
 
+    def getInformationBeforeDispose(self):
+        return [shard.getInformationBeforeDispose() for shard in self.shards]
+
+    def getInformationAfterDispose(self):
+        return [shard.getInformationAfterDispose() for shard in self.shards]  
+
     def waitCluster(self, timeout_sec=40):
         st = time.time()
         ok = 0

@@ -10,23 +10,34 @@ on:
 
 jobs:
   build:
-    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }}
+    name: Test on ${{ matrix.platform }} with Python ${{ matrix.python }} with Redis ${{ matrix.redis-version }}
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
     strategy:
       matrix:
-        platform: ['ubuntu-20.04', 'macos-11']
+        platform: ['ubuntu-22.04', 'macos-11']
         python: ['3.7', '3.8', '3.9', '3.10', '3.11']
+        redis-version: ['7.0', '7.2']
       fail-fast: false
     defaults:
       run:
         shell: bash -l -eo pipefail {0}
 
     steps:
-    - uses: actions/checkout@v3
+    - name: checkout
+      uses: actions/checkout@v3
       # Number of commits to fetch. 0 indicates all history for all branches and tags.
       with:
         fetch-depth: ''
+
+    - name: clone redis
+      uses: actions/checkout@v3
+      # Number of commits to fetch. 0 indicates all history for all branches and tags.
+      with:
+        fetch-depth: ''
+        repository: 'redis/redis'
+        ref: ${{matrix.redis-version}}
+        path: redis
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -34,138 +45,144 @@ jobs:
         python-version: ${{ matrix.python }}
         architecture: x64
 
-    - name: Cache pip
+    - name: Setup Poetry
+      uses: snok/install-poetry@v1
+      with:
+          version: 1.5.1
+          virtualenvs-in-project: true
+          virtualenvs-create: true
+          installer-parallel: true
+
+    - name: Cache poetry
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip # This path is specific to Ubuntu
+        path: ~/.cache/poetry # This path is specific to Ubuntu
         # Look to see if there is a cache hit for the corresponding requirements file
         key: ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
           ${{ matrix.platform }}-${{ matrix.python }}-pyproject.toml-${{hashFiles('pyproject.toml')}}}
 
-    - name: Setup automation
-      run: |
-        git clone --recursive https://github.com/RedisLabsModules/readies.git
-        ./readies/bin/getpy3
 
     - name: Install Python dependencies
-      run: |
-        python3 -m pip install poetry
-        python3 -m poetry config virtualenvs.create false
-        python3 -m poetry export --dev --without-hashes -o requirements-${{matrix.platform}}-${{matrix.python}}.txt
-        python3 -m pip install -r requirements-${{matrix.platform}}-${{matrix.python}}.txt
+      run: poetry install -q
 
-    - name: Install Redis Server test dependencies
-      run: |
-        ./readies/bin/getredis --workdir /tmp/redis -v 7 --keep
-        ln -s /tmp/redis/redis redis
-        redis-server --version
+    - name: Install Redis Server
+      working-directory: redis
+      run: make BUILD_TLS=yes -j `nproc` install
 
-    - name: Generate test certificates
+    - name: Generate test certificates #this step needs the redis repo to be cloned
+      working-directory: redis
+      run: ./utils/gen-test-certs.sh
+
+    - name: Copy certificates to tests/flow
       run: |
-        cd redis
-        rm -rf ./tests/unit/tls/
-        ./utils/gen-test-certs.sh
+        mkdir -p tests/flow/tls
+        cp redis/tests/tls/redis.crt tests/flow/tls
+        cp redis/tests/tls/redis.key tests/flow/tls
+        cp redis/tests/tls/ca.crt tests/flow/tls
 
     - name: Unit Test with pytest
       timeout-minutes: 30
       run: |
-        TLS="$PWD/redis/tests/tls"
+        TLS="tests/flow/tls"
         TLS_CERT=$TLS/redis.crt \
         TLS_KEY=$TLS/redis.key \
         TLS_CACERT=$TLS/ca.crt \
         REDIS_BINARY=`command -v redis-server` \
-        pytest --ignore=tests/flow --ignore=test_example.py -v
-
-    - name: Install RLTest
-      run: |
-        python3 -m pip install .
+        poetry run pytest --ignore=tests/flow --ignore=test_example.py -v
 
     - name: Flow Test OSS Single Module
+      working-directory: tests/flow
       run: |
-        cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs --module modules/module1.so
+        poetry run RLTest --env oss -v --clear-logs --module modules/module1.so --module-args "DUPLICATE_POLICY BLOCK"
 
     - name: Flow Test OSS Multiple Modules  --use-slaves
+      working-directory: tests/flow
+      if: (success() || failure())
       run: |
-        cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
+        poetry run RLTest --env oss -v --clear-logs \
           --module modules/module1.so --module-args '' \
           --module modules/module2.so --module-args '' \
           --use-slaves
 
     - name: Flow Test OSS Multiple Modules  --use-aof
+      working-directory: tests/flow
+      if: (success() || failure())
       run: |
-        cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
-          --module modules/module1.so --module-args '' \
-          --module modules/module2.so --module-args '' \
-          --use-aof
+         poetry run RLTest --env oss -v --clear-logs \
+        --module modules/module1.so --module-args '' \
+        --module modules/module2.so --module-args '' \
+        --use-aof
 
     - name: Flow Test OSS Multiple Modules
+      working-directory: tests/flow
+      if: (success() || failure())
       run: |
-        cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss -v --clear-logs \
-          --module modules/module1.so --module-args '' \
-          --module modules/module2.so --module-args ''
+        poetry run RLTest --env oss -v --clear-logs \
+        --module modules/module1.so --module-args '' \
+        --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS-CLUSTER Modules
+      working-directory: tests/flow
+      if: (success() || failure())
       run: |
-        cd tests/flow
         make -C modules
-        CONTAINS_MODULES=1 RLTest --env oss-cluster -v --clear-logs \
-          --module modules/module1.so --module-args '' \
-          --module modules/module2.so --module-args ''
+        poetry run RLTest --env oss-cluster -v --clear-logs \
+        --module modules/module1.so --module-args '' \
+        --module modules/module2.so --module-args ''
 
     - name: Flow Test OSS TCP
-      run: |
-        cd tests/flow
-        RLTest --env oss -v --clear-logs
+      working-directory: tests/flow
+      if: (success() || failure())
+      run: poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS UNIX SOCKETS
-      run: |
-        cd tests/flow
-        RLTest --env oss -v --clear-logs
+      working-directory: tests/flow
+      if: (success() || failure())
+      run: poetry run RLTest --env oss -v --clear-logs
 
     - name: Flow Test OSS TCP SLAVES
-      run: |
-        cd tests/flow
-        RLTest --env oss -v --unix --clear-logs
+      working-directory: tests/flow
+      if: (success() || failure())
+      run: poetry run RLTest --env oss -v --unix --clear-logs
 
     - name: Flow Test OSS-CLUSTER TCP
-      run: |
-        cd tests/flow
-        RLTest --env oss-cluster -v --clear-logs --shards-count 3
+      working-directory: tests/flow
+      if: (success() || failure())
+      run: poetry run RLTest --env oss-cluster -v --clear-logs --shards-count 3
 
     - name: Flow Test OSS TCP with TLS
+      working-directory: tests/flow
+      if: (success() || failure())
       run: |
-        TLS="$PWD/redis/tests/tls"
-        cd tests/flow
-        RLTest --env oss -v --clear-logs \
+        TLS="tls"
+        poetry run RLTest --env oss -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
         --tls-ca-cert-file $TLS/ca.crt \
         --tls
 
     - name: Flow Test OSS-CLUSTER with TLS
+      working-directory: tests/flow
+      if: (success() || failure())
       run: |
-        TLS="$PWD/redis/tests/tls"
-        cd tests/flow
-        RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
+        TLS="tls"
+        poetry run RLTest --env oss-cluster --shards-count 3 -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
         --tls-ca-cert-file $TLS/ca.crt \
         --tls
 
     - name: Flow Test OSS-CLUSTER with SLAVES and TLS
+      working-directory: tests/flow
+      if: (success() || failure())
       run: |
-        TLS="$PWD/redis/tests/tls"
-        cd tests/flow
-        RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
+        TLS="tls"
+        poetry run RLTest --env oss-cluster --shards-count 3 --use-slaves -v --clear-logs \
         --tls-cert-file $TLS/redis.crt \
         --tls-key-file $TLS/redis.key \
         --tls-ca-cert-file $TLS/ca.crt \
@@ -174,12 +191,12 @@ jobs:
     - name: Generate coverage report
       if: matrix.python == '3.9' && matrix.platform != 'macos-11'
       run: |
-        TLS="$PWD/redis/tests/tls"
+        TLS="tests/flow/tls"
         TLS_CERT=$TLS/redis.crt \
         TLS_KEY=$TLS/redis.key \
         TLS_CACERT=$TLS/ca.crt \
         REDIS_BINARY=`command -v redis-server` \
-        pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
+        poetry run pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

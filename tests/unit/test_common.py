@@ -2,8 +2,6 @@ import os
 from unittest import TestCase
 
 REDIS_BINARY = os.environ.get("REDIS_BINARY", "redis-server")
-REDIS_ENTERPRISE_BINARY = os.environ.get("REDIS_ENTERPRISE_BINARY", None)
-DMC_PROXY_BINARY = os.environ.get("DMC_PROXY_BINARY", None)
 
 TLS_CERT = os.environ.get("TLS_CERT", "./tls/redis.crt")
 TLS_KEY = os.environ.get("TLS_KEY", "./tls/redis.key")

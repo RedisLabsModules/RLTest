@@ -11,6 +11,7 @@ import inspect
 import unittest
 import time
 import shlex
+import json
 from multiprocessing import Process, Queue
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
@@ -197,6 +198,10 @@ parser.add_argument(
     help='directory to write logs to')
 
 parser.add_argument(
+    '--log-level', default=None, metavar='LEVEL', choices=['debug', 'verbose', 'notice', 'warning'],
+    help='sets the server log level')
+
+parser.add_argument(
     '--use-slaves', action='store_const', const=True, default=False,
     help='run env with slaves enabled')
 
@@ -268,6 +273,10 @@ parser.add_argument('--debugger', help='Run specified command line as the debugg
 parser.add_argument(
     '-s', '--no-output-catch', action='store_const', const=True, default=False,
     help='all output will be written to the stdout, no log files.')
+
+parser.add_argument(
+    '--verbose-information-on-failure', action='store_const', const=True, default=False,
+    help='Print a verbose information on test failure')
 
 parser.add_argument(
     '--enable-debug-command', action='store_const', const=True, default=False,
@@ -410,6 +419,7 @@ class RLTest:
         Defaults.binary = self.args.oss_redis_path
         Defaults.verbose = self.args.verbose
         Defaults.logdir = self.args.log_dir
+        Defaults.loglevel = self.args.log_level
         Defaults.use_slaves = self.args.use_slaves
         Defaults.num_shards = self.args.shards_count
         Defaults.shards_ports = self.args.shards_ports.split(',') if self.args.shards_ports is not None else None
@@ -423,6 +433,7 @@ class RLTest:
         Defaults.debug_pause = self.args.debug
         Defaults.debug_print = self.args.debug_print
         Defaults.no_capture_output = self.args.no_output_catch
+        Defaults.print_verbose_information_on_failure = self.args.verbose_information_on_failure
         Defaults.debugger = debugger
         Defaults.sanitizer = sanitizer
         Defaults.exit_on_failure = self.args.exit_on_failure
@@ -655,6 +666,8 @@ class RLTest:
         if passed:
             self.printPass(testFullName)
 
+        if hasException:
+            numFailed += 1 # exception should be counted as failure
         return numFailed
 
     def printSkip(self, name):
@@ -733,8 +746,19 @@ class RLTest:
                             done += 1
 
                     else:
-                        self._runTest(test)
+                        failures = self._runTest(test)
                         done += 1
+
+                    verboseInfo = {}
+                    if failures > 0 and Defaults.print_verbose_information_on_failure:
+                        lastEnv = self.currEnv
+                        verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
+
+                # here the env is down so lets collect more info and print it
+                if failures > 0 and Defaults.print_verbose_information_on_failure:
+                    verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
+                    lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
+
             self.takeEnvDown(fullShutDown=True)
 
             # serialized the results back
