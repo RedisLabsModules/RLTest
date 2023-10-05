@@ -234,7 +234,7 @@ class StandardEnv(object):
 
         if self.enableDebugCommand:
             if self._getRedisVersion() > 70000:
-                cmdArgs += ['--enable-debug-command', 'yes']
+                cmdArgs += ['--enable-debug-command', 'yes', '--enable-protected-configs', 'yes']
 
         return cmdArgs
 
