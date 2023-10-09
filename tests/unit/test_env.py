@@ -3,7 +3,7 @@ import tempfile
 from unittest import TestCase
 
 from RLTest import Env
-from tests.unit.test_common import REDIS_BINARY, REDIS_ENTERPRISE_BINARY, DMC_PROXY_BINARY
+from tests.unit.test_common import REDIS_BINARY
 
 
 class TestEnvOss(TestCase):
@@ -21,8 +21,7 @@ class TestEnvOss(TestCase):
         pass
 
     def test_get_env_by_name(self):
-        self.env = Env(useSlaves=False, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(useSlaves=False, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.isUp() == True
         self.env.stop()
         assert self.env.isUp() == False
@@ -34,21 +33,17 @@ class TestEnvOss(TestCase):
         pass
 
     def test_get_env_str(self):
-        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.getEnvStr() == 'oss'
         self.env.stop()
         assert self.env.isUp() == False
 
     def test_compare_env(self):
-        self.env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
-        env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                  redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
+        env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.compareEnvs(env) is True
         env.stop()
-        env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                  redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY, useAof=True)
+        env = Env(env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY, useAof=True)
         assert self.env.compareEnvs(env) is False
         env.stop()
         self.env.stop()
@@ -69,14 +64,12 @@ class TestEnvOss(TestCase):
         pass
 
     def test_is_cluster(self):
-        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.isCluster() == False
         assert self.env.isUp() == True
         self.env.stop()
         assert self.env.isUp() == False
-        self.env = Env(useSlaves=True, env='oss-cluster', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(useSlaves=True, env='oss-cluster', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.isCluster() == True
         self.env.stop()
 
@@ -189,8 +182,7 @@ class TestEnvOss(TestCase):
         pass
 
     def test_is_up(self):
-        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.isCluster() == False
         assert self.env.isUp() == True
         self.env.stop()
@@ -206,8 +198,7 @@ class TestEnvOss(TestCase):
         pass
 
     def test_is_unix_socket(self):
-        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.isCluster() == False
         assert self.env.isUp() == True
         assert self.env.isUnixSocket() == False
@@ -215,8 +206,7 @@ class TestEnvOss(TestCase):
         assert self.env.isUp() == False
 
     def test_is_tcp(self):
-        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY,
-                       redisEnterpriseBinaryPath=REDIS_ENTERPRISE_BINARY, dmcBinaryPath=DMC_PROXY_BINARY)
+        self.env = Env(useSlaves=True, env='oss', logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
         assert self.env.isCluster() == False
         assert self.env.isUp() == True
         assert self.env.isTcp() == True

@@ -130,10 +130,12 @@ class Defaults:
     debug_print = False
     debug_pause = False
     no_capture_output = False
+    print_verbose_information_on_failure = False
     no_log = False
     exit_on_failure = False
     verbose = 0
     logdir = None
+    loglevel = None
     use_slaves = False
     num_shards = 1
     external_addr = 'localhost:6379'
@@ -147,6 +149,7 @@ class Defaults:
     enable_protected_configs=False
     terminate_retries=None
     terminate_retry_secs=None
+    protocol=2
 
     def getKwargs(self):
         kwargs = {
@@ -192,7 +195,7 @@ class Env:
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
-                 freshEnv=False, enableDebugCommand=None, enableProtectedConfigs=None, protocol=2,
+                 freshEnv=False, enableDebugCommand=None, enableProtectedConfigs=None, protocol=None,
                  terminateRetries=None, terminateRetrySecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
@@ -236,7 +239,7 @@ class Env:
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
 
-        self.protocol = protocol
+        self.protocol = protocol if protocol is not None else Defaults.protocol
 
         self.assertionFailedSummary = []
 
@@ -262,6 +265,16 @@ class Env:
 
         if Defaults.debug_pause:
             input('\tenv is up, attach to any process with gdb and press any button to continue.')
+
+    def getInformationBeforeDispose(self):
+        return {
+            "env": self.env,
+            "test": self.testName,
+            "env_info": self.envRunner.getInformationBeforeDispose()
+        }
+
+    def getInformationAfterDispose(self):
+        return self.envRunner.getInformationAfterDispose()
 
     def getEnvByName(self):
         verbose = False
@@ -325,6 +338,7 @@ class Env:
             'useAof': self.useAof,
             'useRdbPreamble': self.useRdbPreamble,
             'dbDirPath': self.logDir,
+            'loglevel': Defaults.loglevel,
             'debugger': Defaults.debugger,
             'sanitizer': Defaults.sanitizer,
             'noCatch': Defaults.no_capture_output,
