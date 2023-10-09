@@ -1,3 +1,5 @@
 #-vv
 --clear-logs
+--enable-debug-commands
+--enable-protected-configs
 #--debug
