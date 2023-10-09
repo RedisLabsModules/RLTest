@@ -273,6 +273,10 @@ parser.add_argument(
     '--enable-debug-command', action='store_const', const=True, default=False,
     help='On Redis 7, debug command need to be enabled in order to be used.')
 
+parser.add_argument(
+    '--enable-protected-configs', action='store_const', const=True, default=False,
+    help='On Redis 7, this option needs to be enabled in order to change protected configuration in runtime.')
+
 parser.add_argument('--check-exitcode', help='Check redis process exit code',
                     default=False, action='store_true')
 
@@ -438,6 +442,7 @@ class RLTest:
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
         Defaults.enable_debug_command = self.args.enable_debug_command
+        Defaults.enable_protected_configs = self.args.enable_protected_configs
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 

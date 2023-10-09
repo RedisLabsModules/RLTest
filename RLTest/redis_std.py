@@ -22,7 +22,7 @@ class StandardEnv(object):
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
-                 terminateRetries=None, terminateRetrySecs=None):
+                 terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -58,6 +58,7 @@ class StandardEnv(object):
         self.clusterNodeTimeout = clusterNodeTimeout
         self.tlsPassphrase = tlsPassphrase
         self.enableDebugCommand = enableDebugCommand
+        self.enableProtectedConfigs = enableProtectedConfigs
         self.protocol = protocol
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
@@ -232,9 +233,11 @@ class StandardEnv(object):
 
             cmdArgs += ['--tls-replication', 'yes']
 
-        if self.enableDebugCommand:
-            if self._getRedisVersion() > 70000:
-                cmdArgs += ['--enable-debug-command', 'yes', '--enable-protected-configs', 'yes']
+        if self._getRedisVersion() > 70000:
+            if self.enableDebugCommand:
+                cmdArgs += ['--enable-debug-command', 'yes']
+            if self.enableProtectedConfigs:
+                cmdArgs += ['--enable-protected-configs', 'yes']
 
         return cmdArgs
 
