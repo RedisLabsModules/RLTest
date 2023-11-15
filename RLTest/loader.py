@@ -116,24 +116,23 @@ class TestLoader(object):
         filename = '%s/%s.py' % (module_dir, module_name)
         try:
             module_spec = importlib.util.spec_from_file_location(module_name, filename)
-            try:
-                module = importlib.util.module_from_spec(module_spec)
-                module_spec.loader.exec_module(module)
-                for symbol in dir(module):
-                    if not self.filter_modulevar(symbol, toplevel_filter):
-                        continue
+            module = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(module)
+            for symbol in dir(module):
+                if not self.filter_modulevar(symbol, toplevel_filter):
+                    continue
 
-                    obj = getattr(module, symbol)
-                    if inspect.isclass(obj):
-                        methnames = [mname for mname in dir(obj)
-                                        if self.filter_method(mname, subfilter)]
-                        self.tests.append(TestClass(filename, symbol, module_name, methnames))
-                    elif inspect.isfunction(obj):
-                        self.tests.append(TestFunction(filename, symbol, module_name))
-            except Exception as x:
-                print(Colors.Red("Problems in file %s: %s" % (filename, x)))
-        except:
+                obj = getattr(module, symbol)
+                if inspect.isclass(obj):
+                    methnames = [mname for mname in dir(obj)
+                                    if self.filter_method(mname, subfilter)]
+                    self.tests.append(TestClass(filename, symbol, module_name, methnames))
+                elif inspect.isfunction(obj):
+                    self.tests.append(TestFunction(filename, symbol, module_name))
+        except ImportError:
             print(Colors.Red("File %s not found: skipping" % filename))
+        except Exception as x:
+            print(Colors.Red("Problems in file %s: %s" % (filename, x)))
 
     def scan_dir(self, testdir):
         for filename in os.listdir(testdir):
