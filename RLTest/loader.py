@@ -129,7 +129,7 @@ class TestLoader(object):
                     self.tests.append(TestClass(filename, symbol, module_name, methnames))
                 elif inspect.isfunction(obj):
                     self.tests.append(TestFunction(filename, symbol, module_name))
-        except ImportError:
+        except FileNotFoundError:
             print(Colors.Red("File %s not found: skipping" % filename))
         except Exception as x:
             print(Colors.Red("Problems in file %s: %s" % (filename, x)))
