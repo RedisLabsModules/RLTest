@@ -208,3 +208,11 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: true
+
+  pr-validation:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - if: contains(needs.*.result, 'failure')
+        run: exit 1
