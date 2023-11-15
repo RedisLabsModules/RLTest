@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import sys
 import imp
+import importlib.util
 import inspect
 from RLTest.utils import Colors
 
@@ -17,8 +18,9 @@ class TestFunction(object):
         self.name = '{}:{}'.format(self.modulename, symbol)
 
     def initialize(self):
-        module_file = open(self.filename)
-        module = imp.load_module(self.modulename, module_file, self.filename, ('.py', 'r', imp.PY_SOURCE))
+        module_spec = importlib.util.spec_from_file_location(self.modulename, self.filename)
+        module = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(module)
         obj = getattr(module, self.symbol)
         self.target = obj
 
