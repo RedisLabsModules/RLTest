@@ -14,7 +14,8 @@ jobs:
 
       - name: get version from tag
         id: get_version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: | # People report that sometimes GITHUB_REF_NAME is empty, so we check for that and fail if so.
+          [[ -n $GITHUB_REF_NAME ]] && echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       - name: Set the version for publishing
         uses: ciiiii/toml-editor@1.0.0
