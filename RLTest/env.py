@@ -147,6 +147,7 @@ class Defaults:
     port=6379
     enable_debug_command=False
     enable_protected_configs=False
+    enable_module_command=False
     terminate_retries=None
     terminate_retry_secs=None
     protocol=2
@@ -180,7 +181,8 @@ class Defaults:
 class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
-                        'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'enableProtectedConfigs', 'protocol']
+                        'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'enableProtectedConfigs',
+                        'enableModuleCommand', 'protocol']
 
     def compareEnvs(self, env):
         if env is None:
@@ -195,7 +197,7 @@ class Env:
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
-                 freshEnv=False, enableDebugCommand=None, enableProtectedConfigs=None, protocol=None,
+                 freshEnv=False, enableDebugCommand=None, enableModuleCommand=None, enableProtectedConfigs=None, protocol=None,
                  terminateRetries=None, terminateRetrySecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
@@ -236,6 +238,7 @@ class Env:
         self.enableDebugCommand = enableDebugCommand if enableDebugCommand else Defaults.enable_debug_command
         self.enableProtectedConfigs = enableProtectedConfigs if enableProtectedConfigs\
             else Defaults.enable_protected_configs
+        self.enableModuleCommand = enableModuleCommand if enableModuleCommand else Defaults.enable_module_command
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
 
@@ -353,6 +356,7 @@ class Env:
             'port': self.port,
             'enableDebugCommand': self.enableDebugCommand,
             'enableProtectedConfigs': self.enableProtectedConfigs,
+            'enableModuleCommand': self.enableModuleCommand,
             'protocol': self.protocol,
             'terminateRetries': self.terminateRetries,
             'terminateRetrySecs': self.terminateRetrySecs,
