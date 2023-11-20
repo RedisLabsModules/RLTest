@@ -290,6 +290,10 @@ parser.add_argument(
     '--enable-module-command', action='store_const', const=True, default=False,
     help='On Redis 7, this option needs to be enabled in order to use module command (load/unload modules in runtime).')
 
+parser.add_argument(
+    '--allow-unsafe', action='store_const', const=True, default=False,
+    help='On Redis 7, allow the three unsafe modes above (debug and module commands and protected configs)')
+
 parser.add_argument('--check-exitcode', help='Check redis process exit code',
                     default=False, action='store_true')
 
@@ -459,6 +463,8 @@ class RLTest:
         Defaults.enable_debug_command = self.args.enable_debug_command
         Defaults.enable_protected_configs = self.args.enable_protected_configs
         Defaults.enable_module_command = self.args.enable_module_command
+        Defaults.allow_unsafe = self.args.allow_unsafe
+
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
 
