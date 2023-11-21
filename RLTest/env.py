@@ -236,7 +236,7 @@ class Env:
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
         self.port = Defaults.port
         self.enableDebugCommand = enableDebugCommand if enableDebugCommand is not None else Defaults.enable_debug_command
-        self.enableProtectedConfigs = enableProtectedConfigs is not None if enableProtectedConfigs\
+        self.enableProtectedConfigs = enableProtectedConfigs if enableProtectedConfigs is not None\
             else Defaults.enable_protected_configs
         self.enableModuleCommand = enableModuleCommand if enableModuleCommand is not None else Defaults.enable_module_command
 
