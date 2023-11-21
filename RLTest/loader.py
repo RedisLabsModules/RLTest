@@ -19,6 +19,7 @@ class TestFunction(object):
     def initialize(self):
         module_spec = importlib.util.spec_from_file_location(self.modulename, self.filename)
         module = importlib.util.module_from_spec(module_spec)
+        sys.modules[self.modulename] = module
         module_spec.loader.exec_module(module)
         obj = getattr(module, self.symbol)
         self.target = obj
@@ -53,6 +54,7 @@ class TestClass(object):
     def initialize(self):
         module_spec = importlib.util.spec_from_file_location(self.modulename, self.filename)
         module = importlib.util.module_from_spec(module_spec)
+        sys.modules[self.modulename] = module
         module_spec.loader.exec_module(module)
         obj = getattr(module, self.symbol)
         self.clsname = obj.__name__
@@ -117,6 +119,7 @@ class TestLoader(object):
         try:
             module_spec = importlib.util.spec_from_file_location(module_name, filename)
             module = importlib.util.module_from_spec(module_spec)
+            sys.modules[module_name] = module
             module_spec.loader.exec_module(module)
             for symbol in dir(module):
                 if not self.filter_modulevar(symbol, toplevel_filter):
