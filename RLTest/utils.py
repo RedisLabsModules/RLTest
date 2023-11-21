@@ -72,10 +72,13 @@ class Colors(object):
 
 def fix_modules(modules, defaultModules=None):
     # modules is one of the following:
-    # None
-    # ['path',...]
-    if modules:
-        if not isinstance(modules, list):
+    # None - take the default modules
+    # ['path',...] - load module(s) from given path(s)
+    # Empty list - return None, meaning don't load any module.
+    if modules is not None:
+        if len(modules) == 0:
+            return None
+        elif not isinstance(modules, list):
             modules = [modules]
         modules = list(map(lambda p: os.path.abspath(p), modules))
     else:
