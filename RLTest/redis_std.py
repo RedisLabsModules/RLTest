@@ -22,7 +22,7 @@ class StandardEnv(object):
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
-                 terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None, allowUnsafe=False):
+                 terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -65,7 +65,6 @@ class StandardEnv(object):
         self.enableDebugCommand = enableDebugCommand
         self.enableModuleCommand = enableModuleCommand
         self.enableProtectedConfigs = enableProtectedConfigs
-        self.allowUnsafe = allowUnsafe
         self.protocol = protocol
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
@@ -243,16 +242,12 @@ class StandardEnv(object):
             cmdArgs += ['--tls-replication', 'yes']
 
         if self._getRedisVersion() > 70000:
-            if self.allowUnsafe:
-                cmdArgs += ['--enable-debug-command', 'yes', '--enable-protected-configs', 'yes',
-                            '--enable-module-command', 'yes']
-            else:
-                if self.enableDebugCommand:
-                    cmdArgs += ['--enable-debug-command', 'yes']
-                if self.enableProtectedConfigs:
-                    cmdArgs += ['--enable-protected-configs', 'yes']
-                if self.enableModuleCommand:
-                    cmdArgs += ['--enable-module-command', 'yes']
+            if self.enableDebugCommand:
+                cmdArgs += ['--enable-debug-command', 'yes']
+            if self.enableProtectedConfigs:
+                cmdArgs += ['--enable-protected-configs', 'yes']
+            if self.enableModuleCommand:
+                cmdArgs += ['--enable-module-command', 'yes']
         return cmdArgs
 
     def createCmdOSEnv(self, role):

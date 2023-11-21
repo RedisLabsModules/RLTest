@@ -144,14 +144,13 @@ class Defaults:
     oss_password = None
     cluster_node_timeout = None
     curr_test_name = None
-    port=6379
-    enable_debug_command=False
-    enable_protected_configs=False
-    enable_module_command=False
-    allow_unsafe = False
-    terminate_retries=None
-    terminate_retry_secs=None
-    protocol=2
+    port = 6379
+    enable_debug_command = False
+    enable_protected_configs = False
+    enable_module_command = False
+    terminate_retries = None
+    terminate_retry_secs = None
+    protocol = 2
 
     def getKwargs(self):
         kwargs = {
@@ -183,7 +182,7 @@ class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
                         'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'enableProtectedConfigs',
-                        'enableModuleCommand', 'protocol', 'allowUnsafe']
+                        'enableModuleCommand', 'protocol']
 
     def compareEnvs(self, env):
         if env is None:
@@ -199,7 +198,7 @@ class Env:
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
                  freshEnv=False, enableDebugCommand=None, enableModuleCommand=None, enableProtectedConfigs=None, protocol=None,
-                 terminateRetries=None, terminateRetrySecs=None, allowUnsafe=None):
+                 terminateRetries=None, terminateRetrySecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -236,11 +235,11 @@ class Env:
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
         self.port = Defaults.port
-        self.enableDebugCommand = enableDebugCommand if enableDebugCommand else Defaults.enable_debug_command
-        self.enableProtectedConfigs = enableProtectedConfigs if enableProtectedConfigs\
+        self.enableDebugCommand = enableDebugCommand if enableDebugCommand is not None else Defaults.enable_debug_command
+        self.enableProtectedConfigs = enableProtectedConfigs is not None if enableProtectedConfigs\
             else Defaults.enable_protected_configs
-        self.enableModuleCommand = enableModuleCommand if enableModuleCommand else Defaults.enable_module_command
-        self.allowUnsafe = allowUnsafe if allowUnsafe else Defaults.allow_unsafe
+        self.enableModuleCommand = enableModuleCommand if enableModuleCommand is not None else Defaults.enable_module_command
+
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
 
@@ -359,7 +358,6 @@ class Env:
             'enableDebugCommand': self.enableDebugCommand,
             'enableProtectedConfigs': self.enableProtectedConfigs,
             'enableModuleCommand': self.enableModuleCommand,
-            'allowUnsafe': self.allowUnsafe,
             'protocol': self.protocol,
             'terminateRetries': self.terminateRetries,
             'terminateRetrySecs': self.terminateRetrySecs,

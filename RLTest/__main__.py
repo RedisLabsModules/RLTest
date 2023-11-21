@@ -460,10 +460,9 @@ class RLTest:
         Defaults.tls_passphrase = self.args.tls_passphrase
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
-        Defaults.enable_debug_command = self.args.enable_debug_command
-        Defaults.enable_protected_configs = self.args.enable_protected_configs
-        Defaults.enable_module_command = self.args.enable_module_command
-        Defaults.allow_unsafe = self.args.allow_unsafe
+        Defaults.enable_debug_command = True if self.args.allow_unsafe else self.args.enable_debug_command
+        Defaults.enable_protected_configs = True if self.args.allow_unsafe else self.args.enable_protected_configs
+        Defaults.enable_module_command = True if self.args.allow_unsafe else self.args.enable_module_command
 
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
