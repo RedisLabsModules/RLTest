@@ -182,7 +182,7 @@ class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
                         'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'enableProtectedConfigs',
-                        'enableModuleCommand', 'protocol']
+                        'enableModuleCommand', 'protocol', 'password']
 
     def compareEnvs(self, env):
         if env is None:
@@ -193,7 +193,7 @@ class Env:
         return True
 
     def __init__(self, testName=None, testDescription=None, module=None,
-                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
+                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None, password=None,
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
@@ -222,6 +222,7 @@ class Env:
         self.verbose = Defaults.verbose
         self.logDir = logDir if logDir else Defaults.logdir
         self.forceTcp = forceTcp
+        self.password = password
         self.debugger = Defaults.debugger
         self.sanitizer = Defaults.sanitizer
         self.useTLS = useTLS if useTLS else Defaults.use_TLS
@@ -289,7 +290,7 @@ class Env:
 
         if self.env == 'oss':
             kwargs.update(single_args)
-            kwargs['password'] = Defaults.oss_password
+            kwargs['password'] = Defaults.oss_password if self.password is None else self.password
             return StandardEnv(redisBinaryPath=self.redisBinaryPath,
                                outputFilesFormat='%s-' + '%s-oss' % test_fname,
                                **kwargs)
@@ -307,7 +308,7 @@ class Env:
                                         dmcBinaryPath=Defaults.proxy_binary,
                                         **kwargs)
         if self.env == 'oss-cluster':
-            kwargs['password'] = Defaults.oss_password
+            kwargs['password'] = Defaults.oss_password if self.password is None else self.password
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=self.redisBinaryPath,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
                               randomizePorts=Defaults.randomize_ports,
