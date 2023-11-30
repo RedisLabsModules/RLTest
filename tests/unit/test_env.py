@@ -3,6 +3,7 @@ import tempfile
 from unittest import TestCase
 
 from RLTest import Env
+from RLTest.redis_cluster import ClusterEnv
 from tests.unit.test_common import REDIS_BINARY
 
 
@@ -221,3 +222,19 @@ class TestEnvOss(TestCase):
 
     def test_skip_on_enterprise_cluster(self):
         pass
+
+    def test_with_password(self):
+        password = 'GoodPassword42'
+        self.env = Env(useSlaves=True, env='oss', password=password, logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
+        assert self.env.envRunner.getPassword() == password
+        conn = self.env.getConnection()
+        assert conn.ping() == True
+        self.env.stop()
+        assert self.env.isUp() == False
+        self.env = Env(useSlaves=True, env='oss-cluster', password=password, logDir=self.test_dir, redisBinaryPath=REDIS_BINARY)
+        assert isinstance(self.env.envRunner, ClusterEnv)
+        assert self.env.envRunner.password == password
+        conn = self.env.getConnection()
+        assert conn.ping() == True
+        self.env.stop()
+        assert self.env.isUp() == False
