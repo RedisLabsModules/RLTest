@@ -59,25 +59,3 @@ jobs:
       - name: Publish to PyPI
         run: |
           poetry publish -u __token__ -p ${{ secrets.PYPI_TOKEN }} --build
-
-      - name: Commit and push version bump ${{ steps.get_version.outputs.VERSION }}
-        if: ${{ !github.event.release.prerelease }}
-        run: |
-          git config --global user.name "${{ github.triggering_actor }}"
-          git config --global user.email "${{ github.event.sender.id }}+${{ github.event.sender.login }}@users.noreply.github.com"
-          git checkout -b bump-version-${{ steps.get_version.outputs.VERSION }}
-          git add pyproject.toml
-          git commit -m "Bump version to ${{ steps.get_version.outputs.VERSION }}"
-          git push origin bump-version-${{ steps.get_version.outputs.VERSION }}
-
-      - name: Create Pull Request
-        if: ${{ !github.event.release.prerelease }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh pr create \
-            --title    "Bump version to ${{ steps.get_version.outputs.VERSION }}" \
-            --body     "This PR was automatically created by the release workflow of ${{ github.event.release.tag_name }}." \
-            --head     "bump-version-${{ steps.get_version.outputs.VERSION }}" \
-            --base     "${{ github.event.release.target_commitish }}" \
-            --reviewer "${{ github.actor }}"
