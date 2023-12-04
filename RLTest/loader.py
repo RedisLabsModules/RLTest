@@ -132,10 +132,12 @@ class TestLoader(object):
                     self.tests.append(TestClass(filename, symbol, module_name, methnames))
                 elif inspect.isfunction(obj):
                     self.tests.append(TestFunction(filename, symbol, module_name))
-        except FileNotFoundError:
-            print(Colors.Red("File %s not found: skipping" % filename))
-        except Exception as x:
-            print(Colors.Red("Problems in file %s: %s" % (filename, x)))
+        except OSError as e:
+            print(Colors.Red("Can't access file %s." % filename))
+            raise e
+        except Exception as e:
+            print(Colors.Red("Problems in file %s: %s" % (filename, e)))
+            raise e
 
     def scan_dir(self, testdir):
         for filename in os.listdir(testdir):
