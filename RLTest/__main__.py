@@ -837,7 +837,7 @@ class RLTest:
                 print('\t\t' + failure)
 
     def disable_progress_bar(self):
-        return self.args.no_output_catch or self.args.no_progress
+        return self.args.no_output_catch or self.args.no_progress or not sys.stdout.isatty()
     
     def progressbar(self, num_elements):
         bar = None
