@@ -397,7 +397,9 @@ class TestTimeLimit(object):
             return
         self.condition.acquire()
         self.is_done = True
+        self.condition.notify(1)
         self.condition.release()
+        
 
 class RLTest:
     def __init__(self):
