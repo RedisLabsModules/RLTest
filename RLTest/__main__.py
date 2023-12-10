@@ -20,6 +20,10 @@ from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
 from RLTest._version import __version__
+from contextlib import redirect_stdout
+from progressbar import progressbar, ProgressBar
+import threading
+import signal
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -210,6 +214,10 @@ parser.add_argument(
     help='Number shards in bdb')
 
 parser.add_argument(
+    '--test-timeout', default=0, type=int,
+    help='Test timeout, 0 means no timeout.')
+
+parser.add_argument(
     '--download-enterprise-binaries', action='store_const', const=True, default=False,
     help='run env with slaves enabled')
 
@@ -272,7 +280,11 @@ parser.add_argument('--debugger', help='Run specified command line as the debugg
 
 parser.add_argument(
     '-s', '--no-output-catch', action='store_const', const=True, default=False,
-    help='all output will be written to the stdout, no log files.')
+    help='all output will be written to the stdout, no log files. Implies --no-progress.')
+
+parser.add_argument(
+    '--no-progress', action='store_const', const=True, default=False,
+    help='Do not show progress bar.')
 
 parser.add_argument(
     '--verbose-information-on-failure', action='store_const', const=True, default=False,
@@ -336,6 +348,56 @@ class EnvScopeGuard:
     def __exit__(self, type, value, traceback):
         self.runner.takeEnvDown()
 
+class TestTimeLimit(object):
+    """
+    A test timeout watcher. The watcher opens thread that sleep for the
+    required timeout and then wake up and send SIGUSR1 signal to the main thread
+    causing it to enter a timeout phase. When enter a timeout phase, the main thread
+    prints its trace and enter a deep sleep. The watcher thread continue collecting
+    environment stats and when done kills the processes.
+    """
+
+    def __init__(self, timeout, timeout_func):
+        self.timeout = timeout
+        self.timeout_func = timeout_func
+        self.condition = threading.Condition()
+        self.thread = None
+        self.is_done = False
+        self.trace_printed = False
+
+    def on_timeout(self, signum, frame):
+        for line in traceback.format_stack():
+            print(line.strip())
+        self.trace_printed = True
+        time.sleep(1000) # sleep forever process will be killed soon
+
+    def watcher_thread(self):
+        self.condition.acquire()
+        self.condition.wait(timeout=self.timeout)
+        if not self.is_done:
+            print(Colors.Bred('Test Timeout, printing trace.'))
+            os.kill(os.getpid(), signal.SIGUSR1)
+            while not self.trace_printed:
+                time.sleep(0.1)
+            try:
+                self.timeout_func()
+            except Exception as e:
+                print(Colors.Bred("Failed on timeout function, %s" % str(e)))
+            os._exit(1)
+
+    def __enter__(self):
+        if self.timeout == 0:
+            return
+        signal.signal(signal.SIGUSR1, self.on_timeout)
+        self.thread = threading.Thread(target=self.watcher_thread)
+        self.thread.start()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.timeout == 0:
+            return
+        self.condition.acquire()
+        self.is_done = True
+        self.condition.release()
 
 class RLTest:
     def __init__(self):
@@ -468,7 +530,7 @@ class RLTest:
             raise Exception('Cannot use unix sockets with slaves')
 
         self.tests = []
-        self.testsFailed = []
+        self.testsFailed = {}
         self.currEnv = None
         self.loader = TestLoader()
         if self.args.test is not None:
@@ -502,6 +564,11 @@ class RLTest:
 
     def _convertArgsType(self):
         pass
+
+    def stopEnvWithSegFault(self):
+        if not self.currEnv:
+            return
+        self.currEnv.stopEnvWithSegFault()
 
     def takeEnvDown(self, fullShutDown=False):
         if not self.currEnv:
@@ -558,15 +625,12 @@ class RLTest:
             failures = [failures]
         if not failures:
             failures = []
-        self.testsFailed.append([name, failures])
+        self.testsFailed.setdefault(name, []).extend(failures)
 
     def getTotalFailureCount(self):
-        ret = 0
-        for _, failures in self.testsFailed:
-            ret += len(failures)
-        return ret
+        return len(self.testsFailed)
 
-    def handleFailure(self, testFullName=None, exception=None, prefix='', testname=None, env=None):
+    def handleFailure(self, testFullName=None, exception=None, prefix='', testname=None, env=None, error_msg=None):
         """
         Failure omni-function.
 
@@ -596,6 +660,8 @@ class RLTest:
             self.addFailuresFromEnv(testname, env)
         elif exception:
             self.addFailure(testname, str(exception))
+        elif error_msg:
+            self.addFailure(testname, str(error_msg))
         else:
             self.addFailure(testname, '<No exception or environment>')
 
@@ -699,6 +765,87 @@ class RLTest:
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
+    
+    def killEnvWithSegFault(self):
+        if self.currEnv and Defaults.print_verbose_information_on_failure:
+            try:
+                verboseInfo = {}
+                # It is not safe to get the information before dispose, Redis might be stack and will not reply.
+                # It will cause us to hand here forever. We will only get the information after dispose, this should be
+                # enough as we kill Redis with segfualt which means that it should provide use with all the required details.
+                self.stopEnvWithSegFault()
+                verboseInfo['after_dispose'] = self.currEnv.getInformationAfterDispose()
+                self.currEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
+            except Exception as e:
+                print('Failed %s' % str(e))
+        else:
+            self.stopEnvWithSegFault()
+    
+    def run_single_test(self, test, on_timeout_func):
+        done = 0
+        with self.envScopeGuard():
+            if test.is_class:
+                test.initialize()
+
+                Defaults.curr_test_name = test.name
+                try:
+                    obj = test.create_instance()
+
+                except unittest.SkipTest:
+                    self.printSkip(test.name)
+                    return
+
+                except Exception as e:
+                    self.printException(e)
+                    self.addFailure(test.name + " [__init__]")
+                    return
+
+                failures = 0
+                before = getattr(obj, 'setUp', None)
+                after = getattr(obj, 'tearDown', None)
+                for subtest in test.get_functions(obj):
+                    with TestTimeLimit(self.args.test_timeout, on_timeout_func):
+                        failures += self._runTest(subtest, prefix='\t',
+                                                numberOfAssertionFailed=failures,
+                                                before=before, after=after)
+                    done += 1
+
+            else:
+                with TestTimeLimit(self.args.test_timeout, on_timeout_func):
+                    failures = self._runTest(test)
+                done += 1
+
+            verboseInfo = {}
+            if failures > 0 and Defaults.print_verbose_information_on_failure:
+                lastEnv = self.currEnv
+                verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
+
+        # here the env is down so lets collect more info and print it
+        if failures > 0 and Defaults.print_verbose_information_on_failure:
+            verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
+            lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
+        return done
+    
+    def print_failures(self):
+        for group, failures in self.testsFailed.items():
+            print('\t' + Colors.Bold(group))
+            if not failures:
+                print('\t\t' + Colors.Bred('Exception raised during test execution. See logs'))
+            for failure in failures:
+                print('\t\t' + failure)
+
+    def disable_progress_bar(self):
+        return self.args.no_output_catch or self.args.no_progress
+    
+    def progressbar(self, num_elements):
+        bar = None
+        if not self.disable_progress_bar():
+            bar = ProgressBar(max_value=num_elements, redirect_stdout=True)
+        for i in range(num_elements):
+            if bar:
+                bar.update(i)
+            yield i
+        bar.update(num_elements)
 
     def execute(self):
         Env.RTestInstance = self
@@ -722,10 +869,36 @@ class RLTest:
             sys.exit(1)
 
         jobs = Queue()
+        n_jobs = 0
         for test in self.loader:
             jobs.put(test, block=False)
+            n_jobs += 1
 
-        def run_jobs(jobs, results, port):
+        def run_jobs_main_thread(jobs):
+            nonlocal done
+            bar = self.progressbar(n_jobs)
+            for _ in bar:
+                try:
+                    test = jobs.get(timeout=0.1)
+                except Exception as e:
+                    break
+
+                def on_timeout():
+                    nonlocal done
+                    try:
+                        done += 1
+                        self.killEnvWithSegFault()
+                        self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Test timeout'))
+                        self.print_failures()
+                    finally:
+                        # we must update the bar anyway to see output
+                        bar.__next__()
+
+                done += self.run_single_test(test, on_timeout)
+
+            self.takeEnvDown(fullShutDown=True)
+
+        def run_jobs(jobs, results, summary, port):
             Defaults.port = port
             done = 0
             while True:
@@ -734,78 +907,81 @@ class RLTest:
                 except Exception as e:
                     break
 
-                with self.envScopeGuard():
-                    if test.is_class:
-                        test.initialize()
-
-                        Defaults.curr_test_name = test.name
-                        try:
-                            obj = test.create_instance()
-
-                        except unittest.SkipTest:
-                            self.printSkip(test.name)
-                            continue
-
-                        except Exception as e:
-                            self.printException(e)
-                            self.addFailure(test.name + " [__init__]")
-                            continue
-
-                        failures = 0
-                        before = getattr(obj, 'setUp', None)
-                        after = getattr(obj, 'tearDown', None)
-                        for subtest in test.get_functions(obj):
-                            failures += self._runTest(subtest, prefix='\t',
-                                                    numberOfAssertionFailed=failures,
-                                                    before=before, after=after)
+                
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    def on_timeout():
+                        nonlocal done
+                        try:    
                             done += 1
+                            self.killEnvWithSegFault()
+                            self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Test timeout'))
+                        except Exception as e:
+                            self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
+                        finally:
+                            results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
+                            summary.put({'done': done, 'failures': self.testsFailed}, block=False)
+                            # After we return the processes will be killed, so we must make sure the queues are drained properly.
+                            results.close()
+                            summary.close()
+                            summary.join_thread()
+                            results.join_thread()
+                    done += self.run_single_test(test, on_timeout)
 
-                    else:
-                        failures = self._runTest(test)
-                        done += 1
-
-                    verboseInfo = {}
-                    if failures > 0 and Defaults.print_verbose_information_on_failure:
-                        lastEnv = self.currEnv
-                        verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
-
-                # here the env is down so lets collect more info and print it
-                if failures > 0 and Defaults.print_verbose_information_on_failure:
-                    verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
-                    lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
+                results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
 
             self.takeEnvDown(fullShutDown=True)
 
             # serialized the results back
-            results.put({'done': done, 'failures': self.testsFailed}, block=False)
+            summary.put({'done': done, 'failures': self.testsFailed}, block=False)
 
         results = Queue()
+        summary = Queue()
         if self.parallelism == 1:
-            run_jobs(jobs, results, Defaults.port)
+            run_jobs_main_thread(jobs)
         else :
             processes = []
             currPort = Defaults.port
             for i in range(self.parallelism):
-                p = Process(target=run_jobs, args=(jobs,results,currPort))
+                p = Process(target=run_jobs, args=(jobs,results,summary,currPort))
                 currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
+            for _ in self.progressbar(n_jobs):
+            # for _ in range(n_jobs):
+                while True:
+                    # check if we have some lives executors
+                    has_live_processor = False
+                    for p in processes:
+                        if p.is_alive():
+                            has_live_processor = True
+                            break
+                    try:
+                        res = results.get(timeout=1)
+                        break
+                    except Exception as e:
+                        if not has_live_processor:
+                            raise Exception('Failed to get job result and no more processors is alive')
+                _ = res['test_name']
+                output = res['output']
+                print('%s' % output, end="")
 
             for p in processes:
                 p.join()
 
-        # join results
-        while True:
-            try:
-                res = results.get(timeout=0.1)
-            except Exception as e:
-                break
-            done += res['done']
-            self.testsFailed.extend(res['failures'])
+            # join results
+            while True:
+                try:
+                    res = summary.get(timeout=1)
+                except Exception as e:
+                    break
+                done += res['done']
+                for test_name, failures in res['failures'].items():
+                    self.testsFailed[test_name] = failures
 
         endTime = time.time()
 
-        print(Colors.Bold('Test Took: %d sec' % (endTime - startTime)))
+        print(Colors.Bold('\nTest Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount())))
         if self.testsFailed:
             if self.args.failed_tests_file:
@@ -814,12 +990,7 @@ class RLTest:
                         file.write(test.split(' ')[0] + "\n")
 
             print(Colors.Bold('Failed Tests Summary:'))
-            for group, failures in self.testsFailed:
-                print('\t' + Colors.Bold(group))
-                if not failures:
-                    print('\t\t' + Colors.Bred('Exception raised during test execution. See logs'))
-                for failure in failures:
-                    print('\t\t' + failure)
+            self.print_failures()
             sys.exit(1)
         else:
             if self.args.failed_tests_file:
