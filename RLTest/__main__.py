@@ -847,7 +847,8 @@ class RLTest:
             if bar:
                 bar.update(i)
             yield i
-        bar.update(num_elements)
+        if bar:
+            bar.update(num_elements)
 
     def execute(self):
         Env.RTestInstance = self
