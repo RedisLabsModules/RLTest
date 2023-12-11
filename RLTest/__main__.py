@@ -795,12 +795,12 @@ class RLTest:
 
                 except unittest.SkipTest:
                     self.printSkip(test.name)
-                    return
+                    return 0
 
                 except Exception as e:
                     self.printException(e)
                     self.addFailure(test.name + " [__init__]")
-                    return
+                    return 0
 
                 failures = 0
                 before = getattr(obj, 'setUp', None)
