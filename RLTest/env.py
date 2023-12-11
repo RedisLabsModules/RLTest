@@ -372,6 +372,9 @@ class Env:
     def stop(self, masters = True, slaves = True):
         self.envRunner.stopEnv(masters, slaves)
 
+    def stopEnvWithSegFault(self, masters = True, slaves = True):
+        self.envRunner.stopEnvWithSegFault(masters, slaves)        
+
     def getEnvStr(self):
         return self.env
 

@@ -30,6 +30,7 @@ redis = "^5.0.0rc2"
 psutil = "^5.9.5"
 pytest-cov = "^4.1.0"
 pytest = "^7.4"
+progressbar2 = "4.2"
 
 [tool.poetry.urls]
 repository = "https://github.com/RedisLabsModules/RLTest"

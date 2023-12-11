@@ -7,7 +7,7 @@ import time
 import uuid
 import platform
 import psutil
-
+import signal
 import redis
 
 from .random_port import get_random_port
@@ -310,20 +310,13 @@ class StandardEnv(object):
         if self.useSlaves:
             instances.append((SLAVE, self.getSlaveConnection(), self.slaveProcess))
         for role, conn, proc in instances:
-            logs = None
             info = None
-            try:
-                with open(os.path.join(self.dbDirPath, self._getFileName(role, '.log'))) as f:
-                    logs = f.read()
-            except os.FileNoteFoundError:
-                pass
             try:
                 info = conn.execute_command('info', 'everything')
             except redis.exceptions.RedisError:
                 pass
             res[role] = {
-                'info': info,
-                'logs': logs,
+                'info': info
             }
         return res
 
@@ -335,6 +328,7 @@ class StandardEnv(object):
         for role, stdout, stderr in instances:
             stdoutStr = None
             stderrStr = None
+            logs = None
             try:
                 stdoutStr = stdout.read().decode('utf8')
             except (NameError, AttributeError):
@@ -345,9 +339,16 @@ class StandardEnv(object):
             except (NameError, AttributeError):
                 pass
 
+            try:
+                with open(os.path.join(self.dbDirPath, self._getFileName(role, '.log'))) as f:
+                    logs = f.read()
+            except os.FileNoteFoundError:
+                pass
+
             res[role] = {
                 'stdout': stdoutStr,
                 'stderr': stderrStr,
+                'logs': logs,
             }
         return res
 
@@ -408,6 +409,31 @@ class StandardEnv(object):
         if process.poll() is None:
             return True
         return False
+
+    def _segfault(self, role, retries=3):
+        process = self.masterProcess if role == MASTER else self.slaveProcess
+        if not self._isAlive(process):
+            return
+        for _ in range(retries):
+            if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                time.sleep(1)
+                process.send_signal(signal.SIGSEGV)
+            else:
+                return
+        print(Colors.Bred('Failed killing processes with sigsegv, forcely kill the processes.'))
+        for _ in range(retries):
+            if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                time.sleep(1)
+                process.kill()
+            else:
+                return
+        print(Colors.Bred('Failed killing processes with sigkill.'))
+    
+    def stopEnvWithSegFault(self, masters = True, slaves = True):
+        if self.masterProcess is not None and masters is True:
+            self._segfault(MASTER)
+        if self.useSlaves and self.slaveProcess is not None and slaves is True:
+            self._segfault(SLAVE)
 
     def _stopProcess(self, role):
         process = self.masterProcess if role == MASTER else self.slaveProcess
@@ -489,7 +515,6 @@ class StandardEnv(object):
             self.slaveProcess = None
         self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
         self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
-
 
     def _getConnection(self, role):
         if self.useUnix:

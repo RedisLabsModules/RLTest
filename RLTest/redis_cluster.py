@@ -114,6 +114,10 @@ class ClusterEnv(object):
         self.envIsUp = True
         self.envIsHealthy = True
 
+    def stopEnvWithSegFault(self, masters=True, slaves=True):
+        for shard in self.shards:
+            shard.stopEnvWithSegFault(masters, slaves)
+
     def stopEnv(self, masters=True, slaves=True):
         self.envIsUp = False
         self.envIsHealthy = False
