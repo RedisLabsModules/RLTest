@@ -629,7 +629,7 @@ class RLTest:
             failures = []
         self.testsFailed.setdefault(name, []).extend(failures)
 
-    def getTotalFailureCount(self):
+    def getFailedTestsCount(self):
         return len(self.testsFailed)
 
     def handleFailure(self, testFullName=None, exception=None, prefix='', testname=None, env=None, error_msg=None):
@@ -843,12 +843,12 @@ class RLTest:
         bar = None
         if not self.disable_progress_bar():
             bar = ProgressBar(max_value=num_elements, redirect_stdout=True)
-        for i in range(num_elements):
-            if bar:
+            for i in range(num_elements):
                 bar.update(i)
-            yield i
-        if bar:
+                yield i
             bar.update(num_elements)
+        else:
+            yield from range(num_elements)
 
     def execute(self):
         Env.RTestInstance = self
@@ -951,7 +951,6 @@ class RLTest:
                 processes.append(p)
                 p.start()
             for _ in self.progressbar(n_jobs):
-            # for _ in range(n_jobs):
                 while True:
                     # check if we have some lives executors
                     has_live_processor = False
@@ -965,7 +964,6 @@ class RLTest:
                     except Exception as e:
                         if not has_live_processor:
                             raise Exception('Failed to get job result and no more processors is alive')
-                _ = res['test_name']
                 output = res['output']
                 print('%s' % output, end="")
 
@@ -979,13 +977,12 @@ class RLTest:
                 except Exception as e:
                     break
                 done += res['done']
-                for test_name, failures in res['failures'].items():
-                    self.testsFailed[test_name] = failures
+                self.testsFailed.update(res['failures'])
 
         endTime = time.time()
 
         print(Colors.Bold('\nTest Took: %d sec' % (endTime - startTime)))
-        print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getTotalFailureCount(), done - self.getTotalFailureCount())))
+        print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getFailedTestsCount(), done - self.getFailedTestsCount())))
         if self.testsFailed:
             if self.args.failed_tests_file:
                 with open(self.args.failed_tests_file, 'w') as file:
