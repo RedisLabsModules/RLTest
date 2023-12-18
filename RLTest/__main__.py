@@ -489,6 +489,10 @@ class RLTest:
                     print(Colors.Bred('Using `--module` multiple time implies that you specify the `--module-args` in the the same number'))
                     sys.exit(1)
 
+        if self.args.no_output_catch and self.args.parallelism > 1:
+            print(Colors.Bred('No output catch can not be combine with parallel test execution.'))
+            sys.exit(1)
+
         Defaults.module = fix_modules(self.args.module)
         Defaults.module_args = fix_modulesArgs(Defaults.module, self.args.module_args)
         Defaults.env = self.args.env
