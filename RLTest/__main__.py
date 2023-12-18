@@ -490,7 +490,7 @@ class RLTest:
                     sys.exit(1)
 
         if self.args.no_output_catch and self.args.parallelism > 1:
-            print(Colors.Bred('No output catch can not be combine with parallel test execution.'))
+            print(Colors.Bred('--no-output-catch can not be combine with --parallelism.'))
             sys.exit(1)
 
         Defaults.module = fix_modules(self.args.module)
