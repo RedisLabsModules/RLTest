@@ -394,7 +394,9 @@ class Env:
             test_fname = self.testName.replace(':', '_')
             output_files_format = '%s-' + '%s-oss-cluster' % test_fname
             kwargs = self.getEnvKwargs()
-            return self.envRunner.addShardToCluser(self.redisBinaryPath, output_files_format, **kwargs)
+            return self.envRunner.addShardToCluster(self.redisBinaryPath, output_files_format, **kwargs)
+        else:
+            raise Exception("env is not an oss-cluster")
 
     def getSlaveConnection(self):
         return self.envRunner.getSlaveConnection()

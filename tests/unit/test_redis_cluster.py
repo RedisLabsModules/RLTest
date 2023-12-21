@@ -147,7 +147,7 @@ class TestClusterEnv(TestCase):
         cluster_env = ClusterEnv(shardsCount=shardsCount, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
                                  randomizePorts=Defaults.randomize_ports, **default_args)
         cluster_env.startEnv()
-        cluster_env.addShardToCluser(REDIS_BINARY, '%s-test', **default_args)
+        cluster_env.addShardToCluster(REDIS_BINARY, '%s-test', **default_args)
         assert cluster_env.shardsCount == shardsCount+1
         new_shard_conn = cluster_env.getConnection(shardId=4)
         assert new_shard_conn.ping()
