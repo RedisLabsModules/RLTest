@@ -176,7 +176,7 @@ class ClusterEnv(object):
         target_node = clusterConn._determine_nodes(command, key) # we will always which will give us the node responsible for the key
         return clusterConn.get_redis_connection(target_node[0])
 
-    def addShardToCluser(self, redisBinaryPath, output_files_format, **kwargs):
+    def addShardToCluster(self, redisBinaryPath, output_files_format, **kwargs):
         kwargs.pop('port')
         port = self.shards[-1].port + 2  # use a fresh port
         self.shardsCount += 1
