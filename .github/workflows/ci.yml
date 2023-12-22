@@ -89,7 +89,7 @@ jobs:
         TLS_KEY=$TLS/redis.key \
         TLS_CACERT=$TLS/ca.crt \
         REDIS_BINARY=`command -v redis-server` \
-        poetry run pytest --ignore=tests/flow --ignore=test_example.py -v
+        poetry run pytest --ignore=tests/flow --ignore=test_example.py -v -s
 
     - name: Flow Test OSS Single Module
       working-directory: tests/flow
