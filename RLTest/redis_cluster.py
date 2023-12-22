@@ -182,14 +182,12 @@ class ClusterEnv(object):
         self.shardsCount += 1
         new_shard = StandardEnv(redisBinaryPath, port, outputFilesFormat=output_files_format,
                                 serverId=self.shardsCount, clusterEnabled=True, **kwargs)
-        print("new env created")
         try:
             new_shard.startEnv()
         except Exception:
             new_shard.stopEnv()
             raise
         self.shards.append(new_shard)
-        print("new redis instance created")
         # Notify other shards that the new shard is available and wait for the topology change to be acknowledged.
         conn = new_shard.getConnection()
         for s in self.shards:

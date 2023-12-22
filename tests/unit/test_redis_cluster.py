@@ -152,3 +152,4 @@ class TestClusterEnv(TestCase):
         new_shard_conn = cluster_env.getConnection(shardId=4)
         assert new_shard_conn.ping()
         assert new_shard_conn.cluster('info')['cluster_state'] == 'ok'
+        cluster_env.stopEnv()
