@@ -389,6 +389,15 @@ class Env:
         else:
             return self.getConnection()
 
+    def addShardToClusterIfExists(self):
+        if isinstance(self.envRunner, ClusterEnv):
+            test_fname = self.testName.replace(':', '_')
+            output_files_format = '%s-' + '%s-oss-cluster' % test_fname
+            kwargs = self.getEnvKwargs()
+            return self.envRunner.addShardToCluster(self.redisBinaryPath, output_files_format, **kwargs)
+        else:
+            raise Exception("env is not an oss-cluster")
+
     def getSlaveConnection(self):
         return self.envRunner.getSlaveConnection()
 
