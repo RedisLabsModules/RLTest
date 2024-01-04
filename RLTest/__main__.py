@@ -720,7 +720,7 @@ class RLTest:
         except Exception as err:
             if self.args.exit_on_failure:
                 self.takeEnvDown(fullShutDown=True)
-                after = lambda x=None: None
+                after_func = lambda: None
                 raise
 
             self.handleFailure(testFullName=testFullName, exception=err, prefix=msgPrefix,
