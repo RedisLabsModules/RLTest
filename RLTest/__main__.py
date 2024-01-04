@@ -12,7 +12,7 @@ import unittest
 import time
 import shlex
 import json
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, set_start_method
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
 from RLTest.utils import Colors, fix_modules, fix_modulesArgs
@@ -1000,9 +1000,10 @@ class RLTest:
 
 
 def main():
-    # Aviod "UnicodeEncodeError: 'ascii' codec can't encode character" errors
+    # Avoid "UnicodeEncodeError: 'ascii' codec can't encode character" errors
     sys.stdout = io.open(sys.stdout.fileno(), 'w', encoding='utf8')
     sys.stderr = io.open(sys.stderr.fileno(), 'w', encoding='utf8')
+    set_start_method('fork')
     RLTest().execute()
 
 
