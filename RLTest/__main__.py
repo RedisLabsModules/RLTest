@@ -399,7 +399,7 @@ class TestTimeLimit(object):
         self.is_done = True
         self.condition.notify(1)
         self.condition.release()
-
+        
 
 class RLTest:
     def __init__(self):
@@ -671,7 +671,7 @@ class RLTest:
         else:
             self.addFailure(testname, '<No exception or environment>')
 
-    def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=lambda x=None: None, after=lambda x=None: None):
+    def _runTest(self, test, numberOfAssertionFailed=0, prefix='', before=None, after=None):
         test.initialize()
 
         msgPrefix = test.name
@@ -696,8 +696,8 @@ class RLTest:
                 return 0
 
             fn = lambda: test.target(env)
-            before_func = lambda: before(env)
-            after_func = lambda: after(env)
+            before_func = (lambda: before(env)) if before is not None else None
+            after_func = (lambda: after(env)) if after is not None else None
         else:
             fn = test.target
             before_func = before
@@ -705,7 +705,8 @@ class RLTest:
 
         hasException = False
         try:
-            before_func()
+            if before_func:
+                before_func()
             fn()
             passed = True
         except unittest.SkipTest:
@@ -720,7 +721,7 @@ class RLTest:
         except Exception as err:
             if self.args.exit_on_failure:
                 self.takeEnvDown(fullShutDown=True)
-                after = lambda x=None: None
+                after = None
                 raise
 
             self.handleFailure(testFullName=testFullName, exception=err, prefix=msgPrefix,
@@ -728,7 +729,8 @@ class RLTest:
             hasException = True
             passed = False
         finally:
-            after_func()
+            if after_func:
+                after_func()
 
         numFailed = 0
         if self.currEnv:
@@ -769,7 +771,7 @@ class RLTest:
 
     def envScopeGuard(self):
         return EnvScopeGuard(self)
-
+    
     def killEnvWithSegFault(self):
         if self.currEnv and Defaults.print_verbose_information_on_failure:
             try:
@@ -784,7 +786,7 @@ class RLTest:
                 print('Failed %s' % str(e))
         else:
             self.stopEnvWithSegFault()
-
+    
     def run_single_test(self, test, on_timeout_func):
         done = 0
         with self.envScopeGuard():
@@ -829,7 +831,7 @@ class RLTest:
             verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
             lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
         return done
-
+    
     def print_failures(self):
         for group, failures in self.testsFailed.items():
             print('\t' + Colors.Bold(group))
@@ -840,7 +842,7 @@ class RLTest:
 
     def disable_progress_bar(self):
         return self.args.no_output_catch or self.args.no_progress or not sys.stdout.isatty()
-
+    
     def progressbar(self, num_elements):
         bar = None
         if not self.disable_progress_bar():
@@ -912,11 +914,12 @@ class RLTest:
                 except Exception as e:
                     break
 
+                
                 output = io.StringIO()
                 with redirect_stdout(output):
                     def on_timeout():
                         nonlocal done
-                        try:
+                        try:    
                             done += 1
                             self.killEnvWithSegFault()
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Test timeout'))
