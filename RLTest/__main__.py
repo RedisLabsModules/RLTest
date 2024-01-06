@@ -1004,6 +1004,7 @@ def main():
     sys.stdout = io.open(sys.stdout.fileno(), 'w', encoding='utf8')
     sys.stderr = io.open(sys.stderr.fileno(), 'w', encoding='utf8')
     set_start_method('fork')
+    os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES' # For MacOS, to enable fork in multiprocessing
     RLTest().execute()
 
 
