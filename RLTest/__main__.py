@@ -1005,7 +1005,6 @@ def main():
     sys.stderr = io.open(sys.stderr.fileno(), 'w', encoding='utf8')
     # Set multiprocessing start method to fork, we have unserializable objects in the env
     set_start_method('fork')
-    os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES' # For MacOS, to enable fork in multiprocessing
     RLTest().execute()
 
 
