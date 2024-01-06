@@ -805,8 +805,8 @@ class RLTest:
                     return 0
 
                 failures = 0
-                before = getattr(obj, 'setUp', lambda: None)
-                after = getattr(obj, 'tearDown', lambda: None)
+                before = getattr(obj, 'setUp', lambda x=None: None)
+                after = getattr(obj, 'tearDown', lambda x=None: None)
                 for subtest in test.get_functions(obj):
                     with TestTimeLimit(self.args.test_timeout, on_timeout_func):
                         failures += self._runTest(subtest, prefix='\t',
