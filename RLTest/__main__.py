@@ -359,6 +359,7 @@ class TestTimeLimit(object):
 
     def __init__(self, timeout, timeout_func):
         self.timeout = timeout
+        self.timeout_time = time.time() + self.timeout
         self.timeout_func = timeout_func
         self.condition = threading.Condition()
         self.thread = None
@@ -373,7 +374,8 @@ class TestTimeLimit(object):
 
     def watcher_thread(self):
         self.condition.acquire()
-        self.condition.wait(timeout=self.timeout)
+        while not self.is_done and self.timeout_time > time.time():
+            self.condition.wait(timeout=0.1)
         if not self.is_done:
             print(Colors.Bred('Test Timeout, printing trace.'))
             os.kill(os.getpid(), signal.SIGUSR1)
@@ -385,12 +387,16 @@ class TestTimeLimit(object):
                 print(Colors.Bred("Failed on timeout function, %s" % str(e)))
             os._exit(1)
 
+    def reset(self):
+        self.timeout_time = time.time() + self.timeout
+
     def __enter__(self):
         if self.timeout == 0:
-            return
+            return self
         signal.signal(signal.SIGUSR1, self.on_timeout)
         self.thread = threading.Thread(target=self.watcher_thread)
         self.thread.start()
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self.timeout == 0:
@@ -787,42 +793,42 @@ class RLTest:
 
     def run_single_test(self, test, on_timeout_func):
         done = 0
-        with self.envScopeGuard():
-            if test.is_class:
-                test.initialize()
+        with TestTimeLimit(self.args.test_timeout, on_timeout_func) as timeout_handler:
+            with self.envScopeGuard():
+                if test.is_class:
+                    test.initialize()
 
-                Defaults.curr_test_name = test.name
-                try:
-                    obj = test.create_instance()
+                    Defaults.curr_test_name = test.name
+                    try:
+                        obj = test.create_instance()
 
-                except unittest.SkipTest:
-                    self.printSkip(test.name)
-                    return 0
+                    except unittest.SkipTest:
+                        self.printSkip(test.name)
+                        return 0
 
-                except Exception as e:
-                    self.printException(e)
-                    self.addFailure(test.name + " [__init__]")
-                    return 0
+                    except Exception as e:
+                        self.printException(e)
+                        self.addFailure(test.name + " [__init__]")
+                        return 0
 
-                failures = 0
-                before = getattr(obj, 'setUp', lambda x=None: None)
-                after = getattr(obj, 'tearDown', lambda x=None: None)
-                for subtest in test.get_functions(obj):
-                    with TestTimeLimit(self.args.test_timeout, on_timeout_func):
+                    failures = 0
+                    before = getattr(obj, 'setUp', lambda x=None: None)
+                    after = getattr(obj, 'tearDown', lambda x=None: None)
+                    for subtest in test.get_functions(obj):
+                        timeout_handler.reset()
                         failures += self._runTest(subtest, prefix='\t',
                                                 numberOfAssertionFailed=failures,
                                                 before=before, after=after)
+                        done += 1
+
+                else:
+                    failures = self._runTest(test)
                     done += 1
 
-            else:
-                with TestTimeLimit(self.args.test_timeout, on_timeout_func):
-                    failures = self._runTest(test)
-                done += 1
-
-            verboseInfo = {}
-            if failures > 0 and Defaults.print_verbose_information_on_failure:
-                lastEnv = self.currEnv
-                verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
+                verboseInfo = {}
+                if failures > 0 and Defaults.print_verbose_information_on_failure:
+                    lastEnv = self.currEnv
+                    verboseInfo['before_dispose'] = lastEnv.getInformationBeforeDispose()
 
         # here the env is down so lets collect more info and print it
         if failures > 0 and Defaults.print_verbose_information_on_failure:
