@@ -36,35 +36,35 @@ def expandBinary(binaryPath):
 class Colors(object):
     @staticmethod
     def Cyan(data):
-        return '\033[36m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
     @staticmethod
     def Yellow(data):
-        return '\033[33m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
     @staticmethod
     def Bold(data):
-        return '\033[1m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
     @staticmethod
     def Red(data):
-        return '\033[31m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
     @staticmethod
     def Bred(data):
-        return '\033[31;1m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
     @staticmethod
     def Gray(data):
-        return '\033[90;1m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
     @staticmethod
     def Blue(data):
-        return '\033[34m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
     @staticmethod
     def Green(data):
-        return '\033[32m' + data + '\033[0m'
+        return '\033[30m' + data + '\033[0m'
 
 def fix_modules(modules, defaultModules=None):
     # modules is one of the following:
