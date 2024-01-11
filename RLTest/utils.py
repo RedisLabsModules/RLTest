@@ -59,10 +59,6 @@ class Colors(object):
         return '\033[30;1m' + data + '\033[0m'
 
     @staticmethod
-    def Lgray(data):
-        return '\033[30;47m' + data + '\033[0m'
-
-    @staticmethod
     def Blue(data):
         return '\033[34m' + data + '\033[0m'
 
