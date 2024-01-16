@@ -205,8 +205,6 @@ class StandardEnv(object):
                                 args += arg.split(' ')
                         cmdArgs += args
 
-        if self.dbDirPath is not None:
-            cmdArgs += ['--dir', self.dbDirPath]
         if self.noLog:
             cmdArgs += ['--logfile', '/dev/null']
         elif self.outputFilesFormat is not None and not self.noCatch:
@@ -374,7 +372,8 @@ class StandardEnv(object):
         if self.verbose:
             print(Colors.Green("Redis master command: " + ' '.join(self.masterCmdArgs)))
         if masters and self.masterProcess is None:
-            self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, env=self.masterOSEnv, **options)
+            self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, env=self.masterOSEnv, cwd=self.dbDirPath,
+                                                  **options)
             time.sleep(0.1)
             if self._isAlive(self.masterProcess):
                 con = self.getConnection()
