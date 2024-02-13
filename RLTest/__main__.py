@@ -195,7 +195,7 @@ parser.add_argument(
 
 parser.add_argument(
     '--clear-logs', action='store_const', const=True, default=False,
-    help='deleting the log direcotry before the execution')
+    help='deleting the log directory before the execution')
 
 parser.add_argument(
     '--log-dir', default='./logs',
