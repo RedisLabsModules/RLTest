@@ -18,13 +18,6 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
         run: echo "VERSION=${TAG#v}" >> $GITHUB_OUTPUT
 
-      - name: Set the version for publishing
-        uses: ciiiii/toml-editor@1.0.0
-        with:
-          file: "pyproject.toml"
-          key: "tool.poetry.version"
-          value: "${{ steps.get_version.outputs.VERSION }}"
-
       - name: Set up Python 3.9
         uses: actions/setup-python@v3
         with:
@@ -54,6 +47,7 @@ jobs:
           poetry config virtualenvs.create false
           poetry export --dev --without-hashes -o requirements.txt
           pip install -r requirements.txt
+          poetry version ${{ steps.get_version.outputs.VERSION }}
           poetry install
 
       - name: Publish to PyPI
