@@ -383,7 +383,8 @@ class StandardEnv(object):
         if self.useSlaves and slaves and self.slaveProcess is None:
             if self.verbose:
                 print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
-            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, **options)
+            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, cwd=self.dbDirPath,
+                                                 **options)
             time.sleep(0.1)
             if self._isAlive(self.slaveProcess):
                 con = self.getSlaveConnection()
@@ -427,7 +428,7 @@ class StandardEnv(object):
             else:
                 return
         print(Colors.Bred('Failed killing processes with sigkill.'))
-    
+
     def stopEnvWithSegFault(self, masters = True, slaves = True):
         if self.masterProcess is not None and masters is True:
             self._segfault(MASTER)
