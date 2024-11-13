@@ -248,7 +248,7 @@ class Env:
 
         self.protocol = protocol if protocol is not None else Defaults.protocol
 
-        self.redisConfigFile = redisConfigFile if redisConfigFile != None else Defaults.redis_config_file
+        self.redisConfigFile = redisConfigFile if redisConfigFile is not None else Defaults.redis_config_file
 
         self.assertionFailedSummary = []
 
