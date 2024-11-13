@@ -151,6 +151,7 @@ class Defaults:
     terminate_retries = None
     terminate_retry_secs = None
     protocol = 2
+    redis_config_file = None
 
     def getKwargs(self):
         kwargs = {
@@ -174,6 +175,7 @@ class Defaults:
             'password': self.oss_password,
             'terminateRetries': self.terminate_retries,
             'terminateRetrySecs': self.terminate_retry_secs,
+            'redisConfigFile': self.redis_config_file,
         }
         return kwargs
 
@@ -198,7 +200,7 @@ class Env:
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
                  freshEnv=False, enableDebugCommand=None, enableModuleCommand=None, enableProtectedConfigs=None, protocol=None,
-                 terminateRetries=None, terminateRetrySecs=None):
+                 terminateRetries=None, terminateRetrySecs=None, redisConfigFile=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -245,6 +247,8 @@ class Env:
         self.terminateRetrySecs = terminateRetrySecs
 
         self.protocol = protocol if protocol is not None else Defaults.protocol
+
+        self.redisConfigFile = redisConfigFile if redisConfigFile != None else Defaults.redis_config_file
 
         self.assertionFailedSummary = []
 
@@ -362,6 +366,7 @@ class Env:
             'protocol': self.protocol,
             'terminateRetries': self.terminateRetries,
             'terminateRetrySecs': self.terminateRetrySecs,
+            'redisConfigFile': self.redisConfigFile,
         }
         return kwargs
 
