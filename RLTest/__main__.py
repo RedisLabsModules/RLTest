@@ -541,7 +541,7 @@ class RLTest:
         Defaults.enable_debug_command = True if self.args.allow_unsafe else self.args.enable_debug_command
         Defaults.enable_protected_configs = True if self.args.allow_unsafe else self.args.enable_protected_configs
         Defaults.enable_module_command = True if self.args.allow_unsafe else self.args.enable_module_command
-        Defaults.redis_config_file = self.args.redis_config_file if self.args.redis_config_file else None
+        Defaults.redis_config_file = self.args.redis_config_file
 
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
