@@ -130,10 +130,12 @@ class Defaults:
     debug_print = False
     debug_pause = False
     no_capture_output = False
+    print_verbose_information_on_failure = False
     no_log = False
     exit_on_failure = False
     verbose = 0
     logdir = None
+    loglevel = None
     use_slaves = False
     num_shards = 1
     external_addr = 'localhost:6379'
@@ -142,10 +144,13 @@ class Defaults:
     oss_password = None
     cluster_node_timeout = None
     curr_test_name = None
-    port=6379
-    enable_debug_command=False
-    terminate_retries=None
-    terminate_retry_secs=None
+    port = 6379
+    enable_debug_command = False
+    enable_protected_configs = False
+    enable_module_command = False
+    terminate_retries = None
+    terminate_retry_secs = None
+    protocol = 2
 
     def getKwargs(self):
         kwargs = {
@@ -176,7 +181,8 @@ class Defaults:
 class Env:
     RTestInstance = None
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
-                        'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'protocol']
+                        'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'enableProtectedConfigs',
+                        'enableModuleCommand', 'protocol', 'password']
 
     def compareEnvs(self, env):
         if env is None:
@@ -187,11 +193,12 @@ class Env:
         return True
 
     def __init__(self, testName=None, testDescription=None, module=None,
-                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None,
+                 moduleArgs=None, env=None, useSlaves=None, shardsCount=None, decodeResponses=None, password=None,
                  useAof=None, useRdbPreamble=None, forceTcp=False, useTLS=False, tlsCertFile=None, tlsKeyFile=None,
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
-                 freshEnv=False, enableDebugCommand=None, protocol=2, terminateRetries=None, terminateRetrySecs=None):
+                 freshEnv=False, enableDebugCommand=None, enableModuleCommand=None, enableProtectedConfigs=None, protocol=None,
+                 terminateRetries=None, terminateRetrySecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -215,6 +222,7 @@ class Env:
         self.verbose = Defaults.verbose
         self.logDir = logDir if logDir else Defaults.logdir
         self.forceTcp = forceTcp
+        self.password = password
         self.debugger = Defaults.debugger
         self.sanitizer = Defaults.sanitizer
         self.useTLS = useTLS if useTLS else Defaults.use_TLS
@@ -228,11 +236,15 @@ class Env:
         self.redisEnterpriseBinaryPath = expandBinary(redisEnterpriseBinaryPath) if redisEnterpriseBinaryPath else Defaults.re_binary
         self.clusterNodeTimeout = clusterNodeTimeout if clusterNodeTimeout else Defaults.cluster_node_timeout
         self.port = Defaults.port
-        self.enableDebugCommand = enableDebugCommand if enableDebugCommand else Defaults.enable_debug_command
+        self.enableDebugCommand = enableDebugCommand if enableDebugCommand is not None else Defaults.enable_debug_command
+        self.enableProtectedConfigs = enableProtectedConfigs if enableProtectedConfigs is not None\
+            else Defaults.enable_protected_configs
+        self.enableModuleCommand = enableModuleCommand if enableModuleCommand is not None else Defaults.enable_module_command
+
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
 
-        self.protocol = protocol
+        self.protocol = protocol if protocol is not None else Defaults.protocol
 
         self.assertionFailedSummary = []
 
@@ -259,6 +271,16 @@ class Env:
         if Defaults.debug_pause:
             input('\tenv is up, attach to any process with gdb and press any button to continue.')
 
+    def getInformationBeforeDispose(self):
+        return {
+            "env": self.env,
+            "test": self.testName,
+            "env_info": self.envRunner.getInformationBeforeDispose()
+        }
+
+    def getInformationAfterDispose(self):
+        return self.envRunner.getInformationAfterDispose()
+
     def getEnvByName(self):
         verbose = False
         kwargs = self.getEnvKwargs()
@@ -268,7 +290,7 @@ class Env:
 
         if self.env == 'oss':
             kwargs.update(single_args)
-            kwargs['password'] = Defaults.oss_password
+            kwargs['password'] = Defaults.oss_password if self.password is None else self.password
             return StandardEnv(redisBinaryPath=self.redisBinaryPath,
                                outputFilesFormat='%s-' + '%s-oss' % test_fname,
                                **kwargs)
@@ -286,7 +308,7 @@ class Env:
                                         dmcBinaryPath=Defaults.proxy_binary,
                                         **kwargs)
         if self.env == 'oss-cluster':
-            kwargs['password'] = Defaults.oss_password
+            kwargs['password'] = Defaults.oss_password if self.password is None else self.password
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=self.redisBinaryPath,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
                               randomizePorts=Defaults.randomize_ports,
@@ -321,6 +343,7 @@ class Env:
             'useAof': self.useAof,
             'useRdbPreamble': self.useRdbPreamble,
             'dbDirPath': self.logDir,
+            'loglevel': Defaults.loglevel,
             'debugger': Defaults.debugger,
             'sanitizer': Defaults.sanitizer,
             'noCatch': Defaults.no_capture_output,
@@ -334,6 +357,8 @@ class Env:
             'tlsPassphrase': self.tlsPassphrase,
             'port': self.port,
             'enableDebugCommand': self.enableDebugCommand,
+            'enableProtectedConfigs': self.enableProtectedConfigs,
+            'enableModuleCommand': self.enableModuleCommand,
             'protocol': self.protocol,
             'terminateRetries': self.terminateRetries,
             'terminateRetrySecs': self.terminateRetrySecs,
@@ -346,6 +371,9 @@ class Env:
 
     def stop(self, masters = True, slaves = True):
         self.envRunner.stopEnv(masters, slaves)
+
+    def stopEnvWithSegFault(self, masters = True, slaves = True):
+        self.envRunner.stopEnvWithSegFault(masters, slaves)        
 
     def getEnvStr(self):
         return self.env
@@ -360,6 +388,15 @@ class Env:
             return self.envRunner.getClusterConnection()
         else:
             return self.getConnection()
+
+    def addShardToClusterIfExists(self):
+        if isinstance(self.envRunner, ClusterEnv):
+            test_fname = self.testName.replace(':', '_')
+            output_files_format = '%s-' + '%s-oss-cluster' % test_fname
+            kwargs = self.getEnvKwargs()
+            return self.envRunner.addShardToCluster(self.redisBinaryPath, output_files_format, **kwargs)
+        else:
+            raise Exception("env is not an oss-cluster")
 
     def getSlaveConnection(self):
         return self.envRunner.getSlaveConnection()

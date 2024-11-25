@@ -139,3 +139,17 @@ class TestClusterEnv(TestCase):
             con = cluster_env.getConnectionByKey(key, "set")
             assert(con.set(key, "1"))
         cluster_env.stopEnv()
+
+    def test_add_shard_to_cluster(self):
+        shardsCount = 3
+        default_args = Defaults().getKwargs()
+        default_args['dbDirPath'] = self.test_dir
+        cluster_env = ClusterEnv(shardsCount=shardsCount, redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                                 randomizePorts=Defaults.randomize_ports, **default_args)
+        cluster_env.startEnv()
+        cluster_env.addShardToCluster(REDIS_BINARY, '%s-test', **default_args)
+        assert cluster_env.shardsCount == shardsCount+1
+        new_shard_conn = cluster_env.getConnection(shardId=4)
+        assert new_shard_conn.ping()
+        assert new_shard_conn.cluster('info')['cluster_state'] == 'ok'
+        cluster_env.stopEnv()

@@ -7,7 +7,7 @@ import time
 import uuid
 import platform
 import psutil
-
+import signal
 import redis
 
 from .random_port import get_random_port
@@ -22,7 +22,7 @@ class StandardEnv(object):
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
-                 terminateRetries=None, terminateRetrySecs=None):
+                 terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -42,12 +42,17 @@ class StandardEnv(object):
         self.sanitizer = sanitizer
         self.noCatch = noCatch
         self.noLog = noLog
+        self.loglevel = loglevel
         self.environ = os.environ.copy()
         self.useUnix = unix
         self.dbDirPath = dbDirPath
         self.masterProcess = None
+        self.masterStdout = None
+        self.masterStderr = None
         self.masterExitCode = None
         self.slaveProcess = None
+        self.slaveStdout = None
+        self.slaveStderr = None
         self.slaveExitCode = None
         self.verbose = verbose
         self.role = MASTER
@@ -58,6 +63,8 @@ class StandardEnv(object):
         self.clusterNodeTimeout = clusterNodeTimeout
         self.tlsPassphrase = tlsPassphrase
         self.enableDebugCommand = enableDebugCommand
+        self.enableModuleCommand = enableModuleCommand
+        self.enableProtectedConfigs = enableProtectedConfigs
         self.protocol = protocol
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
@@ -72,13 +79,13 @@ class StandardEnv(object):
             self.port = -1
             self.slavePort = -1
 
+        if self.has_interactive_debugger and serverId > 1:
+            assert self.noCatch and not self.useSlaves and not self.clusterEnabled
+
         if self.useUnix:
             if self.clusterEnabled:
                 raise ValueError('Unix sockets cannot be used with cluster mode')
             self.port = -1
-
-        if self.has_interactive_debugger and serverId > 1:
-            assert self.noCatch and not self.useSlaves and not self.clusterEnabled
 
         if self.useTLS:
             if self.useUnix:
@@ -198,12 +205,12 @@ class StandardEnv(object):
                                 args += arg.split(' ')
                         cmdArgs += args
 
-        if self.dbDirPath is not None:
-            cmdArgs += ['--dir', self.dbDirPath]
         if self.noLog:
             cmdArgs += ['--logfile', '/dev/null']
         elif self.outputFilesFormat is not None and not self.noCatch:
             cmdArgs += ['--logfile', self._getFileName(role, '.log')]
+        if self.loglevel is not None:
+            cmdArgs += ['--loglevel', self.loglevel]
         if self.outputFilesFormat is not None:
             cmdArgs += ['--dbfilename', self._getFileName(role, '.rdb')]
         if role == SLAVE:
@@ -232,10 +239,13 @@ class StandardEnv(object):
 
             cmdArgs += ['--tls-replication', 'yes']
 
-        if self.enableDebugCommand:
-            if self._getRedisVersion() > 70000:
+        if self._getRedisVersion() > 70000:
+            if self.enableDebugCommand:
                 cmdArgs += ['--enable-debug-command', 'yes']
-
+            if self.enableProtectedConfigs:
+                cmdArgs += ['--enable-protected-configs', 'yes']
+            if self.enableModuleCommand:
+                cmdArgs += ['--enable-module-command', 'yes']
         return cmdArgs
 
     def createCmdOSEnv(self, role):
@@ -292,11 +302,59 @@ class StandardEnv(object):
             print(Colors.Yellow(prefix + 'slave:'))
             self._printEnvData(prefix + '\t', SLAVE)
 
+    def getInformationBeforeDispose(self):
+        res = {}
+        instances = [(MASTER, self.getConnection(), self.masterProcess)]
+        if self.useSlaves:
+            instances.append((SLAVE, self.getSlaveConnection(), self.slaveProcess))
+        for role, conn, proc in instances:
+            info = None
+            try:
+                info = conn.execute_command('info', 'everything')
+            except redis.exceptions.RedisError:
+                pass
+            res[role] = {
+                'info': info
+            }
+        return res
+
+    def getInformationAfterDispose(self):
+        res = {}
+        instances = [(MASTER, self.masterStdout, self.masterStderr)]
+        if self.useSlaves:
+            instances.append((SLAVE, self.slaveStdout, self.slaveStderr))
+        for role, stdout, stderr in instances:
+            stdoutStr = None
+            stderrStr = None
+            logs = None
+            try:
+                stdoutStr = stdout.read().decode('utf8')
+            except (NameError, AttributeError):
+                pass
+
+            try:
+                stderrStr = stderr.read().decode('utf8')
+            except (NameError, AttributeError):
+                pass
+
+            try:
+                with open(os.path.join(self.dbDirPath, self._getFileName(role, '.log'))) as f:
+                    logs = f.read()
+            except os.FileNoteFoundError:
+                pass
+
+            res[role] = {
+                'stdout': stdoutStr,
+                'stderr': stderrStr,
+                'logs': logs,
+            }
+        return res
+
     def startEnv(self, masters = True, slaves = True):
         if self.envIsUp and self.envIsHealthy:
             return  # env is already up
         stdoutPipe = subprocess.PIPE
-        stderrPipe = subprocess.STDOUT
+        stderrPipe = subprocess.PIPE
         stdinPipe = subprocess.PIPE
         if self.noCatch:
             stdoutPipe = sys.stdout
@@ -314,7 +372,8 @@ class StandardEnv(object):
         if self.verbose:
             print(Colors.Green("Redis master command: " + ' '.join(self.masterCmdArgs)))
         if masters and self.masterProcess is None:
-            self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, env=self.masterOSEnv, **options)
+            self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, env=self.masterOSEnv, cwd=self.dbDirPath,
+                                                  **options)
             time.sleep(0.1)
             if self._isAlive(self.masterProcess):
                 con = self.getConnection()
@@ -324,7 +383,8 @@ class StandardEnv(object):
         if self.useSlaves and slaves and self.slaveProcess is None:
             if self.verbose:
                 print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
-            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, **options)
+            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, cwd=self.dbDirPath,
+                                                 **options)
             time.sleep(0.1)
             if self._isAlive(self.slaveProcess):
                 con = self.getSlaveConnection()
@@ -335,6 +395,13 @@ class StandardEnv(object):
         self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
         self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
 
+        # self.masterStdout = self.masterProcess.stdout if self.masterProcess else None
+        # self.masterStderr = self.masterProcess.stderr if self.masterProcess else None
+
+        # if self.slaveProcess is not None:
+        #     self.slaveStdout = self.slaveProcess.stdout if self.slaveProcess else None
+        #     self.slaveStderr = self.slaveProcess.stderr if self.slaveProcess else None
+
     def _isAlive(self, process):
         if not process:
             return False
@@ -342,6 +409,31 @@ class StandardEnv(object):
         if process.poll() is None:
             return True
         return False
+
+    def _segfault(self, role, retries=3):
+        process = self.masterProcess if role == MASTER else self.slaveProcess
+        if not self._isAlive(process):
+            return
+        for _ in range(retries):
+            if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                time.sleep(1)
+                process.send_signal(signal.SIGSEGV)
+            else:
+                return
+        print(Colors.Bred('Failed killing processes with sigsegv, forcely kill the processes.'))
+        for _ in range(retries):
+            if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                time.sleep(1)
+                process.kill()
+            else:
+                return
+        print(Colors.Bred('Failed killing processes with sigkill.'))
+
+    def stopEnvWithSegFault(self, masters = True, slaves = True):
+        if self.masterProcess is not None and masters is True:
+            self._segfault(MASTER)
+        if self.useSlaves and self.slaveProcess is not None and slaves is True:
+            self._segfault(SLAVE)
 
     def _stopProcess(self, role):
         process = self.masterProcess if role == MASTER else self.slaveProcess
@@ -423,7 +515,6 @@ class StandardEnv(object):
             self.slaveProcess = None
         self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
         self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
-
 
     def _getConnection(self, role):
         if self.useUnix:

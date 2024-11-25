@@ -44,6 +44,12 @@ class ClusterEnv(object):
             print(Colors.Yellow(prefix + 'shard: %d' % (i + 1)))
             shard.printEnvData(prefix + '\t')
 
+    def getInformationBeforeDispose(self):
+        return [shard.getInformationBeforeDispose() for shard in self.shards]
+
+    def getInformationAfterDispose(self):
+        return [shard.getInformationAfterDispose() for shard in self.shards]  
+
     def waitCluster(self, timeout_sec=40):
         st = time.time()
         ok = 0
@@ -108,6 +114,10 @@ class ClusterEnv(object):
         self.envIsUp = True
         self.envIsHealthy = True
 
+    def stopEnvWithSegFault(self, masters=True, slaves=True):
+        for shard in self.shards:
+            shard.stopEnvWithSegFault(masters, slaves)
+
     def stopEnv(self, masters=True, slaves=True):
         self.envIsUp = False
         self.envIsHealthy = False
@@ -165,6 +175,24 @@ class ClusterEnv(object):
         clusterConn = self.getClusterConnection()
         target_node = clusterConn._determine_nodes(command, key) # we will always which will give us the node responsible for the key
         return clusterConn.get_redis_connection(target_node[0])
+
+    def addShardToCluster(self, redisBinaryPath, output_files_format, **kwargs):
+        kwargs.pop('port')
+        port = self.shards[-1].port + 2  # use a fresh port
+        self.shardsCount += 1
+        new_shard = StandardEnv(redisBinaryPath, port, outputFilesFormat=output_files_format,
+                                serverId=self.shardsCount, clusterEnabled=True, **kwargs)
+        try:
+            new_shard.startEnv()
+        except Exception:
+            new_shard.stopEnv()
+            raise
+        self.shards.append(new_shard)
+        # Notify other shards that the new shard is available and wait for the topology change to be acknowledged.
+        conn = new_shard.getConnection()
+        for s in self.shards:
+            conn.execute_command('CLUSTER', 'MEET', '127.0.0.1', s.getMasterPort())
+        self.waitCluster()
 
     def flush(self):
         self.getClusterConnection().flushall()

@@ -1,7 +1,7 @@
 from __future__ import print_function
 import os
 import sys
-import imp
+import importlib.util
 import inspect
 from RLTest.utils import Colors
 
@@ -17,8 +17,10 @@ class TestFunction(object):
         self.name = '{}:{}'.format(self.modulename, symbol)
 
     def initialize(self):
-        module_file = open(self.filename)
-        module = imp.load_module(self.modulename, module_file, self.filename, ('.py', 'r', imp.PY_SOURCE))
+        module_spec = importlib.util.spec_from_file_location(self.modulename, self.filename)
+        module = importlib.util.module_from_spec(module_spec)
+        sys.modules[self.modulename] = module
+        module_spec.loader.exec_module(module)
         obj = getattr(module, self.symbol)
         self.target = obj
 
@@ -50,8 +52,10 @@ class TestClass(object):
         self.name = '{}:{}'.format(self.modulename, symbol)
 
     def initialize(self):
-        module_file = open(self.filename)
-        module = imp.load_module(self.modulename, module_file, self.filename, ('.py', 'r', imp.PY_SOURCE))
+        module_spec = importlib.util.spec_from_file_location(self.modulename, self.filename)
+        module = importlib.util.module_from_spec(module_spec)
+        sys.modules[self.modulename] = module
+        module_spec.loader.exec_module(module)
         obj = getattr(module, self.symbol)
         self.clsname = obj.__name__
         self.cls = obj
@@ -113,25 +117,27 @@ class TestLoader(object):
     def load_files(self, module_dir, module_name, toplevel_filter=None, subfilter=None):
         filename = '%s/%s.py' % (module_dir, module_name)
         try:
-            with open(filename, 'r') as module_file:
-                try:
-                    module = imp.load_module(module_name, module_file, filename,
-                                             ('.py', 'r', imp.PY_SOURCE))
-                    for symbol in dir(module):
-                        if not self.filter_modulevar(symbol, toplevel_filter):
-                            continue
+            module_spec = importlib.util.spec_from_file_location(module_name, filename)
+            module = importlib.util.module_from_spec(module_spec)
+            sys.modules[module_name] = module
+            module_spec.loader.exec_module(module)
+            for symbol in dir(module):
+                if not self.filter_modulevar(symbol, toplevel_filter):
+                    continue
 
-                        obj = getattr(module, symbol)
-                        if inspect.isclass(obj):
-                            methnames = [mname for mname in dir(obj)
-                                         if self.filter_method(mname, subfilter)]
-                            self.tests.append(TestClass(filename, symbol, module_name, methnames))
-                        elif inspect.isfunction(obj):
-                            self.tests.append(TestFunction(filename, symbol, module_name))
-                except Exception as x:
-                    print(Colors.Red("Problems in file %s: %s" % (filename, x)))
-        except:
-            print(Colors.Red("File %s not found: skipping" % filename))
+                obj = getattr(module, symbol)
+                if inspect.isclass(obj):
+                    methnames = [mname for mname in dir(obj)
+                                    if self.filter_method(mname, subfilter)]
+                    self.tests.append(TestClass(filename, symbol, module_name, methnames))
+                elif inspect.isfunction(obj):
+                    self.tests.append(TestFunction(filename, symbol, module_name))
+        except OSError as e:
+            print(Colors.Red("Can't access file %s." % filename))
+            raise e
+        except Exception as e:
+            print(Colors.Red("Problems in file %s: %s" % (filename, e)))
+            raise e
 
     def scan_dir(self, testdir):
         for filename in os.listdir(testdir):
@@ -158,12 +164,11 @@ class TestLoader(object):
         return iter(self.tests)
 
     def print_tests(self):
+        tests = []
         for t in self.tests:
-            print("Test: ", t.name)
             if t.is_class:
-                print("\tClass")
-                print("\tFunctions")
                 for m in t.functions:
-                    print("\t\t", m)
+                    tests.append(f"{t.name}.{m}")
             else:
-                print("\tFunction")
+                tests.append(t.name)
+        print(*sorted(tests), sep='\n')
