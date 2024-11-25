@@ -472,32 +472,32 @@ class Env:
     def assertFalse(self, val, depth=0, message=None):
         self.assertEqual(bool(val), False, depth + 1, message=message)
 
-    def assertContains(self, value, holder, depth=0):
-        self._assertion('%s should contain %s' % (repr(holder), repr(value)), value in holder, depth)
+    def assertContains(self, value, holder, depth=0, message=None):
+        self._assertion('%s should contain %s' % (repr(holder), repr(value)), value in holder, depth, message=message)
 
-    def assertNotContains(self, value, holder, depth=0):
-        self._assertion('%s should not contain %s' % (repr(holder), repr(value)), value not in holder, depth)
+    def assertNotContains(self, value, holder, depth=0, message=None):
+        self._assertion('%s should not contain %s' % (repr(holder), repr(value)), value not in holder, depth, message=message)
 
-    def assertGreaterEqual(self, value1, value2, depth=0):
-        self._assertion('%s >= %s' % (repr(value1), repr(value2)), value1 >= value2, depth)
+    def assertGreaterEqual(self, value1, value2, depth=0, message=None):
+        self._assertion('%s >= %s' % (repr(value1), repr(value2)), value1 >= value2, depth, message=message)
 
-    def assertGreater(self, value1, value2, depth=0):
-        self._assertion('%s > %s' % (repr(value1), repr(value2)), value1 > value2, depth)
+    def assertGreater(self, value1, value2, depth=0, message=None):
+        self._assertion('%s > %s' % (repr(value1), repr(value2)), value1 > value2, depth, message=message)
 
-    def assertLessEqual(self, value1, value2, depth=0):
-        self._assertion('%s <= %s' % (repr(value1), repr(value2)), value1 <= value2, depth)
+    def assertLessEqual(self, value1, value2, depth=0, message=None):
+        self._assertion('%s <= %s' % (repr(value1), repr(value2)), value1 <= value2, depth, message=message)
 
-    def assertLess(self, value1, value2, depth=0):
-        self._assertion('%s < %s' % (repr(value1), repr(value2)), value1 < value2, depth)
+    def assertLess(self, value1, value2, depth=0, message=None):
+        self._assertion('%s < %s' % (repr(value1), repr(value2)), value1 < value2, depth, message=message)
 
-    def assertIsNotNone(self, value, depth=0):
-        self._assertion('%s is not None' % (repr(value)), value is not None, depth)
+    def assertIsNotNone(self, value, depth=0, message=None):
+        self._assertion('%s is not None' % (repr(value)), value is not None, depth, message=message)
 
-    def assertIsNone(self, value, depth=0):
-        self._assertion('%s is None' % (repr(value)), value is None, depth)
+    def assertIsNone(self, value, depth=0, message=None):
+        self._assertion('%s is None' % (repr(value)), value is None, depth, message=message)
 
-    def assertIsInstance(self, value, instance, depth=0):
-        self._assertion('%s instance of %s' % (repr(value), repr(instance)), isinstance(value, instance), depth)
+    def assertIsInstance(self, value, instance, depth=0, message=None):
+        self._assertion('%s instance of %s' % (repr(value), repr(instance)), isinstance(value, instance), depth, message=message)
 
     def assertAlmostEqual(self, value1, value2, delta, depth=0, message=None):
         self._assertion('%s almost equels %s (delta %s)' % (repr(value1), repr(value2), repr(delta)), abs(value1 - value2) <= delta, depth, message)
