@@ -89,6 +89,14 @@ class TestStandardEnv(TestCase):
         cmd_args = std_env.createCmdArgs(role)
         assert [REDIS_BINARY, '--port', '6379', '--logfile', std_env._getFileName(role, '.log'), '--dbfilename',
                 std_env._getFileName(role, '.rdb')] == cmd_args
+    
+    def test_create_cmd_args_config_file(self):
+        std_env = StandardEnv(redisBinaryPath=REDIS_BINARY, outputFilesFormat='%s-test',
+                              redisConfigFile='redis.conf')
+        role = 'master'
+        cmd_args = std_env.createCmdArgs(role)
+        assert [REDIS_BINARY, 'redis.conf','--port', '6379', '--logfile', std_env._getFileName(role, '.log'), '--dbfilename',
+                std_env._getFileName(role, '.rdb')] == cmd_args
 
     def test_create_cmd_args_tls(self):
         port = 8000

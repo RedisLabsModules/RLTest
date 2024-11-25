@@ -162,7 +162,11 @@ parser.add_argument(
 
 parser.add_argument(
     '--enterprise-redis-path', default=os.path.join(binaryrepo.REPO_ROOT, 'opt/redislabs/bin/redis-server'),
-    help='path to the entrprise redis binary')
+    help='path to the enterprise redis binary')
+
+parser.add_argument(
+    '--redis-config-file', default=None,
+    help='path to the redis configuration file')
 
 parser.add_argument(
     '--stop-on-failure', action='store_const', const=True, default=False,
@@ -537,9 +541,13 @@ class RLTest:
         Defaults.enable_debug_command = True if self.args.allow_unsafe else self.args.enable_debug_command
         Defaults.enable_protected_configs = True if self.args.allow_unsafe else self.args.enable_protected_configs
         Defaults.enable_module_command = True if self.args.allow_unsafe else self.args.enable_module_command
+        Defaults.redis_config_file = self.args.redis_config_file
 
         if Defaults.use_unix and Defaults.use_slaves:
             raise Exception('Cannot use unix sockets with slaves')
+
+        if Defaults.env == 'enterprise-cluster' and Defaults.redis_config_file is not None:
+            raise Exception('Redis configuration file is not supported with enterprise-cluster env')
 
         self.tests = []
         self.testsFailed = {}

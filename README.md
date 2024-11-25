@@ -93,8 +93,10 @@ optional arguments:
   --oss-redis-path OSS_REDIS_PATH
                         path to the oss redis binary (default: redis-server)
   --enterprise-redis-path ENTERPRISE_REDIS_PATH
-                        path to the entrprise redis binary (default:
+                        path to the enterprise redis binary (default:
                         ~/.RLTest/opt/redislabs/bin/redis-server)
+  --redis-config-file REDIS_CONFIG_FILE
+                        path to the redis configuration file (default: None)
   --stop-on-failure     stop running on failure (default: False)
   -x, --exit-on-failure
                         Stop test execution and exit on first assertion

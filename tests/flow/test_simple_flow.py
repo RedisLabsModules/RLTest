@@ -1,4 +1,5 @@
 import redis
+import os
 
 from RLTest import Env
 
@@ -60,3 +61,27 @@ def test_resp3(env):
     env = Env(protocol=3)
     res = env.cmd('client', 'list')
     env.assertTrue("resp=3" in res.decode('ascii'))
+
+def test_redisConfigFile():
+    # create redis.conf file in /tmp
+    redisConfigFile = '/tmp/redis.conf'
+    if os.path.isfile(redisConfigFile):
+        os.unlink(redisConfigFile)
+    with open(redisConfigFile, 'w') as f:
+        f.write('loglevel verbose\n')
+    
+    # create env with the config file
+    env = Env(redisConfigFile=redisConfigFile)
+    res = env.cmd('config', 'get', 'loglevel')
+    env.assertEqual(res[1].decode('ascii'), 'verbose')
+    env.stop()
+    
+    # update config file and create new env
+    if os.path.isfile(redisConfigFile):
+        os.unlink(redisConfigFile)
+    with open(redisConfigFile, 'w') as f:
+        f.write('loglevel debug\n')
+    env = Env(redisConfigFile=redisConfigFile)
+    env.start()
+    res = env.cmd('config', 'get', 'loglevel')
+    env.assertEqual(res[1].decode('ascii'), 'debug')

@@ -22,7 +22,9 @@ class StandardEnv(object):
                  dbDirPath=None, useSlaves=False, serverId=1, password=None, libPath=None, clusterEnabled=False, decodeResponses=False,
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
-                 terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None):
+                 terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None,
+                 redisConfigFile=None
+                 ):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
             '~/') else redisBinaryPath
@@ -68,6 +70,7 @@ class StandardEnv(object):
         self.protocol = protocol
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
+        self.redisConfigFile = redisConfigFile
 
         if port > 0:
             self.port = port
@@ -178,6 +181,9 @@ class StandardEnv(object):
             cmdArgs += self.debugger.generate_command(self._getValgrindFilePath(role) if not self.noCatch else None)
 
         cmdArgs += [self.redisBinaryPath]
+
+        if self.redisConfigFile:
+            cmdArgs += [self.redisConfigFile]
 
         if self.port > -1:
             if self.useTLS:
