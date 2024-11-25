@@ -32,6 +32,6 @@ jobs:
           poetry version ${{ steps.get_version.outputs.VERSION }}
           poetry install
 
-      # - name: Publish to PyPI
-      #   run: |
-      #     poetry publish -u __token__ -p ${{ secrets.PYPI_TOKEN }} --build
+      - name: Publish to PyPI
+        run: |
+          poetry publish -u __token__ -p ${{ secrets.PYPI_TOKEN }} --build
