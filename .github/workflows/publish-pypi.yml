@@ -20,7 +20,8 @@ jobs:
         run: echo "VERSION=${TAG#v}" >> $GITHUB_OUTPUT
 
       - name: Install Poetry
-        run: pip install poetry
+        run: pipx install poetry
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
