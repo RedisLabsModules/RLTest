@@ -346,7 +346,7 @@ class StandardEnv(object):
             try:
                 with open(os.path.join(self.dbDirPath, self._getFileName(role, '.log'))) as f:
                     logs = f.read()
-            except os.FileNotFoundError:
+            except FileNotFoundError:
                 pass
 
             res[role] = {
