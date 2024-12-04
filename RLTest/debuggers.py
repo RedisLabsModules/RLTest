@@ -25,7 +25,7 @@ class Valgrind(object):
         if self.suppressions:
             cmd += ['--suppressions=' + self.suppressions]
         if logfile:
-            cmd += ['--log-file=' + logfile]
+            cmd += ['--log-file=' + os.path.abspath(logfile)]
         return cmd
 
 
