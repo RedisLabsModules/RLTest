@@ -23,7 +23,7 @@ class Valgrind(object):
             if '--errors-for-leak-kinds=definite' not in self.options:
                     cmd += ['--errors-for-leak-kinds=definite']
         if self.suppressions:
-            cmd += ['--suppressions=' + self.suppressions]
+            cmd += ['--suppressions=' + os.path.abspath(self.suppressions)]
         if logfile:
             cmd += ['--log-file=' + os.path.abspath(logfile)]
         return cmd
