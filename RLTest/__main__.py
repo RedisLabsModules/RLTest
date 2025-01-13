@@ -605,10 +605,10 @@ class RLTest:
                                    env=self.currEnv)
 
         if needShutdown:
+            flush_ok = True
             if self.currEnv.isUp():
                 try:
                     self.currEnv.flush()
-                    flush_ok = True
                 except:
                     flush_ok = False
             self.currEnv.stop()
