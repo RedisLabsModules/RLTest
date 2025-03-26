@@ -163,7 +163,7 @@ optional arguments:
   --unix                Use Unix domain sockets instead of TCP (default:
                         False)
   --randomize-ports     Randomize Redis listening port assignment rather
-                        thanusing default port (default: False)
+                        than using default port (default: False)
   --collect-only        Collect the tests and exit (default: False)
   --tls                 Enable TLS Support and disable the non-TLS port
                         completely. TLS connections will be available at the
@@ -174,6 +174,10 @@ optional arguments:
                         /path/to/redis.key (default: None)
   --tls-ca-cert-file TLS_CA_CERT_FILE
                         /path/to/ca.crt (default: None)
+
+  --dualTLS             Initialize both TLS and non-TLS ports for all shards.
+                        The non-TLS ports will be the TLS ports + 1500.
+                        Only effective when TLS is active (see `useTLS`).
 
 ```
 
