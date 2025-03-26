@@ -68,10 +68,6 @@ class ClusterEnv(object):
             if ok == len(self.shards):
                 for shard in self.shards:
                     try:
-                        shard.getConnection().execute_command('FT.CLUSTERREFRESH')
-                    except Exception:
-                        pass
-                    try:
                         shard.getConnection().execute_command('SEARCH.CLUSTERREFRESH')
                     except Exception:
                         pass

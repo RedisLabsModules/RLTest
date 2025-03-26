@@ -23,7 +23,7 @@ class StandardEnv(object):
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
                  terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None,
-                 redisConfigFile=None
+                 redisConfigFile=None, dualTLS=False
                  ):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
@@ -71,6 +71,7 @@ class StandardEnv(object):
         self.terminateRetries = terminateRetries
         self.terminateRetrySecs = terminateRetrySecs
         self.redisConfigFile = redisConfigFile
+        self.dualTLS = dualTLS
 
         if port > 0:
             self.port = port
@@ -187,7 +188,7 @@ class StandardEnv(object):
 
         if self.port > -1:
             if self.useTLS:
-                cmdArgs += ['--port', str(0), '--tls-port', str(self.getPort(role))]
+                cmdArgs += ['--port', str(self.getPort(role) + 1500) if self.dualTLS else str(0), '--tls-port', str(self.getPort(role))]
             else:
                 cmdArgs += ['--port', str(self.getPort(role))]
         else:
