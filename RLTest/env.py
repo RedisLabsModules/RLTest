@@ -256,7 +256,7 @@ class Env:
 
         self.dualTLS = dualTLS if dualTLS else Defaults.dualTLS
 
-        self.tlsCluster = tlsCluster if tlsCluster else Defaults.tlsCluster
+        self.tlsCluster = tlsCluster if not tlsCluster else Defaults.tlsCluster
 
         if not freshEnv and Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
