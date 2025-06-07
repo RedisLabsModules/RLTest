@@ -178,6 +178,10 @@ optional arguments:
   --dualTLS             Initialize both TLS and non-TLS ports for all shards.
                         The non-TLS ports will be the TLS ports + 1500.
                         Only effective when TLS is active (see `useTLS`).
+                        (default: False)
+  --tlsCluster          Enable TLS for cluster communication. Only effective
+                        when TLS is active (see `useTLS`) and when running
+                        in cluster mode. (default: True)
 
 ```
 
