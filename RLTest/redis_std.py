@@ -23,7 +23,7 @@ class StandardEnv(object):
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
                  terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None,
-                 redisConfigFile=None, dualTLS=False
+                 redisConfigFile=None, dualTLS=False, tlsCluster=True
                  ):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
@@ -72,6 +72,7 @@ class StandardEnv(object):
         self.terminateRetrySecs = terminateRetrySecs
         self.redisConfigFile = redisConfigFile
         self.dualTLS = dualTLS
+        self.tlsCluster = tlsCluster
 
         if port > 0:
             self.port = port
@@ -230,7 +231,7 @@ class StandardEnv(object):
             # creating .cluster.conf in /tmp as lock fails on NFS
             cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', '/tmp/' + self._getFileName(role, '.cluster.conf'),
                         '--cluster-node-timeout', '5000' if self.clusterNodeTimeout is None else str(self.clusterNodeTimeout)]
-            if self.useTLS:
+            if self.useTLS and self.tlsCluster:
                 cmdArgs += ['--tls-cluster', 'yes']
         if self.useAof:
             cmdArgs += ['--appendonly', 'yes']
