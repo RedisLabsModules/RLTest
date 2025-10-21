@@ -468,11 +468,13 @@ class StandardEnv(object):
             if self.terminateRetries is None:
                 # ask once, then wait for process to exit
                 process.terminate()
-                while True:
-                    if process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
-                        time.sleep(0.1)
-                    else:
-                        break
+                termination_start_time = time.time()
+                while process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
+                    time.sleep(0.1)
+                    if time.time() - termination_start_time > 30:
+                        # if process is still running after 30 seconds, try reading its output
+                        process_out, process_err = process.communicate()
+                        print(Colors.Bred(f'\t[TERMINATING] out ({process_out}), error ({process_err})'))
             else:
                 # keep asking every few seconds until process has exited, otherwise kill
                 if self.terminateRetrySecs is None:
