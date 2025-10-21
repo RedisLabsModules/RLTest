@@ -6,6 +6,12 @@ import copy
 import redis
 import itertools
 
+
+def is_github_actions():
+    """Check if running in GitHub Actions environment"""
+    return os.getenv('GITHUB_ACTIONS') == 'true'
+
+
 def wait_for_conn(conn, proc, retries=20, command='PING', shouldBe=True):
     """Wait until a given Redis connection is ready"""
     err1 = ''
