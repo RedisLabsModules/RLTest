@@ -15,7 +15,7 @@ import json
 from multiprocessing import Process, Queue, set_start_method
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
-from RLTest.utils import Colors, fix_modules, fix_modulesArgs
+from RLTest.utils import Colors, fix_modules, fix_modulesArgs, is_github_actions
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
@@ -553,6 +553,9 @@ class RLTest:
         self.testsFailed = {}
         self.currEnv = None
         self.loader = TestLoader()
+
+        # For GitHub Actions grouping - track if we have an open group
+        self.github_actions_group_open = False if is_github_actions() else None
         if self.args.test is not None:
             self.loader.load_spec(self.args.test)
         if self.args.tests_file is not None:
@@ -769,6 +772,18 @@ class RLTest:
             numFailed += 1 # exception should be counted as failure
         return numFailed
 
+    def _ensureGitHubActionsGroupOpen(self):
+        """Ensure a GitHub Actions group is open for passing/skipped tests"""
+        if self.github_actions_group_open is False:
+            print('::group::✅ Passing/Skipped Tests')
+            self.github_actions_group_open = True
+
+    def _closeGitHubActionsGroup(self):
+        """Close the current GitHub Actions group if one is open"""
+        if self.github_actions_group_open is True:
+            print('::endgroup::')
+            self.github_actions_group_open = False
+
     def printSkip(self, name):
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[SKIP]')))
 
@@ -812,12 +827,12 @@ class RLTest:
 
                     except unittest.SkipTest:
                         self.printSkip(test.name)
-                        return 0
+                        return 0, True
 
                     except Exception as e:
                         self.printException(e)
                         self.addFailure(test.name + " [__init__]")
-                        return 0
+                        return 0, False
 
                     failures = 0
                     before = getattr(obj, 'setUp', lambda x=None: None)
@@ -842,7 +857,7 @@ class RLTest:
         if failures > 0 and Defaults.print_verbose_information_on_failure:
             verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
             lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
-        return done
+        return done, failures == 0
 
     def print_failures(self):
         for group, failures in self.testsFailed.items():
@@ -913,7 +928,28 @@ class RLTest:
                         # we must update the bar anyway to see output
                         bar.__next__()
 
-                done += self.run_single_test(test, on_timeout)
+                # Capture output if not disabled
+                if self.args.no_output_catch:
+                    # No output capturing - run test directly
+                    count, _ = self.run_single_test(test, on_timeout)
+                    done += count
+                else:
+                    # Capture output and print with proper grouping
+                    output = io.StringIO()
+                    with redirect_stdout(output):
+                        count, passed = self.run_single_test(test, on_timeout)
+                        done += count
+
+                    # Print captured output with proper grouping
+                    captured = output.getvalue()
+                    if captured:
+                        if not passed:
+                            # Close group before printing failure output
+                            self._closeGitHubActionsGroup()
+                        else:
+                            # Ensure group is open for passing test output
+                            self._ensureGitHubActionsGroupOpen()
+                        print(captured, end='')
 
             self.takeEnvDown(fullShutDown=True)
 
@@ -937,16 +973,17 @@ class RLTest:
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
+                            results.put({'test_name': test.name, "output": output.getvalue(), 'result': 'timeout'}, block=False)
                             summary.put({'done': done, 'failures': self.testsFailed}, block=False)
                             # After we return the processes will be killed, so we must make sure the queues are drained properly.
                             results.close()
                             summary.close()
                             summary.join_thread()
                             results.join_thread()
-                    done += self.run_single_test(test, on_timeout)
+                    count, passed = self.run_single_test(test, on_timeout)
+                    done += count
 
-                results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
+                results.put({'test_name': test.name, "output": output.getvalue(), 'passed': passed}, block=False)
 
             self.takeEnvDown(fullShutDown=True)
 
@@ -980,6 +1017,11 @@ class RLTest:
                         if not has_live_processor:
                             raise Exception('Failed to get job result and no more processors is alive')
                 output = res['output']
+                passed = res['passed']
+                if not passed:
+                    self._closeGitHubActionsGroup()
+                else:
+                    self._ensureGitHubActionsGroupOpen()
                 print('%s' % output, end="")
 
             for p in processes:
