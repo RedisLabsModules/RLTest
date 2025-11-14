@@ -1,10 +1,10 @@
-name: Nightly
+name: Biweekly
 
 on:
   schedule:
-  - cron: "0 0 * * *"
+  - cron: "0 0 1,15 * *" # almost biweekly, twice a month
 
 jobs:
-  nightly-build:
+  build:
     uses: ./.github/workflows/ci.yml
     secrets: inherit
