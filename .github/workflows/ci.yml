@@ -5,8 +5,7 @@ on:
    branches:
      - master
  pull_request:
- schedule:
-  - cron: "0 0 * * *"
+ workflow_call:
 
 jobs:
   build:
@@ -15,9 +14,9 @@ jobs:
     timeout-minutes: 40
     strategy:
       matrix:
-        platform: ['ubuntu-22.04', 'macos-13']
-        python: ['3.7', '3.8', '3.9', '3.10', '3.11']
-        redis-version: ['7.0', '7.2']
+        platform: ['ubuntu-latest', 'macos-latest']
+        python: ['3.11', '3.12', '3.13']
+        redis-version: ['7.4', '8.2']
       fail-fast: false
     defaults:
       run:
@@ -25,13 +24,13 @@ jobs:
 
     steps:
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       # Number of commits to fetch. 0 indicates all history for all branches and tags.
       with:
         fetch-depth: ''
 
     - name: clone redis
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       # Number of commits to fetch. 0 indicates all history for all branches and tags.
       with:
         fetch-depth: ''
@@ -40,7 +39,7 @@ jobs:
         path: redis
 
     - name: Setup Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python }}
         architecture: x64
@@ -48,13 +47,13 @@ jobs:
     - name: Setup Poetry
       uses: snok/install-poetry@v1
       with:
-          version: 1.5.1
+          version: 1.8.5
           virtualenvs-in-project: true
           virtualenvs-create: true
           installer-parallel: true
 
     - name: Cache poetry
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/poetry # This path is specific to Ubuntu
         # Look to see if there is a cache hit for the corresponding requirements file
@@ -189,7 +188,7 @@ jobs:
         --tls
 
     - name: Generate coverage report
-      if: matrix.python == '3.9' && matrix.platform != 'macos-13'
+      if: matrix.python == '3.12' && matrix.platform == 'ubuntu-latest'
       run: |
         TLS="tests/flow/tls"
         TLS_CERT=$TLS/redis.crt \
@@ -199,8 +198,8 @@ jobs:
         poetry run pytest --ignore=tests/flow --ignore=test_example.py --cov-config=.coveragerc --cov-report=xml --cov=RLTest
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      if: matrix.python == '3.9' && matrix.platform != 'macos-13'
+      uses: codecov/codecov-action@v4
+      if: matrix.python == '3.12' && matrix.platform == 'ubuntu-latest'
       continue-on-error: true
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
