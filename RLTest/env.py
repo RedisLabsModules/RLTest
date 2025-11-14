@@ -28,7 +28,7 @@ def genDeprecated(name, target):
 
 
 class Query:
-    def __init__(self, env, *query, **options):
+    def __init__(self, env: 'Env', *query, **options):
         self.query = query
         self.options = options
         self.env = env
@@ -67,40 +67,40 @@ class Query:
         self.res = list(map(fn, self.res))
         return self
 
-    def equal(self, expected):
-        self.env.assertEqual(self.res, expected, 1)
+    def equal(self, expected, depth=0, message=None):
+        self.env.assertEqual(self.res, expected, 1 + depth, message=message)
         return self
 
-    def noEqual(self, expected):
-        self.env.assertNotEqual(self.res, expected, 1)
+    def noEqual(self, expected, depth=0, message=None):
+        self.env.assertNotEqual(self.res, expected, 1 + depth, message=message)
         return self
 
-    def true(self):
-        self.env.assertTrue(self.res, 1)
+    def true(self, depth=0, message=None):
+        self.env.assertTrue(self.res, 1 + depth, message=message)
         return self
 
-    def false(self):
-        self.env.assertFalse(self.res, 1)
+    def false(self, depth=0, message=None):
+        self.env.assertFalse(self.res, 1 + depth, message=message)
         return self
 
-    def ok(self):
-        self.env.assertEqual(self.res, 'OK', 1)
+    def ok(self, depth=0, message=None):
+        self.env.assertEqual(self.res, 'OK', 1 + depth, message=message)
         return self
 
-    def contains(self, val):
-        self.env.assertContains(val, self.res, 1)
+    def contains(self, val, depth=0, message=None):
+        self.env.assertContains(val, self.res, 1 + depth, message=message)
         return self
 
-    def notContains(self, val):
-        self.env.assertNotContains(val, self.res, 1)
+    def notContains(self, val, depth=0, message=None):
+        self.env.assertNotContains(val, self.res, 1 + depth, message=message)
         return self
 
-    def error(self):
-        self.env.assertTrue(self.errorRaised, 1)
+    def error(self, depth=0, message=None):
+        self.env.assertTrue(self.errorRaised, 1 + depth, message=message)
         return self
 
-    def noError(self):
-        self.env.assertFalse(self.errorRaised, 1)
+    def noError(self, depth=0, message=None):
+        self.env.assertFalse(self.errorRaised, 1 + depth, message=message)
         return self
 
     raiseError = genDeprecated('raiseError', error)
@@ -382,7 +382,7 @@ class Env:
         self.envRunner.stopEnv(masters, slaves)
 
     def stopEnvWithSegFault(self, masters = True, slaves = True):
-        self.envRunner.stopEnvWithSegFault(masters, slaves)        
+        self.envRunner.stopEnvWithSegFault(masters, slaves)
 
     def getEnvStr(self):
         return self.env
@@ -523,7 +523,7 @@ class Env:
 
     def assertExists(self, val, depth=0):
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
-        self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
+        self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=depth)
 
     def executeCommand(self, *query, **options):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
@@ -566,10 +566,10 @@ class Env:
             yield 1
         except Exception as e:
             if contained:
-                self.assertContains(contained, str(e), depth=2)
-            self._assertion('Expected Response Error', True, depth=1)
+                self.assertContains(contained, str(e), depth=2, message=msg)
+            self._assertion('Expected Response Error', True, depth=1, message=msg)
         else:
-            self._assertion('Expected Response Error', False, depth=1)
+            self._assertion('Expected Response Error', False, depth=1, message=msg)
 
     def restartAndReload(self, shardId=None, timeout_sec=40):
         self.dumpAndReload(restart=True, shardId=shardId, timeout_sec=timeout_sec)
