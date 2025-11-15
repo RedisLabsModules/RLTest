@@ -23,6 +23,12 @@ jobs:
           - platform: ubuntu-22.04
             python: '3.7'
             redis-version: '7.4'
+          - platform: macos-latest
+            python: '3.11'
+            redis-version: '8.2'
+        exclude:
+          - platform: macos-latest
+            python: '3.10'
     defaults:
       run:
         shell: bash -l -eo pipefail {0}
