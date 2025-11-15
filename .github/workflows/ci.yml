@@ -56,13 +56,12 @@ jobs:
         architecture: x64
 
     - name: Setup Poetry
-      run: pipx install poetry
-    #   uses: snok/install-poetry@v1
-    #   with:
-    #       version: 2.2.1
-    #       virtualenvs-in-project: true
-    #       virtualenvs-create: true
-    #       installer-parallel: true
+      uses: snok/install-poetry@v1
+      with:
+          version: 1.8.4
+          virtualenvs-in-project: true
+          virtualenvs-create: true
+          installer-parallel: true
 
     - name: Cache poetry
       uses: actions/cache@v4
