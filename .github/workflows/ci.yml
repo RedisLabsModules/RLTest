@@ -23,7 +23,7 @@ jobs:
           - platform: ubuntu-22.04
             python: '3.7'
             redis-version: '7.4'
-            poetry-version: '1.7.4'
+            poetry-version: '1.5.1'
           - platform: macos-latest
             python: '3.11'
             redis-version: '8.2'
