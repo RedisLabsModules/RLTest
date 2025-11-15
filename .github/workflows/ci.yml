@@ -23,6 +23,7 @@ jobs:
           - platform: ubuntu-22.04
             python: '3.7'
             redis-version: '7.4'
+            poetry-version: '1.7.4'
           - platform: macos-latest
             python: '3.11'
             redis-version: '8.2'
@@ -58,7 +59,7 @@ jobs:
     - name: Setup Poetry
       uses: snok/install-poetry@v1
       with:
-          version: 1.8.4
+          version: ${{ matrix.poetry-version || 'latest' }}
           virtualenvs-in-project: true
           virtualenvs-create: true
           installer-parallel: true
