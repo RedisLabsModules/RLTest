@@ -7,8 +7,10 @@ on:
  pull_request:
  workflow_call:
 
-concurrency: # if the event is not a pull request, use the run number to make each run unique
-  group: ci-${{ github.event_name == 'pull_request' || github.run_number }}-${{ github.ref_name }}
+concurrency:
+  # if the event is a pull request, use the PR number to make PR checks cancel previous runs
+  # if the event is not a pull request, use the run number to make each run unique
+  group: CI-${{ github.event_name == 'pull_request' && github.event.number || github.run_number }}
   cancel-in-progress: true
 
 jobs:
