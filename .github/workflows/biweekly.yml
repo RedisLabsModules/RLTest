@@ -8,3 +8,19 @@ jobs:
   build:
     uses: ./.github/workflows/ci.yml
     secrets: inherit
+
+  notify-failure:
+    needs:
+      - build
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Failure
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "failed_workflow": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RQE_NOTIFY_NIGHTLY_FAIL_HOOK }}
