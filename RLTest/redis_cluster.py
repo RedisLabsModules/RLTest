@@ -57,7 +57,7 @@ class ClusterEnv(object):
             try:
                 status = con.execute_command('CLUSTER', 'INFO')
             except Exception as e:
-                print('got error on cluster slots, will try again, %s' % str(e))
+                print('got error on cluster info, will try again, %s' % str(e))
                 continue
             if 'cluster_state:ok' in str(status):
                 ok += 1

@@ -398,7 +398,7 @@ class Env:
             return self.getConnection()
 
     def waitCluster(self, timeout_sec=40):
-        if isinstance(self.envRunner, ClusterEnv) or isinstance(self.envRunner, EnterpriseRedisClusterEnv):
+        if isinstance(self.envRunner, (ClusterEnv, EnterpriseRedisClusterEnv)):
             self.envRunner.waitCluster(timeout_sec)
 
     def addShardToClusterIfExists(self):
