@@ -48,7 +48,7 @@ class ClusterEnv(object):
         return [shard.getInformationBeforeDispose() for shard in self.shards]
 
     def getInformationAfterDispose(self):
-        return [shard.getInformationAfterDispose() for shard in self.shards]  
+        return [shard.getInformationAfterDispose() for shard in self.shards]
 
     def waitCluster(self, timeout_sec=40):
         st = time.time()
@@ -56,14 +56,17 @@ class ClusterEnv(object):
 
         while st + timeout_sec > time.time():
             ok = 0
+            first_view = None
             for shard in self.shards:
                 con = shard.getConnection()
                 try:
-                    status = con.execute_command('CLUSTER', 'INFO')
+                    slots_pov = con.execute_command('CLUSTER', 'SLOTS')
                 except Exception as e:
                     print('got error on cluster info, will try again, %s' % str(e))
                     continue
-                if 'cluster_state:ok' in str(status):
+                if first_view is None:
+                    first_view = slots_pov
+                if slots_pov == first_view:
                     ok += 1
             if ok == len(self.shards):
                 for shard in self.shards:
