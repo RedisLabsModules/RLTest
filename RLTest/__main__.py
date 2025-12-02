@@ -549,6 +549,8 @@ class RLTest:
         if Defaults.env == 'enterprise-cluster' and Defaults.redis_config_file is not None:
             raise Exception('Redis configuration file is not supported with enterprise-cluster env')
 
+        print(f'RLTest args: {self.args}')
+
         self.tests = []
         self.testsFailed = {}
         self.currEnv = None
