@@ -774,13 +774,13 @@ class RLTest:
 
     def _openGitHubActionsTestsGroup(self):
         """Open a GitHub Actions group wrapping all tests"""
-        if is_github_actions() and self.github_actions_group_open is False:
+        if self.github_actions_group_open is False:
             print('::group::📋 Test Execution')
             self.github_actions_group_open = True
 
     def _closeGitHubActionsTestsGroup(self):
         """Close the GitHub Actions tests group if one is open"""
-        if is_github_actions() and self.github_actions_group_open is True:
+        if self.github_actions_group_open is True:
             print('::endgroup::')
             self.github_actions_group_open = False
 
