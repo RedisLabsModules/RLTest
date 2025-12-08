@@ -772,15 +772,15 @@ class RLTest:
             numFailed += 1 # exception should be counted as failure
         return numFailed
 
-    def _ensureGitHubActionsGroupOpen(self):
-        """Ensure a GitHub Actions group is open for passing/skipped tests"""
-        if self.github_actions_group_open is False:
-            print('::group::✅ Passing/Skipped Tests')
+    def _openGitHubActionsTestsGroup(self):
+        """Open a GitHub Actions group wrapping all tests"""
+        if is_github_actions() and self.github_actions_group_open is False:
+            print('::group::📋 Test Execution')
             self.github_actions_group_open = True
 
-    def _closeGitHubActionsGroup(self):
-        """Close the current GitHub Actions group if one is open"""
-        if self.github_actions_group_open is True:
+    def _closeGitHubActionsTestsGroup(self):
+        """Close the GitHub Actions tests group if one is open"""
+        if is_github_actions() and self.github_actions_group_open is True:
             print('::endgroup::')
             self.github_actions_group_open = False
 
@@ -929,28 +929,7 @@ class RLTest:
                         # we must update the bar anyway to see output
                         bar.__next__()
 
-                # Capture output if not disabled
-                if self.args.no_output_catch:
-                    # No output capturing - run test directly
-                    count, _ = self.run_single_test(test, on_timeout)
-                    done += count
-                else:
-                    # Capture output and print with proper grouping
-                    output = io.StringIO()
-                    with redirect_stdout(output):
-                        count, passed = self.run_single_test(test, on_timeout)
-                        done += count
-
-                    # Print captured output with proper grouping
-                    captured = output.getvalue()
-                    if captured:
-                        if not passed:
-                            # Close group before printing failure output
-                            self._closeGitHubActionsGroup()
-                        else:
-                            # Ensure group is open for passing test output
-                            self._ensureGitHubActionsGroupOpen()
-                        print(captured, end='')
+                done += self.run_single_test(test, on_timeout)
 
             self.takeEnvDown(fullShutDown=True)
 
@@ -993,6 +972,8 @@ class RLTest:
 
         results = Queue()
         summary = Queue()
+        # Open group for all tests at the start (parallel execution)
+        self._openGitHubActionsTestsGroup()
         if self.parallelism == 1:
             run_jobs_main_thread(jobs)
         else :
@@ -1018,11 +999,6 @@ class RLTest:
                         if not has_live_processor:
                             raise Exception('Failed to get job result and no more processors is alive')
                 output = res['output']
-                passed = res['passed']
-                if not passed:
-                    self._closeGitHubActionsGroup()
-                else:
-                    self._ensureGitHubActionsGroupOpen()
                 print('%s' % output, end="")
 
             for p in processes:
@@ -1039,6 +1015,10 @@ class RLTest:
 
         endTime = time.time()
 
+        # Close group after all tests complete (parallel execution)
+        self._closeGitHubActionsTestsGroup()
+
+        # Summary goes outside the group
         print(Colors.Bold('\nTest Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getFailedTestsCount(), done - self.getFailedTestsCount())))
         if self.testsFailed:
