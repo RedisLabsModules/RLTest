@@ -828,12 +828,12 @@ class RLTest:
 
                     except unittest.SkipTest:
                         self.printSkip(test.name)
-                        return 0, True
+                        return 0
 
                     except Exception as e:
                         self.printException(e)
                         self.addFailure(test.name + " [__init__]")
-                        return 0, False
+                        return 0
 
                     failures = 0
                     before = getattr(obj, 'setUp', lambda x=None: None)
@@ -858,7 +858,7 @@ class RLTest:
         if failures > 0 and Defaults.print_verbose_information_on_failure:
             verboseInfo['after_dispose'] = lastEnv.getInformationAfterDispose()
             lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
-        return done, failures == 0
+        return done
 
     def print_failures(self):
         for group, failures in self.testsFailed.items():
@@ -953,17 +953,17 @@ class RLTest:
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            results.put({'test_name': test.name, "output": output.getvalue(), 'passed': False}, block=False)
+                            results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
                             summary.put({'done': done, 'failures': self.testsFailed}, block=False)
                             # After we return the processes will be killed, so we must make sure the queues are drained properly.
                             results.close()
                             summary.close()
                             summary.join_thread()
                             results.join_thread()
-                    count, passed = self.run_single_test(test, on_timeout)
+                    count = self.run_single_test(test, on_timeout)
                     done += count
 
-                results.put({'test_name': test.name, "output": output.getvalue(), 'passed': passed}, block=False)
+                results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
 
             self.takeEnvDown(fullShutDown=True)
 
