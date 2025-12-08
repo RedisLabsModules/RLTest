@@ -15,7 +15,7 @@ import json
 from multiprocessing import Process, Queue, set_start_method
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
-from RLTest.utils import Colors, fix_modules, fix_modulesArgs
+from RLTest.utils import Colors, fix_modules, fix_modulesArgs, is_github_actions
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
@@ -553,6 +553,9 @@ class RLTest:
         self.testsFailed = {}
         self.currEnv = None
         self.loader = TestLoader()
+
+        # For GitHub Actions grouping - track if we have an open group
+        self.github_actions_group_open = False if is_github_actions() else None
         if self.args.test is not None:
             self.loader.load_spec(self.args.test)
         if self.args.tests_file is not None:
@@ -769,6 +772,18 @@ class RLTest:
             numFailed += 1 # exception should be counted as failure
         return numFailed
 
+    def _openGitHubActionsTestsGroup(self):
+        """Open a GitHub Actions group wrapping all tests"""
+        if self.github_actions_group_open is False:
+            print('::group::📋 Test Execution')
+            self.github_actions_group_open = True
+
+    def _closeGitHubActionsTestsGroup(self):
+        """Close the GitHub Actions tests group if one is open"""
+        if self.github_actions_group_open is True:
+            print('::endgroup::')
+            self.github_actions_group_open = False
+
     def printSkip(self, name):
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[SKIP]')))
 
@@ -799,6 +814,7 @@ class RLTest:
         else:
             self.stopEnvWithSegFault()
 
+    # return number of tests done, and if all passed
     def run_single_test(self, test, on_timeout_func):
         done = 0
         with TestTimeLimit(self.args.test_timeout, on_timeout_func) as timeout_handler:
@@ -955,6 +971,8 @@ class RLTest:
 
         results = Queue()
         summary = Queue()
+        # Open group for all tests at the start (parallel execution)
+        self._openGitHubActionsTestsGroup()
         if self.parallelism == 1:
             run_jobs_main_thread(jobs)
         else :
@@ -996,6 +1014,10 @@ class RLTest:
 
         endTime = time.time()
 
+        # Close group after all tests complete (parallel execution)
+        self._closeGitHubActionsTestsGroup()
+
+        # Summary goes outside the group
         print(Colors.Bold('\nTest Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getFailedTestsCount(), done - self.getFailedTestsCount())))
         if self.testsFailed:
