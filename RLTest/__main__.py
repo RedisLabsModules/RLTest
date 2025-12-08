@@ -960,8 +960,7 @@ class RLTest:
                             summary.close()
                             summary.join_thread()
                             results.join_thread()
-                    count = self.run_single_test(test, on_timeout)
-                    done += count
+                    done += self.run_single_test(test, on_timeout)
 
                 results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
 
