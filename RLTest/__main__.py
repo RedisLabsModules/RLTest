@@ -549,8 +549,6 @@ class RLTest:
         if Defaults.env == 'enterprise-cluster' and Defaults.redis_config_file is not None:
             raise Exception('Redis configuration file is not supported with enterprise-cluster env')
 
-        print(f'RLTest args: {self.args}')
-
         self.tests = []
         self.testsFailed = {}
         self.currEnv = None
@@ -816,6 +814,7 @@ class RLTest:
         else:
             self.stopEnvWithSegFault()
 
+    # return number of tests done, and if all passed
     def run_single_test(self, test, on_timeout_func):
         done = 0
         with TestTimeLimit(self.args.test_timeout, on_timeout_func) as timeout_handler:
@@ -975,7 +974,7 @@ class RLTest:
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            results.put({'test_name': test.name, "output": output.getvalue(), 'result': 'timeout'}, block=False)
+                            results.put({'test_name': test.name, "output": output.getvalue(), 'passed': False}, block=False)
                             summary.put({'done': done, 'failures': self.testsFailed}, block=False)
                             # After we return the processes will be killed, so we must make sure the queues are drained properly.
                             results.close()
