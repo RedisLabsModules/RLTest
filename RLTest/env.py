@@ -142,6 +142,7 @@ class Defaults:
     randomize_ports = False
     oss_password = None
     cluster_node_timeout = None
+    cluster_start_timeout = 40
     curr_test_name = None
     port = 6379
     enable_debug_command = False
@@ -369,7 +370,8 @@ class Env:
             'terminateRetries': self.terminateRetries,
             'terminateRetrySecs': self.terminateRetrySecs,
             'redisConfigFile': self.redisConfigFile,
-            'dualTLS': self.dualTLS
+            'dualTLS': self.dualTLS,
+            'clusterStartTimeout': Defaults.cluster_start_timeout
         }
         return kwargs
 

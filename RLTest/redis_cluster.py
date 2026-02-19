@@ -23,6 +23,7 @@ class ClusterEnv(object):
         self.protocol = kwargs.get('protocol', 2)
         self.terminateRetries = kwargs.get('terminateRetries', None)
         self.terminateRetrySecs = kwargs.get('terminateRetrySecs', None)
+        self.clusterStartTimeout = kwargs.pop('clusterStartTimeout', 40)
         startPort = kwargs.pop('port', 10000)
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
@@ -50,7 +51,8 @@ class ClusterEnv(object):
     def getInformationAfterDispose(self):
         return [shard.getInformationAfterDispose() for shard in self.shards]
 
-    def _agreeOk(self):
+    def _countOk(self):
+        """Returns count of shards reporting cluster_state:ok"""
         ok = 0
         for shard in self.shards:
             con = shard.getConnection()
@@ -61,9 +63,13 @@ class ClusterEnv(object):
                 continue
             if 'cluster_state:ok' in str(status):
                 ok += 1
-        return ok == len(self.shards)
+        return ok
 
-    def _agreeSlots(self):
+    def _agreeOk(self):
+        return self._countOk() == len(self.shards)
+
+    def _countAgreeSlots(self):
+        """Returns count of shards that agree on slots view"""
         ok = 0
         first_view = None
         for shard in self.shards:
@@ -77,19 +83,43 @@ class ClusterEnv(object):
                 first_view = slots_view
             if slots_view == first_view:
                 ok += 1
-        return ok == len(self.shards)
+        return ok
 
-    def waitCluster(self, timeout_sec=40):
+    def _agreeSlots(self):
+        return self._countAgreeSlots() == len(self.shards)
+
+    def waitCluster(self, timeout_sec=40, verbose=True):
         st = time.time()
+        last_status_time = st
+        status_interval = 5  # Print status every 5 seconds
+        total_shards = len(self.shards)
+
+        if verbose:
+            print(Colors.Yellow('Waiting for cluster to be ready (timeout: %d seconds, %d shards)...' %
+                                (timeout_sec, total_shards)))
 
         while st + timeout_sec > time.time():
-            if self._agreeOk() and self._agreeSlots():
+            ok_count = self._countOk()
+            slots_count = self._countAgreeSlots()
+
+            if ok_count == total_shards and slots_count == total_shards:
+                elapsed = time.time() - st
+                if verbose:
+                    print(Colors.Green('Cluster is ready after %.1f seconds' % elapsed))
                 for shard in self.shards:
                     try:
                         shard.getConnection().execute_command('SEARCH.CLUSTERREFRESH')
                     except Exception:
                         pass
                 return
+
+            # Print periodic status update
+            now = time.time()
+            if verbose and (now - last_status_time) >= status_interval:
+                elapsed = now - st
+                print(Colors.Yellow('  Cluster wait: %.1fs elapsed - %d/%d shards OK, %d/%d agree on slots...' %
+                                    (elapsed, ok_count, total_shards, slots_count, total_shards)))
+                last_status_time = now
 
             time.sleep(0.1)
         raise RuntimeError(
@@ -98,14 +128,23 @@ class ClusterEnv(object):
     def startEnv(self, masters=True, slaves=True):
         if self.envIsUp == True:
             return  # env is already up
+
+        total_shards = len(self.shards)
+        print(Colors.Yellow('Starting cluster with %d shards...' % total_shards))
+
         try:
-            for shard in self.shards:
+            for i, shard in enumerate(self.shards):
                 shard.startEnv(masters, slaves)
-        except Exception:
+                if (i + 1) % 10 == 0 or (i + 1) == total_shards:
+                    print(Colors.Yellow('  Started %d/%d shards...' % (i + 1, total_shards)))
+        except Exception as e:
+            print(Colors.Bred('Error starting shard %d: %s' % (i + 1, str(e))))
+            print(Colors.Bred('Stopping all shards...'))
             for shard in self.shards:
                 shard.stopEnv()
             raise
 
+        print(Colors.Yellow('Configuring cluster topology...'))
         slots_per_node = int(16384 / len(self.shards)) + 1
         for i, shard in enumerate(self.shards):
             con = shard.getConnection()
@@ -114,17 +153,21 @@ class ClusterEnv(object):
                                     '127.0.0.1', s.getMasterPort())
 
             start_slot = i * slots_per_node
-            end_slot = start_slot + slots_per_node
-            if end_slot > 16384:
-                end_slot = 16384
+            end_slot = start_slot + slots_per_node - 1  # ADDSLOTSRANGE uses inclusive end
+            if end_slot >= 16384:
+                end_slot = 16383
 
             try:
-                con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x)
-                                    for x in range(start_slot, end_slot)))
-            except Exception:
-                pass
+                con.execute_command('CLUSTER', 'ADDSLOTSRANGE', start_slot, end_slot)
+            except Exception as e:
+                print(Colors.Bred('  Error assigning slots %d-%d to shard %d: %s' %
+                                  (start_slot, end_slot, i + 1, str(e))))
 
-        self.waitCluster()
+            if (i + 1) % 10 == 0 or (i + 1) == total_shards:
+                print(Colors.Yellow('  Configured %d/%d shards (slots %d-%d assigned)...' %
+                                    (i + 1, total_shards, 0, end_slot)))
+
+        self.waitCluster(timeout_sec=self.clusterStartTimeout)
         self.envIsUp = True
         self.envIsHealthy = True
 
