@@ -86,11 +86,6 @@ class ClusterEnv(object):
         return ok
 
     def waitCluster(self, timeout_sec=40, verbose=True):
-        if timeout_sec < CLUSTER_STATUS_INTERVAL_SEC:
-            raise ValueError(
-                "Cluster timeout (%d seconds) must be at least %d seconds (status interval)" %
-                (timeout_sec, CLUSTER_STATUS_INTERVAL_SEC))
-
         st = time.time()
         last_status_time = st
         total_shards = len(self.shards)
