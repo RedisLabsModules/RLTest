@@ -544,6 +544,8 @@ class RLTest:
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
         Defaults.cluster_start_timeout = self.args.cluster_start_timeout
+        if Defaults.cluster_start_timeout < 5:
+            raise Exception('--cluster-start-timeout must be at least 5 seconds')
         Defaults.enable_debug_command = True if self.args.allow_unsafe else self.args.enable_debug_command
         Defaults.enable_protected_configs = True if self.args.allow_unsafe else self.args.enable_protected_configs
         Defaults.enable_module_command = True if self.args.allow_unsafe else self.args.enable_module_command
