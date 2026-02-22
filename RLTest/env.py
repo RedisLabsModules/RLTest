@@ -142,6 +142,7 @@ class Defaults:
     randomize_ports = False
     oss_password = None
     cluster_node_timeout = None
+    cluster_start_timeout = 40
     curr_test_name = None
     port = 6379
     enable_debug_command = False
@@ -315,6 +316,7 @@ class Env:
                                         **kwargs)
         if self.env == 'oss-cluster':
             kwargs['password'] = Defaults.oss_password if self.password is None else self.password
+            kwargs['clusterStartTimeout'] = Defaults.cluster_start_timeout
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=self.redisBinaryPath,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
                               randomizePorts=Defaults.randomize_ports,
@@ -369,7 +371,7 @@ class Env:
             'terminateRetries': self.terminateRetries,
             'terminateRetrySecs': self.terminateRetrySecs,
             'redisConfigFile': self.redisConfigFile,
-            'dualTLS': self.dualTLS
+            'dualTLS': self.dualTLS,
         }
         return kwargs
 
