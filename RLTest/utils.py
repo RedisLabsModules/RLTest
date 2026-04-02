@@ -92,7 +92,7 @@ def split_by_semicolon(s):
 
 def args_list_to_dict(args_list):
     def dicty(args):
-        return dict((seq.split(' ')[0], seq) for seq in args)
+        return dict((seq.split(' ')[0].upper(), seq) for seq in args)
     return list(map(lambda args: dicty(args), args_list))
 
 def join_lists(lists):
@@ -105,18 +105,32 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     # ['args ...', ...]: arg list for a single module
     # [['arg', ...', ...], ...]: arg strings for multiple modules
 
-    # arg string is a string of words seperated by whitespace
-    # arg string can be seperated by semicolons into (logical) arg lists.
+    # arg string is a string of words separated by whitespace.
+    # arg string can be separated by semicolons into (logical) arg lists.
     # semicolons can be escaped with a backslash.
+    # if no semicolons are present, the string is treated as space-separated key-value pairs,
+    # where each consecutive pair of words forms a 'KEY VALUE' arg.
+    # thus, 'K1 V1 K2 V2' becomes ['K1 V1', 'K2 V2']
+    # an odd number of words without semicolons is an error.
+    # for args with multiple values, semicolons are required:
+    # thus, 'K1 V1; K2 V2 V3' becomes ['K1 V1', 'K2 V2 V3']
     # arg list is a list of arg strings.
     # arg list starts with an arg name that can later be used for argument overriding.
-    # arg strings are transformed into arg lists (haveSeqs parameter controls this behavior):
-    # thus, 'num 1; names a b' becomes ['num 1', 'names a b']
 
     if type(modulesArgs) == str:
         # case # 'args ...': arg string for a single module
         # transformed into [['arg', ...]]
-        modulesArgs = [split_by_semicolon(modulesArgs)]
+        parts = split_by_semicolon(modulesArgs)
+        if len(parts) == 1:
+            # No semicolons found - treat as space-separated key-value pairs
+            words = parts[0].split()
+            if len(words) % 2 != 0:
+                print(Colors.Bred('Error in args: odd number of words in key-value pairs: \'%s\'. '
+                                  'Use semicolons to separate args with multiple values (e.g. \'KEY1 V1; KEY2 V2 V3\').' % modulesArgs))
+                sys.exit(1)
+            if len(words) > 2:
+                parts = [words[i] + ' ' + words[i + 1] for i in range(0, len(words), 2)]
+        modulesArgs = [parts]
     elif type(modulesArgs) == list:
         args = []
         is_list = False
@@ -180,7 +194,7 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     modules_args_dict = args_list_to_dict(modulesArgs)
     for imod, args_list in enumerate(defaultArgs):
         for arg in args_list:
-            name = arg.split(' ')[0]
+            name = arg.split(' ')[0].upper()
             if name not in modules_args_dict[imod]:
                 modulesArgs[imod] += [arg]
 
