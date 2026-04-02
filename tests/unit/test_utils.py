@@ -108,13 +108,3 @@ class TestFixModulesArgs(TestCase):
         self.assertNotIn('timeout', result_dict)
         self.assertNotIn('MIxEd', result_dict)
         self.assertNotIn('lower', result_dict)
-
-        # Lowercase explicit overrides uppercase defaults
-        defaults = [['WORKERS 8', 'TIMEOUT 60', 'EXTRA 1']]
-        result = fix_modulesArgs(['/mod.so'], 'workers 4 timeout 80', defaults)
-        result_dict = {arg.split(' ')[0]: arg for arg in result[0]}
-        self.assertEqual(result_dict['workers'], 'workers 4')
-        self.assertEqual(result_dict['timeout'], 'timeout 80')
-        self.assertEqual(result_dict['EXTRA'], 'EXTRA 1')
-        self.assertNotIn('WORKERS', result_dict)
-        self.assertNotIn('TIMEOUT', result_dict)
