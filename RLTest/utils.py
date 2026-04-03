@@ -92,7 +92,7 @@ def split_by_semicolon(s):
 
 def args_list_to_dict(args_list):
     def dicty(args):
-        return dict((seq.split(' ')[0].upper(), seq) for seq in args)
+        return {seq.split(' ')[0].upper(): seq for seq in args}
     return list(map(lambda args: dicty(args), args_list))
 
 def join_lists(lists):
@@ -125,11 +125,11 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
             # No semicolons found - treat as space-separated key-value pairs
             words = parts[0].split()
             if len(words) % 2 != 0:
-                print(Colors.Bred('Error in args: odd number of words in key-value pairs: \'%s\'. '
-                                  'Use semicolons to separate args with multiple values (e.g. \'KEY1 V1; KEY2 V2 V3\').' % modulesArgs))
+                print(Colors.Bred(f"Error in args: odd number of words in key-value pairs: '{modulesArgs}'. "
+                                  f"Use semicolons to separate args with multiple values (e.g. 'KEY1 V1; KEY2 V2 V3')."))
                 sys.exit(1)
             if len(words) > 2:
-                parts = [words[i] + ' ' + words[i + 1] for i in range(0, len(words), 2)]
+                parts = [f"{words[i]} {words[i + 1]}" for i in range(0, len(words), 2)]
         modulesArgs = [parts]
     elif type(modulesArgs) == list:
         args = []
