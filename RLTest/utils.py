@@ -112,7 +112,7 @@ def _merge_by_words(explicit_str, defaultArgs):
         key = arg.split()[0].upper()
         if key not in explicit_words_upper:
             merged += ' ' + arg
-    return [[merged]]
+    return [[merged.strip()]]
 
 def _merge_by_dict(modulesArgs, defaultArgs):
     """Merge structured (already-split) modulesArgs with defaults using dict-based key matching.
@@ -147,7 +147,7 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
         if len(parts) == 1:
             # No semicolons - keep as plain string
             is_plain_str = True
-            modulesArgs = [[modulesArgs]]
+            modulesArgs = [[modulesArgs.strip()]]
         else:
             # Has semicolons - already split
             modulesArgs = [parts]
