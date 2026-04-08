@@ -108,10 +108,8 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     # arg string is a string of words separated by whitespace.
     # arg string can be separated by semicolons into (logical) arg lists.
     # semicolons can be escaped with a backslash.
-    # if no semicolons are present, the string is treated as space-separated key-value pairs,
-    # where each consecutive pair of words forms a 'KEY VALUE' arg.
-    # thus, 'K1 V1 K2 V2' becomes ['K1 V1', 'K2 V2']
-    # an odd number of words without semicolons is an error.
+    # if no semicolons are present, the entire string is kept as a single arg.
+    # thus, 'K1 V1 K2 V2' becomes ['K1 V1 K2 V2']
     # for args with multiple values, semicolons are required:
     # thus, 'K1 V1; K2 V2 V3' becomes ['K1 V1', 'K2 V2 V3']
     # arg list is a list of arg strings.
@@ -121,15 +119,6 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
         # case # 'args ...': arg string for a single module
         # transformed into [['arg', ...]]
         parts = split_by_semicolon(modulesArgs)
-        if len(parts) == 1:
-            # No semicolons found - treat as space-separated key-value pairs
-            words = parts[0].split()
-            if len(words) % 2 != 0:
-                print(Colors.Bred(f"Error in args: odd number of words in key-value pairs: '{modulesArgs}'. "
-                                  f"Use semicolons to separate args with multiple values (e.g. 'KEY1 V1; KEY2 V2 V3')."))
-                sys.exit(1)
-            if len(words) > 2:
-                parts = [f"{words[i]} {words[i + 1]}" for i in range(0, len(words), 2)]
         modulesArgs = [parts]
     elif type(modulesArgs) == list:
         args = []
