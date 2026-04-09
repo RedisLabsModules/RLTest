@@ -98,6 +98,34 @@ def args_list_to_dict(args_list):
 def join_lists(lists):
     return list(itertools.chain.from_iterable(lists))
 
+def _merge_by_words(explicit_str, defaultArgs):
+    """Merge a plain explicit arg string with defaults using word-level key matching.
+    For each default arg, if its key doesn't appear as a word in the explicit string,
+    append the entire default arg to the string.
+    Returns the merged string wrapped as [[merged_string]].
+    """
+    if not defaultArgs or not defaultArgs[0]:
+        return [[explicit_str]]
+    explicit_words_upper = [w.upper() for w in explicit_str.split()]
+    merged = explicit_str
+    for arg in defaultArgs[0]:
+        key = arg.split()[0].upper()
+        if key not in explicit_words_upper:
+            merged += ' ' + arg
+    return [[merged.strip()]]
+
+def _merge_by_dict(modulesArgs, defaultArgs):
+    """Merge structured (already-split) modulesArgs with defaults using dict-based key matching.
+    For each module, any default key not present in the explicit args is appended.
+    """
+    modules_args_dict = args_list_to_dict(modulesArgs)
+    for imod, args_list in enumerate(defaultArgs):
+        for arg in args_list:
+            name = arg.split(' ')[0].upper()
+            if name not in modules_args_dict[imod]:
+                modulesArgs[imod] += [arg]
+    return modulesArgs
+
 def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     # modulesArgs is one of the following:
     # None
@@ -105,32 +133,24 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     # ['args ...', ...]: arg list for a single module
     # [['arg', ...', ...], ...]: arg strings for multiple modules
 
-    # arg string is a string of words separated by whitespace.
-    # arg string can be separated by semicolons into (logical) arg lists.
-    # semicolons can be escaped with a backslash.
-    # if no semicolons are present, the string is treated as space-separated key-value pairs,
-    # where each consecutive pair of words forms a 'KEY VALUE' arg.
-    # thus, 'K1 V1 K2 V2' becomes ['K1 V1', 'K2 V2']
-    # an odd number of words without semicolons is an error.
-    # for args with multiple values, semicolons are required:
-    # thus, 'K1 V1; K2 V2 V3' becomes ['K1 V1', 'K2 V2 V3']
-    # arg list is a list of arg strings.
-    # arg list starts with an arg name that can later be used for argument overriding.
+    # For a plain string without semicolons:
+    #   If defaultArgs exist, merge by checking if each default key appears as
+    #   a word in the explicit string. Missing defaults are appended.
+    #   If no defaultArgs, keep the string as-is (no splitting needed).
+    # For strings with semicolons, split by semicolons and use dict-based merge.
+    # For list inputs, use dict-based merge.
+
+    is_plain_str = False  # tracks if input was a plain string without semicolons
 
     if type(modulesArgs) == str:
-        # case # 'args ...': arg string for a single module
-        # transformed into [['arg', ...]]
         parts = split_by_semicolon(modulesArgs)
         if len(parts) == 1:
-            # No semicolons found - treat as space-separated key-value pairs
-            words = parts[0].split()
-            if len(words) % 2 != 0:
-                print(Colors.Bred(f"Error in args: odd number of words in key-value pairs: '{modulesArgs}'. "
-                                  f"Use semicolons to separate args with multiple values (e.g. 'KEY1 V1; KEY2 V2 V3')."))
-                sys.exit(1)
-            if len(words) > 2:
-                parts = [f"{words[i]} {words[i + 1]}" for i in range(0, len(words), 2)]
-        modulesArgs = [parts]
+            # No semicolons - keep as plain string
+            is_plain_str = True
+            modulesArgs = [[modulesArgs.strip()]]
+        else:
+            # Has semicolons - already split
+            modulesArgs = [parts]
     elif type(modulesArgs) == list:
         args = []
         is_list = False
@@ -138,7 +158,6 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
         for argx in modulesArgs:
             if type(argx) == list:
                 # case [['arg', ...], ...]: arg strings for multiple modules
-                # already transformed into [['arg', ...], ...]
                 if is_str:
                     print(Colors.Bred('Error in args: %s' % str(modulesArgs)))
                     sys.exit(1)
@@ -150,7 +169,6 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
                     args += [argx]
             else:
                 # case ['args ...', ...]: arg list for a single module
-                # transformed into [['arg', ...], ...]
                 if is_list:
                     print(Colors.Bred('Error in args: %s' % str(modulesArgs)))
                     sys.exit(1)
@@ -183,19 +201,13 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
         return modulesArgs
 
     # if there are fewer defaultArgs than modulesArgs, we should bail out
-    # as we cannot pad the defaults with emply arg lists
     if defaultArgs and len(modulesArgs) > len(defaultArgs):
         print(Colors.Bred('Number of module args sets in Env does not match number of modules'))
         print(defaultArgs)
         print(modulesArgs)
         sys.exit(1)
 
-    # for each module, sync defaultArgs to modulesARgs
-    modules_args_dict = args_list_to_dict(modulesArgs)
-    for imod, args_list in enumerate(defaultArgs):
-        for arg in args_list:
-            name = arg.split(' ')[0].upper()
-            if name not in modules_args_dict[imod]:
-                modulesArgs[imod] += [arg]
-
-    return modulesArgs
+    if is_plain_str:
+        return _merge_by_words(modulesArgs[0][0], defaultArgs)
+    else:
+        return _merge_by_dict(modulesArgs, defaultArgs)
