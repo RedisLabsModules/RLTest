@@ -91,9 +91,33 @@ def split_by_semicolon(s):
     return list(filter(lambda s: s != '', map(lambda s: re.sub(r'\\(.)', r'\1', s.strip()), re.split(r'(?<!\\);', s))))
 
 def args_list_to_dict(args_list):
-    def dicty(args):
-        return {seq.split(' ')[0].upper(): seq for seq in args}
-    return list(map(lambda args: dicty(args), args_list))
+    """Convert a list of arg lists into a list of dicts for key-based merging.
+
+    Each arg string (e.g., 'DEFAULT_DIALECT 2 WORKERS 5') may contain multiple
+    space-separated key-value pairs. We register the string under ALL keys
+    (words at even positions: 0, 2, 4, ...) so that default-arg merging can
+    detect ALL keys present in per-test args.
+
+    Example:
+        Input:  [['DEFAULT_DIALECT 2 WORKERS 5']]
+        Output: [{'DEFAULT_DIALECT': 'DEFAULT_DIALECT 2 WORKERS 5',
+                  'WORKERS': 'DEFAULT_DIALECT 2 WORKERS 5'}]
+
+    This ensures that when MODARGS defaults contain 'WORKERS 0', the merge
+    logic sees that 'WORKERS' already exists in per-test args and skips it.
+    """
+    def extract_keys_and_register(args):
+        d = {}
+        for seq in args:
+            words = seq.split(' ')
+            # Each arg string may contain multiple key-value pairs:
+            #   'KEY1 VAL1 KEY2 VAL2 ...'
+            # Words at even positions (0, 2, 4, ...) are keys.
+            # Register the full string under each key for deduplication.
+            for i in range(0, len(words), 2):
+                d[words[i].upper()] = seq
+        return d
+    return list(map(extract_keys_and_register, args_list))
 
 def join_lists(lists):
     return list(itertools.chain.from_iterable(lists))

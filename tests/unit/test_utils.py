@@ -30,15 +30,16 @@ class TestFixModulesArgs(TestCase):
         result = fix_modulesArgs(['/mod.so'], 'FLAG; TIMEOUT 80')
         self.assertEqual(result, [['FLAG', 'TIMEOUT 80']])
 
-    # 5a. Space-separated string kept as single arg, non-matching defaults added
+    # 5a. Space-separated string kept as single arg, all keys detected for dedup
     def test_space_separated_overrides_defaults(self):
         defaults = [['WORKERS 8', 'TIMEOUT 60', 'EXTRA 1']]
         result = fix_modulesArgs(['/mod.so'], 'WORKERS 4 TIMEOUT 80', defaults)
-        # Without semicolons, the string is kept as one arg (first word = WORKERS).
-        # Only 'WORKERS 8' default is overridden; 'TIMEOUT 60' and 'EXTRA 1' remain.
+        # The string is kept as one arg, but both WORKERS and TIMEOUT are
+        # recognized as keys — so neither default is added.
+        # Only EXTRA 1 (non-overlapping) is added from defaults.
         result_dict = {arg.split(' ')[0]: arg for arg in result[0]}
         self.assertEqual(result_dict['WORKERS'], 'WORKERS 4 TIMEOUT 80')
-        self.assertEqual(result_dict['TIMEOUT'], 'TIMEOUT 60')
+        self.assertNotIn('TIMEOUT', result_dict)  # already covered by the space-separated arg
         self.assertEqual(result_dict['EXTRA'], 'EXTRA 1')
 
     # 5b. Semicolon-separated string overrides matching defaults
@@ -50,14 +51,15 @@ class TestFixModulesArgs(TestCase):
         self.assertEqual(result_dict['TIMEOUT'], 'TIMEOUT 80')
         self.assertEqual(result_dict['EXTRA'], 'EXTRA 1')
 
-    # 5c. Space-separated explicit kept as single arg, non-overlapping defaults are merged
+    # 5c. Space-separated explicit kept as single arg, all keys detected for dedup
     def test_space_separated_partial_override_with_defaults(self):
         defaults = [['_FREE_RESOURCE_ON_THREAD TRUE', 'TIMEOUT 100', 'WORKERS 8']]
         result = fix_modulesArgs(['/mod.so'], 'WORKERS 4 TIMEOUT 80', defaults)
-        # Single arg 'WORKERS 4 TIMEOUT 80' overrides 'WORKERS 8' default only
+        # Both WORKERS and TIMEOUT are recognized as keys in the space-separated arg,
+        # so neither default is added. Only _FREE_RESOURCE_ON_THREAD is non-overlapping.
         result_dict = {arg.split(' ')[0]: arg for arg in result[0]}
         self.assertEqual(result_dict['WORKERS'], 'WORKERS 4 TIMEOUT 80')
-        self.assertEqual(result_dict['TIMEOUT'], 'TIMEOUT 100')
+        self.assertNotIn('TIMEOUT', result_dict)  # already covered by the space-separated arg
         self.assertEqual(result_dict['_FREE_RESOURCE_ON_THREAD'], '_FREE_RESOURCE_ON_THREAD TRUE')
 
     # 6. None input with defaults - deep copy of defaults
@@ -111,6 +113,26 @@ class TestFixModulesArgs(TestCase):
         self.assertNotIn('timeout', result_dict)
         self.assertNotIn('MIxEd', result_dict)
         self.assertNotIn('lower', result_dict)
+
+    # 11. Regression test: per-test moduleArgs should override MODARGS defaults
+    # for the same keys, even when per-test args are space-separated without semicolons.
+    def test_per_test_args_override_default_args(self):
+        """Regression test: when per-test args are 'DEFAULT_DIALECT 2 WORKERS 5'
+        and MODARGS defaults include 'WORKERS 0', the per-test WORKERS 5 should
+        win. Previously, only the first word ('DEFAULT_DIALECT') was recognized
+        as a key for deduplication, making 'WORKERS' invisible — so MODARGS's
+        'WORKERS 0' was added, overriding the test's value.
+        """
+        result = fix_modulesArgs(
+            ['module.so'],
+            'DEFAULT_DIALECT 2 WORKERS 5',
+            defaultArgs=[['WORKERS 0', 'TIMEOUT 0', 'DEFAULT_DIALECT 2']],
+        )
+        # Per-test args should include WORKERS 5, NOT both WORKERS 5 and WORKERS 0
+        result_str = ' '.join(result[0])
+        self.assertIn('WORKERS', result_str)
+        # The result should NOT contain 'WORKERS 0' from defaults
+        self.assertNotIn('WORKERS 0', result_str)
 
     # 10. Regression test: space-separated moduleArgs without semicolons should NOT
     # be split into key-value pairs. They should be kept as a single arg string,
