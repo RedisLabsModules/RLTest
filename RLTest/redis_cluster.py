@@ -26,6 +26,7 @@ class ClusterEnv(object):
         self.protocol = kwargs.get('protocol', 2)
         self.terminateRetries = kwargs.get('terminateRetries', None)
         self.terminateRetrySecs = kwargs.get('terminateRetrySecs', None)
+        self.verbose = kwargs.get('verbose', False)
         self.clusterStartTimeout = kwargs.pop('clusterStartTimeout', 40)
         startPort = kwargs.pop('port', 10000)
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
@@ -126,12 +127,14 @@ class ClusterEnv(object):
             return  # env is already up
 
         total_shards = len(self.shards)
-        print(Colors.Yellow('Starting cluster with %d shards...' % total_shards))
+        if self.verbose:
+            print(Colors.Yellow('Starting cluster with %d shards...' % total_shards))
 
         try:
             for i, shard in enumerate(self.shards):
                 shard.startEnv(masters, slaves)
-                print(Colors.Yellow('  Started shard %d/%d' % (i + 1, total_shards)))
+                if self.verbose:
+                    print(Colors.Yellow('  Started shard %d/%d' % (i + 1, total_shards)))
         except Exception as e:
             print(Colors.Bred('Error starting shard %d: %s' % (i + 1, str(e))))
             print(Colors.Bred('Stopping all shards...'))
@@ -139,7 +142,8 @@ class ClusterEnv(object):
                 shard.stopEnv()
             raise
 
-        print(Colors.Yellow('Configuring cluster topology...'))
+        if self.verbose:
+            print(Colors.Yellow('Configuring cluster topology...'))
         slots_per_node = int(16384 / len(self.shards)) + 1
         for i, shard in enumerate(self.shards):
             con = shard.getConnection()
@@ -159,10 +163,11 @@ class ClusterEnv(object):
                 print(Colors.Bred('  Error assigning slots %d-%d to shard %d: %s' %
                                   (start_slot, end_slot - 1, i + 1, str(e))))
 
-            print(Colors.Yellow('  Configured shard %d/%d (slots %d-%d)' %
-                                (i + 1, total_shards, start_slot, min(end_slot - 1, 16383))))
+            if self.verbose:
+                print(Colors.Yellow('  Configured shard %d/%d (slots %d-%d)' %
+                                    (i + 1, total_shards, start_slot, min(end_slot - 1, 16383))))
 
-        self.waitCluster(timeout_sec=self.clusterStartTimeout)
+        self.waitCluster(timeout_sec=self.clusterStartTimeout, verbose=self.verbose)
         self.envIsUp = True
         self.envIsHealthy = True
 
