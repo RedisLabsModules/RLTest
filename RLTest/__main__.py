@@ -357,6 +357,44 @@ class EnvScopeGuard:
     def __exit__(self, type, value, traceback):
         self.runner.takeEnvDown()
 
+def _join_workers_with_summary_drain(processes, summary, timeout=None):
+    """Wait for all worker processes to exit while continuously draining the
+    ``summary`` queue, and return the list of collected summary entries.
+
+    A background thread drains ``summary`` so worker feeder threads never
+    block writing to a full summary-pipe buffer. Without this,
+    ``on_timeout``'s ``summary.join_thread()`` and Python's end-of-process
+    queue finalization can both block in ``pipe_write``, in turn hanging
+    ``p.join()`` here indefinitely.
+    """
+    stop = threading.Event()
+    collected = []
+
+    def _drain():
+        while not stop.is_set():
+            try:
+                collected.append(summary.get(timeout=0.1))
+            except Exception:
+                pass
+
+    drainer = threading.Thread(target=_drain)
+    drainer.start()
+    try:
+        deadline = None if timeout is None else time.time() + timeout
+        for p in processes:
+            remaining = None if deadline is None else max(0.0, deadline - time.time())
+            p.join(timeout=remaining)
+    finally:
+        stop.set()
+        drainer.join()
+    while True:
+        try:
+            collected.append(summary.get_nowait())
+        except Exception:
+            break
+    return collected
+
+
 class TestTimeLimit(object):
     """
     A test timeout watcher. The watcher opens thread that sleep for the
@@ -963,7 +1001,12 @@ class RLTest:
                         finally:
                             results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
                             summary.put({'done': done, 'failures': self.testsFailed}, block=False)
-                            # After we return the processes will be killed, so we must make sure the queues are drained properly.
+                            # The watcher thread calls os._exit(1) immediately after this
+                            # closure returns, bypassing Python finalization. Close the
+                            # queues and join their feeder threads here so pending put()s
+                            # are flushed to the pipes first. (The coordinator drains the
+                            # summary queue concurrently, which prevents join_thread() from
+                            # blocking on a full pipe.)
                             results.close()
                             summary.close()
                             summary.join_thread()
@@ -1008,15 +1051,9 @@ class RLTest:
                 output = res['output']
                 print('%s' % output, end="")
 
-            for p in processes:
-                p.join()
-
-            # join results
-            while True:
-                try:
-                    res = summary.get(timeout=1)
-                except Exception as e:
-                    break
+            # Join worker processes while concurrently draining `summary`,
+            # so their feeder threads do not block on a full pipe buffer.
+            for res in _join_workers_with_summary_drain(processes, summary):
                 done += res['done']
                 self.testsFailed.update(res['failures'])
 
