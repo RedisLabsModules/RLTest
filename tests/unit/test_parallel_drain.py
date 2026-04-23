@@ -1,16 +1,14 @@
 """Regression test for a hang in the parallel test coordinator.
 
-Prior to the fix, the coordinator joined all worker processes before draining
+Prior to the fix, the coordinator joined all worker processes before reading
 the ``summary`` queue. With enough data queued (or a single large
 ``self.testsFailed`` dict), the summary pipe buffer (~64 KiB on Linux)
-saturates and worker feeder threads block in ``pipe_write`` during Python's
-end-of-process queue finalization (and similarly inside ``on_timeout``'s
-``summary.join_thread()``). That causes the coordinator's ``p.join()`` to
-hang indefinitely.
+saturates and worker ``put()``s block in ``pipe_write``, which in turn hangs
+the coordinator's ``p.join()`` indefinitely.
 
 The fix drains ``summary`` from a background thread while workers are being
 joined. This test reproduces the saturation scenario and asserts the helper
-completes within a bounded time with every worker cleanly exited.
+completes with every worker cleanly exited.
 """
 
 import multiprocessing as mp
@@ -22,21 +20,22 @@ from RLTest.__main__ import _join_workers_with_summary_drain
 
 
 # ~32 KiB per message × 8 workers = 256 KiB total, comfortably exceeding the
-# typical 64 KiB pipe buffer on Linux, so at least some feeder threads will
-# block on ``pipe_write`` unless the parent is actively reading.
+# typical 64 KiB pipe buffer on Linux, so at least some writers will block
+# on ``pipe_write`` unless the parent is actively reading.
 _PAYLOAD_BYTES = 32 * 1024
 _NUM_WORKERS = 8
 _JOIN_TIMEOUT_SECS = 30.0
 
 
 def _worker_puts_large_summary(summary):
+    # SimpleQueue.put writes synchronously to the pipe: without a parallel
+    # drain on the parent side, this call itself blocks forever once the
+    # pipe saturates.
     summary.put({
         'done': 1,
         'failures': {},
         'payload': 'x' * _PAYLOAD_BYTES,
     })
-    # Return normally; Python finalization will join the feeder thread,
-    # which is where a non-draining parent would cause the hang.
 
 
 class TestJoinWorkersWithSummaryDrain(TestCase):
@@ -57,7 +56,7 @@ class TestJoinWorkersWithSummaryDrain(TestCase):
                 p.join(timeout=5)
 
     def test_large_summary_does_not_hang(self):
-        self._summary = self._ctx.Queue()
+        self._summary = self._ctx.SimpleQueue()
         self._procs = [
             self._ctx.Process(
                 target=_worker_puts_large_summary,
