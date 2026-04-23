@@ -153,6 +153,7 @@ class Defaults:
     protocol = 2
     redis_config_file = None
     dualTLS = False
+    startup_grace_secs = 0.1
 
     def getKwargs(self):
         kwargs = {
@@ -201,7 +202,8 @@ class Env:
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
                  freshEnv=False, enableDebugCommand=None, enableModuleCommand=None, enableProtectedConfigs=None, protocol=None,
-                 terminateRetries=None, terminateRetrySecs=None, redisConfigFile=None, dualTLS=False):
+                 terminateRetries=None, terminateRetrySecs=None, redisConfigFile=None, dualTLS=False,
+                 startupGraceSecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -254,6 +256,8 @@ class Env:
         self.assertionFailedSummary = []
 
         self.dualTLS = dualTLS if dualTLS else Defaults.dualTLS
+
+        self.startupGraceSecs = startupGraceSecs if startupGraceSecs is not None else Defaults.startup_grace_secs
 
         if not freshEnv and Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
@@ -372,6 +376,7 @@ class Env:
             'terminateRetrySecs': self.terminateRetrySecs,
             'redisConfigFile': self.redisConfigFile,
             'dualTLS': self.dualTLS,
+            'startupGraceSecs': self.startupGraceSecs,
         }
         return kwargs
 
