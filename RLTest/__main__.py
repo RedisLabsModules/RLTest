@@ -973,9 +973,18 @@ class RLTest:
                     done_delta = self.run_single_test(test, on_timeout)
 
                 results.put({'test_name': test.name, 'output': output.getvalue(),
-                             'done': done_delta, 'failures': self.testsFailed}, block=False)
+                             'done': done_delta, 'failures': self.testsFailed,
+                             'shutdown': False}, block=False)
 
+            # Always ship one shutdown message per worker so the coordinator
+            # reads a known total of n_jobs + parallelism messages. Captures
+            # failures raised during final shutdown (e.g. "redis did not exit
+            # cleanly" when env_reuse=True).
+            self.testsFailed = {}
             self.takeEnvDown(fullShutDown=True)
+            results.put({'test_name': '<worker shutdown>', 'output': '',
+                         'done': 0, 'failures': self.testsFailed,
+                         'shutdown': True}, block=False)
 
         results = Queue()
         # Open group for all tests at the start (parallel execution)
@@ -990,27 +999,33 @@ class RLTest:
                 currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
-            for _ in self.progressbar(n_jobs):
+            # Workers send exactly n_jobs per-test messages plus one shutdown
+            # message each, for a known total. The single shared queue does
+            # not preserve per-worker ordering, so a fast worker's shutdown
+            # may arrive before a slow worker's last test. We read every
+            # message in one bounded loop and tick the progressbar only on
+            # per-test ones. The has_live_processor guard turns a worker
+            # crash before it ships its shutdown message into a clean error
+            # instead of an indefinite hang.
+            def _get_result():
                 while True:
-                    # check if we have some lives executors
-                    has_live_processor = False
-                    for p in processes:
-                        if p.is_alive():
-                            has_live_processor = True
-                            break
                     try:
-                        res = results.get(timeout=1)
-                        break
-                    except Exception as e:
-                        if not has_live_processor:
+                        return results.get(timeout=1)
+                    except Exception:
+                        if not any(p.is_alive() for p in processes):
                             raise Exception('Failed to get job result and no more processors is alive')
-                print('%s' % res['output'], end="")
+
+            bar_iter = iter(self.progressbar(n_jobs))
+            for _ in range(n_jobs + self.parallelism):
+                res = _get_result()
+                if res['output']:
+                    print('%s' % res['output'], end="")
                 done += res['done']
                 self.testsFailed.update(res['failures'])
+                if not res['shutdown']:
+                    next(bar_iter, None)
+            next(bar_iter, None)  # finalize bar.update(n_jobs)
 
-            # All per-test messages are accounted for; workers exit on their own
-            # once `jobs` drains. The single results queue is drained continuously
-            # above, so workers can never block on a full pipe.
             for p in processes:
                 p.join()
 
