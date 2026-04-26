@@ -12,7 +12,7 @@ import unittest
 import time
 import shlex
 import json
-from multiprocessing import Process, Queue, SimpleQueue, set_start_method
+from multiprocessing import Process, Queue, set_start_method
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
 from RLTest.utils import Colors, fix_modules, fix_modulesArgs, is_github_actions
@@ -356,43 +356,6 @@ class EnvScopeGuard:
 
     def __exit__(self, type, value, traceback):
         self.runner.takeEnvDown()
-
-# Sentinel used to signal the summary-drainer thread to stop. Must be
-# pickleable (SimpleQueue pickles everything) and distinguishable from any
-# payload a worker might put, which is always a dict.
-_SUMMARY_DRAIN_STOP = ('__rltest_summary_stop__',)
-
-
-def _join_workers_with_summary_drain(processes, summary, timeout=None):
-    """Wait for all worker processes to exit while continuously draining the
-    ``summary`` queue, and return the list of collected summary entries.
-
-    A background thread drains ``summary`` so that worker ``put()`` calls
-    never block on a full summary-pipe buffer. Without this, on_timeout and
-    the final summary.put at worker-exit can block in ``pipe_write``, in
-    turn hanging ``p.join()`` here indefinitely.
-    """
-    collected = []
-
-    def _drain():
-        while True:
-            item = summary.get()
-            if item == _SUMMARY_DRAIN_STOP:
-                break
-            collected.append(item)
-
-    drainer = threading.Thread(target=_drain)
-    drainer.start()
-    try:
-        deadline = None if timeout is None else time.time() + timeout
-        for p in processes:
-            remaining = None if deadline is None else max(0.0, deadline - time.time())
-            p.join(timeout=remaining)
-    finally:
-        summary.put(_SUMMARY_DRAIN_STOP)
-        drainer.join()
-    return collected
-
 
 class TestTimeLimit(object):
     """
@@ -978,51 +941,43 @@ class RLTest:
 
             self.takeEnvDown(fullShutDown=True)
 
-        def run_jobs(jobs, results, summary, port):
+        def run_jobs(jobs, results, port):
             Defaults.port = port
-            done = 0
             while True:
                 try:
                     test = jobs.get(timeout=0.1)
                 except Exception as e:
                     break
 
+                # Reset per-test: addFailure() in this worker writes into this
+                # dict, which is shipped as-is. The coordinator owns the
+                # cumulative testsFailed; the worker keeps no state across tests.
+                self.testsFailed = {}
                 output = io.StringIO()
                 with redirect_stdout(output):
                     def on_timeout():
-                        nonlocal done
                         try:
-                            done += 1
                             self.killEnvWithSegFault()
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Test timeout'))
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            # Order matters: `results` first so the coordinator (which is
-                            # actively draining `results`) gets this worker's output and
-                            # can progress toward the summary-drain phase. `summary` is a
-                            # SimpleQueue with a synchronous put(); the coordinator only
-                            # starts draining it after every result is in, so this put may
-                            # briefly block here on a full pipe and that's fine.
-                            # `results` is a Queue with a feeder thread; close() +
-                            # join_thread() flushes the put above to the pipe before the
-                            # watcher thread calls os._exit(1), which bypasses Python
-                            # finalization.
-                            results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
+                            # The watcher thread calls os._exit(1) right after this
+                            # returns, bypassing Python finalization. close() +
+                            # join_thread() flushes the put to the pipe first.
+                            results.put({'test_name': test.name, 'output': output.getvalue(),
+                                         'done': 1, 'failures': self.testsFailed}, block=False)
                             results.close()
                             results.join_thread()
-                            summary.put({'done': done, 'failures': self.testsFailed})
-                    done += self.run_single_test(test, on_timeout)
 
-                results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
+                    done_delta = self.run_single_test(test, on_timeout)
+
+                results.put({'test_name': test.name, 'output': output.getvalue(),
+                             'done': done_delta, 'failures': self.testsFailed}, block=False)
 
             self.takeEnvDown(fullShutDown=True)
 
-            # serialized the results back
-            summary.put({'done': done, 'failures': self.testsFailed})
-
         results = Queue()
-        summary = SimpleQueue()
         # Open group for all tests at the start (parallel execution)
         self._openGitHubActionsTestsGroup()
         if self.parallelism == 1:
@@ -1031,7 +986,7 @@ class RLTest:
             processes = []
             currPort = Defaults.port
             for i in range(self.parallelism):
-                p = Process(target=run_jobs, args=(jobs,results,summary,currPort))
+                p = Process(target=run_jobs, args=(jobs,results,currPort))
                 currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
@@ -1049,14 +1004,15 @@ class RLTest:
                     except Exception as e:
                         if not has_live_processor:
                             raise Exception('Failed to get job result and no more processors is alive')
-                output = res['output']
-                print('%s' % output, end="")
-
-            # Join worker processes while concurrently draining `summary`, so
-            # workers do not block on its pipe buffer filling up.
-            for res in _join_workers_with_summary_drain(processes, summary):
+                print('%s' % res['output'], end="")
                 done += res['done']
                 self.testsFailed.update(res['failures'])
+
+            # All per-test messages are accounted for; workers exit on their own
+            # once `jobs` drains. The single results queue is drained continuously
+            # above, so workers can never block on a full pipe.
+            for p in processes:
+                p.join()
 
         endTime = time.time()
 
