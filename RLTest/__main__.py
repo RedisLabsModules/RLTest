@@ -998,15 +998,20 @@ class RLTest:
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            # `summary` is a SimpleQueue, so its put() writes straight to
-                            # the pipe and needs no explicit flush. `results` is a Queue
-                            # with a feeder thread; close() + join_thread() ensures the
-                            # put above is written to the pipe before the watcher thread
-                            # calls os._exit(1), which bypasses Python finalization.
-                            summary.put({'done': done, 'failures': self.testsFailed})
+                            # Order matters: `results` first so the coordinator (which is
+                            # actively draining `results`) gets this worker's output and
+                            # can progress toward the summary-drain phase. `summary` is a
+                            # SimpleQueue with a synchronous put(); the coordinator only
+                            # starts draining it after every result is in, so this put may
+                            # briefly block here on a full pipe and that's fine.
+                            # `results` is a Queue with a feeder thread; close() +
+                            # join_thread() flushes the put above to the pipe before the
+                            # watcher thread calls os._exit(1), which bypasses Python
+                            # finalization.
                             results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
                             results.close()
                             results.join_thread()
+                            summary.put({'done': done, 'failures': self.testsFailed})
                     done += self.run_single_test(test, on_timeout)
 
                 results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
@@ -1047,8 +1052,8 @@ class RLTest:
                 output = res['output']
                 print('%s' % output, end="")
 
-            # Join worker processes while concurrently draining `summary`,
-            # so their feeder threads do not block on a full pipe buffer.
+            # Join worker processes while concurrently draining `summary`, so
+            # workers do not block on its pipe buffer filling up.
             for res in _join_workers_with_summary_drain(processes, summary):
                 done += res['done']
                 self.testsFailed.update(res['failures'])
