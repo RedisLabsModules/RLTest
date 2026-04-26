@@ -68,11 +68,11 @@ class TestParallelResultsDrain(TestCase):
         # Mimic the coordinator's progressbar loop: drain every per-test
         # message live, in the same thread, while workers are still running.
         expected = _NUM_WORKERS * _MSGS_PER_WORKER
-        start = time.time()
+        start = time.monotonic()
         collected = [results.get(timeout=_JOIN_TIMEOUT_SECS) for _ in range(expected)]
         for p in self._procs:
             p.join(timeout=_JOIN_TIMEOUT_SECS)
-        elapsed = time.time() - start
+        elapsed = time.monotonic() - start
 
         for p in self._procs:
             self.assertFalse(

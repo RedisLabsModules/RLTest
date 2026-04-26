@@ -962,11 +962,19 @@ class RLTest:
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            # The watcher thread calls os._exit(1) right after this
-                            # returns, bypassing Python finalization. close() +
-                            # join_thread() flushes the put to the pipe first.
+                            # The watcher thread calls os._exit(1) right after
+                            # this returns, bypassing Python finalization and
+                            # the normal post-loop shutdown put. Ship both the
+                            # per-test result and the shutdown sentinel here so
+                            # the coordinator's bounded count of
+                            # n_jobs + parallelism remains accurate. close() +
+                            # join_thread() flushes both puts to the pipe first.
                             results.put({'test_name': test.name, 'output': output.getvalue(),
-                                         'done': 1, 'failures': self.testsFailed}, block=False)
+                                         'done': 1, 'failures': self.testsFailed,
+                                         'shutdown': False}, block=False)
+                            results.put({'test_name': '<worker shutdown>', 'output': '',
+                                         'done': 0, 'failures': {},
+                                         'shutdown': True}, block=False)
                             results.close()
                             results.join_thread()
 
@@ -1013,7 +1021,7 @@ class RLTest:
                         return results.get(timeout=1)
                     except Exception:
                         if not any(p.is_alive() for p in processes):
-                            raise Exception('Failed to get job result and no more processors is alive')
+                            raise Exception('Failed to get job result and no more processors are alive')
 
             bar_iter = iter(self.progressbar(n_jobs))
             for _ in range(n_jobs + self.parallelism):
