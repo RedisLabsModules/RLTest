@@ -941,44 +941,60 @@ class RLTest:
 
             self.takeEnvDown(fullShutDown=True)
 
-        def run_jobs(jobs, results, summary, port):
+        def run_jobs(jobs, results, port):
             Defaults.port = port
-            done = 0
             while True:
                 try:
                     test = jobs.get(timeout=0.1)
                 except Exception as e:
                     break
 
+                # Reset per-test: addFailure() in this worker writes into this
+                # dict, which is shipped as-is. The coordinator owns the
+                # cumulative testsFailed; the worker keeps no state across tests.
+                self.testsFailed = {}
                 output = io.StringIO()
                 with redirect_stdout(output):
                     def on_timeout():
-                        nonlocal done
                         try:
-                            done += 1
                             self.killEnvWithSegFault()
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Test timeout'))
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
-                            summary.put({'done': done, 'failures': self.testsFailed}, block=False)
-                            # After we return the processes will be killed, so we must make sure the queues are drained properly.
+                            # The watcher thread calls os._exit(1) right after
+                            # this returns, bypassing Python finalization and
+                            # the normal post-loop shutdown put. Ship both the
+                            # per-test result and the shutdown sentinel here so
+                            # the coordinator's bounded count of
+                            # n_jobs + parallelism remains accurate. close() +
+                            # join_thread() flushes both puts to the pipe first.
+                            results.put({'test_name': test.name, 'output': output.getvalue(),
+                                         'done': 1, 'failures': self.testsFailed,
+                                         'shutdown': False}, block=False)
+                            results.put({'test_name': '<worker shutdown>', 'output': '',
+                                         'done': 0, 'failures': {},
+                                         'shutdown': True}, block=False)
                             results.close()
-                            summary.close()
-                            summary.join_thread()
                             results.join_thread()
-                    done += self.run_single_test(test, on_timeout)
 
-                results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
+                    done_delta = self.run_single_test(test, on_timeout)
 
+                results.put({'test_name': test.name, 'output': output.getvalue(),
+                             'done': done_delta, 'failures': self.testsFailed,
+                             'shutdown': False}, block=False)
+
+            # Always ship one shutdown message per worker so the coordinator
+            # reads a known total of n_jobs + parallelism messages. Captures
+            # failures raised during final shutdown (e.g. "redis did not exit
+            # cleanly" when env_reuse=True).
+            self.testsFailed = {}
             self.takeEnvDown(fullShutDown=True)
-
-            # serialized the results back
-            summary.put({'done': done, 'failures': self.testsFailed}, block=False)
+            results.put({'test_name': '<worker shutdown>', 'output': '',
+                         'done': 0, 'failures': self.testsFailed,
+                         'shutdown': True}, block=False)
 
         results = Queue()
-        summary = Queue()
         # Open group for all tests at the start (parallel execution)
         self._openGitHubActionsTestsGroup()
         if self.parallelism == 1:
@@ -987,38 +1003,39 @@ class RLTest:
             processes = []
             currPort = Defaults.port
             for i in range(self.parallelism):
-                p = Process(target=run_jobs, args=(jobs,results,summary,currPort))
+                p = Process(target=run_jobs, args=(jobs,results,currPort))
                 currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
-            for _ in self.progressbar(n_jobs):
+            # Workers send exactly n_jobs per-test messages plus one shutdown
+            # message each, for a known total. The single shared queue does
+            # not preserve per-worker ordering, so a fast worker's shutdown
+            # may arrive before a slow worker's last test. We read every
+            # message in one bounded loop and tick the progressbar only on
+            # per-test ones. The has_live_processor guard turns a worker
+            # crash before it ships its shutdown message into a clean error
+            # instead of an indefinite hang.
+            def _get_result():
                 while True:
-                    # check if we have some lives executors
-                    has_live_processor = False
-                    for p in processes:
-                        if p.is_alive():
-                            has_live_processor = True
-                            break
                     try:
-                        res = results.get(timeout=1)
-                        break
-                    except Exception as e:
-                        if not has_live_processor:
-                            raise Exception('Failed to get job result and no more processors is alive')
-                output = res['output']
-                print('%s' % output, end="")
+                        return results.get(timeout=1)
+                    except Exception:
+                        if not any(p.is_alive() for p in processes):
+                            raise Exception('Failed to get job result and no more processors are alive')
+
+            bar_iter = iter(self.progressbar(n_jobs))
+            for _ in range(n_jobs + self.parallelism):
+                res = _get_result()
+                if res['output']:
+                    print('%s' % res['output'], end="")
+                done += res['done']
+                self.testsFailed.update(res['failures'])
+                if not res['shutdown']:
+                    next(bar_iter, None)
+            next(bar_iter, None)  # finalize bar.update(n_jobs)
 
             for p in processes:
                 p.join()
-
-            # join results
-            while True:
-                try:
-                    res = summary.get(timeout=1)
-                except Exception as e:
-                    break
-                done += res['done']
-                self.testsFailed.update(res['failures'])
 
         endTime = time.time()
 
