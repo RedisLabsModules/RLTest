@@ -300,6 +300,11 @@ parser.add_argument(
     help='Print a verbose information on test failure')
 
 parser.add_argument(
+    '--print-slowest', type=int, default=10, metavar='N',
+    help='At the end of the run, print the N slowest tests. Set to 0 to disable. '
+         'If $GITHUB_STEP_SUMMARY is set, the table is also appended there as markdown.')
+
+parser.add_argument(
     '--enable-debug-command', action='store_const', const=True, default=False,
     help='On Redis 7, debug command need to be enabled in order to be used.')
 
@@ -559,6 +564,7 @@ class RLTest:
 
         self.tests = []
         self.testsFailed = {}
+        self.testsTimings = []
         self.currEnv = None
         self.loader = TestLoader()
 
@@ -729,6 +735,7 @@ class RLTest:
             after_func = after
 
         hasException = False
+        startTime = time.monotonic()
         try:
             before_func()
             fn()
@@ -754,6 +761,8 @@ class RLTest:
             passed = False
         finally:
             after_func()
+
+        self.testsTimings.append((testFullName, time.monotonic() - startTime))
 
         numFailed = 0
         if self.currEnv:
@@ -868,6 +877,28 @@ class RLTest:
             lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
         return done
 
+    def print_slowest_tests(self):
+        n = self.args.print_slowest
+        if n <= 0 or not self.testsTimings:
+            return
+        slowest = sorted(self.testsTimings, key=lambda x: x[1], reverse=True)[:n]
+        heading = 'Slowest %d tests:' % len(slowest)
+        print(Colors.Bold('\n' + heading))
+        for i, (name, duration) in enumerate(slowest, 1):
+            print('  %2d. %7.2fs  %s' % (i, duration, name))
+
+        summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+        if summary_path:
+            try:
+                with open(summary_path, 'a') as f:
+                    f.write('\n## %s\n\n' % heading)
+                    f.write('| # | Duration | Test |\n')
+                    f.write('|---|---|---|\n')
+                    for i, (name, duration) in enumerate(slowest, 1):
+                        f.write('| %d | %.2fs | %s |\n' % (i, duration, name))
+            except OSError as e:
+                print('Warning: failed to write to $GITHUB_STEP_SUMMARY: %s' % e)
+
     def print_failures(self):
         for group, failures in self.testsFailed.items():
             print('\t' + Colors.Bold(group))
@@ -953,6 +984,7 @@ class RLTest:
                 # dict, which is shipped as-is. The coordinator owns the
                 # cumulative testsFailed; the worker keeps no state across tests.
                 self.testsFailed = {}
+                self.testsTimings = []
                 output = io.StringIO()
                 with redirect_stdout(output):
                     def on_timeout():
@@ -971,9 +1003,10 @@ class RLTest:
                             # join_thread() flushes both puts to the pipe first.
                             results.put({'test_name': test.name, 'output': output.getvalue(),
                                          'done': 1, 'failures': self.testsFailed,
+                                         'timings': self.testsTimings,
                                          'shutdown': False}, block=False)
                             results.put({'test_name': '<worker shutdown>', 'output': '',
-                                         'done': 0, 'failures': {},
+                                         'done': 0, 'failures': {}, 'timings': [],
                                          'shutdown': True}, block=False)
                             results.close()
                             results.join_thread()
@@ -982,6 +1015,7 @@ class RLTest:
 
                 results.put({'test_name': test.name, 'output': output.getvalue(),
                              'done': done_delta, 'failures': self.testsFailed,
+                             'timings': self.testsTimings,
                              'shutdown': False}, block=False)
 
             # Always ship one shutdown message per worker so the coordinator
@@ -992,6 +1026,7 @@ class RLTest:
             self.takeEnvDown(fullShutDown=True)
             results.put({'test_name': '<worker shutdown>', 'output': '',
                          'done': 0, 'failures': self.testsFailed,
+                         'timings': [],
                          'shutdown': True}, block=False)
 
         results = Queue()
@@ -1030,6 +1065,7 @@ class RLTest:
                     print('%s' % res['output'], end="")
                 done += res['done']
                 self.testsFailed.update(res['failures'])
+                self.testsTimings.extend(res.get('timings', []))
                 if not res['shutdown']:
                     next(bar_iter, None)
             next(bar_iter, None)  # finalize bar.update(n_jobs)
@@ -1045,6 +1081,7 @@ class RLTest:
         # Summary goes outside the group
         print(Colors.Bold('\nTest Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getFailedTestsCount(), done - self.getFailedTestsCount())))
+        self.print_slowest_tests()
         if self.testsFailed:
             if self.args.failed_tests_file:
                 with open(self.args.failed_tests_file, 'w') as file:
