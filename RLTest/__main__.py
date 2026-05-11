@@ -295,6 +295,11 @@ parser.add_argument(
     help='Print a verbose information on test failure')
 
 parser.add_argument(
+    '--print-slowest', type=int, default=10, metavar='N',
+    help='At the end of the run, print the N slowest tests. Set to 0 to disable. '
+         'If $GITHUB_STEP_SUMMARY is set, the table is also appended there as markdown.')
+
+parser.add_argument(
     '--enable-debug-command', action='store_const', const=True, default=False,
     help='On Redis 7, debug command need to be enabled in order to be used.')
 
@@ -551,6 +556,7 @@ class RLTest:
 
         self.tests = []
         self.testsFailed = {}
+        self.testsTimings = []
         self.currEnv = None
         self.loader = TestLoader()
         if self.args.test is not None:
@@ -718,6 +724,7 @@ class RLTest:
             after_func = after
 
         hasException = False
+        startTime = time.monotonic()
         try:
             before_func()
             fn()
@@ -743,6 +750,8 @@ class RLTest:
             passed = False
         finally:
             after_func()
+
+        self.testsTimings.append((testFullName, time.monotonic() - startTime))
 
         numFailed = 0
         if self.currEnv:
@@ -844,6 +853,28 @@ class RLTest:
             lastEnv.debugPrint(json.dumps(verboseInfo, indent=2).replace('\\n', '\n'), force=True)
         return done
 
+    def print_slowest_tests(self):
+        n = self.args.print_slowest
+        if n <= 0 or not self.testsTimings:
+            return
+        slowest = sorted(self.testsTimings, key=lambda x: x[1], reverse=True)[:n]
+        heading = 'Slowest %d tests:' % len(slowest)
+        print(Colors.Bold('\n' + heading))
+        for i, (name, duration) in enumerate(slowest, 1):
+            print('  %2d. %7.2fs  %s' % (i, duration, name))
+
+        summary_path = os.environ.get('GITHUB_STEP_SUMMARY')
+        if summary_path:
+            try:
+                with open(summary_path, 'a') as f:
+                    f.write('\n## %s\n\n' % heading)
+                    f.write('| # | Duration | Test |\n')
+                    f.write('|---|---|---|\n')
+                    for i, (name, duration) in enumerate(slowest, 1):
+                        f.write('| %d | %.2fs | %s |\n' % (i, duration, name))
+            except OSError as e:
+                print('Warning: failed to write to $GITHUB_STEP_SUMMARY: %s' % e)
+
     def print_failures(self):
         for group, failures in self.testsFailed.items():
             print('\t' + Colors.Bold(group))
@@ -938,7 +969,7 @@ class RLTest:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
                             results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
-                            summary.put({'done': done, 'failures': self.testsFailed}, block=False)
+                            summary.put({'done': done, 'failures': self.testsFailed, 'timings': self.testsTimings}, block=False)
                             # After we return the processes will be killed, so we must make sure the queues are drained properly.
                             results.close()
                             summary.close()
@@ -951,7 +982,7 @@ class RLTest:
             self.takeEnvDown(fullShutDown=True)
 
             # serialized the results back
-            summary.put({'done': done, 'failures': self.testsFailed}, block=False)
+            summary.put({'done': done, 'failures': self.testsFailed, 'timings': self.testsTimings}, block=False)
 
         results = Queue()
         summary = Queue()
@@ -993,11 +1024,13 @@ class RLTest:
                     break
                 done += res['done']
                 self.testsFailed.update(res['failures'])
+                self.testsTimings.extend(res.get('timings', []))
 
         endTime = time.time()
 
         print(Colors.Bold('\nTest Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getFailedTestsCount(), done - self.getFailedTestsCount())))
+        self.print_slowest_tests()
         if self.testsFailed:
             if self.args.failed_tests_file:
                 with open(self.args.failed_tests_file, 'w') as file:
