@@ -15,7 +15,7 @@ import json
 from multiprocessing import Process, Queue, set_start_method
 
 from RLTest.env import Env, TestAssertionFailure, Defaults
-from RLTest.utils import Colors, fix_modules, fix_modulesArgs
+from RLTest.utils import Colors, fix_modules, fix_modulesArgs, is_github_actions
 from RLTest.loader import TestLoader
 from RLTest.Enterprise import binaryrepo
 from RLTest import debuggers
@@ -147,6 +147,11 @@ parser.add_argument(
 parser.add_argument(
     '--cluster_node_timeout', default=5000,
     help='sets the node timeout on cluster in milliseconds')
+
+parser.add_argument(
+    '--cluster-start-timeout', default=40, type=int,
+    help='timeout in seconds to wait for cluster to be ready (default 40 seconds). '
+         'Increase for large shard counts (e.g., 99 shards).')
 
 parser.add_argument(
     '--cluster_credentials',
@@ -543,6 +548,9 @@ class RLTest:
         Defaults.tls_passphrase = self.args.tls_passphrase
         Defaults.oss_password = self.args.oss_password
         Defaults.cluster_node_timeout = self.args.cluster_node_timeout
+        Defaults.cluster_start_timeout = self.args.cluster_start_timeout
+        if Defaults.cluster_start_timeout < 5:
+            raise Exception('--cluster-start-timeout must be at least 5 seconds')
         Defaults.enable_debug_command = True if self.args.allow_unsafe else self.args.enable_debug_command
         Defaults.enable_protected_configs = True if self.args.allow_unsafe else self.args.enable_protected_configs
         Defaults.enable_module_command = True if self.args.allow_unsafe else self.args.enable_module_command
@@ -559,6 +567,9 @@ class RLTest:
         self.testsTimings = []
         self.currEnv = None
         self.loader = TestLoader()
+
+        # For GitHub Actions grouping - track if we have an open group
+        self.github_actions_group_open = False if is_github_actions() else None
         if self.args.test is not None:
             self.loader.load_spec(self.args.test)
         if self.args.tests_file is not None:
@@ -778,6 +789,18 @@ class RLTest:
             numFailed += 1 # exception should be counted as failure
         return numFailed
 
+    def _openGitHubActionsTestsGroup(self):
+        """Open a GitHub Actions group wrapping all tests"""
+        if self.github_actions_group_open is False:
+            print('::group::📋 Test Execution')
+            self.github_actions_group_open = True
+
+    def _closeGitHubActionsTestsGroup(self):
+        """Close the GitHub Actions tests group if one is open"""
+        if self.github_actions_group_open is True:
+            print('::endgroup::')
+            self.github_actions_group_open = False
+
     def printSkip(self, name):
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[SKIP]')))
 
@@ -808,6 +831,7 @@ class RLTest:
         else:
             self.stopEnvWithSegFault()
 
+    # return number of tests done, and if all passed
     def run_single_test(self, test, on_timeout_func):
         done = 0
         with TestTimeLimit(self.args.test_timeout, on_timeout_func) as timeout_handler:
@@ -948,86 +972,113 @@ class RLTest:
 
             self.takeEnvDown(fullShutDown=True)
 
-        def run_jobs(jobs, results, summary, port):
+        def run_jobs(jobs, results, port):
             Defaults.port = port
-            done = 0
             while True:
                 try:
                     test = jobs.get(timeout=0.1)
                 except Exception as e:
                     break
 
+                # Reset per-test: addFailure() in this worker writes into this
+                # dict, which is shipped as-is. The coordinator owns the
+                # cumulative testsFailed; the worker keeps no state across tests.
+                self.testsFailed = {}
+                self.testsTimings = []
                 output = io.StringIO()
                 with redirect_stdout(output):
                     def on_timeout():
-                        nonlocal done
                         try:
-                            done += 1
                             self.killEnvWithSegFault()
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Test timeout'))
                         except Exception as e:
                             self.handleFailure(testFullName=test.name, testname=test.name, error_msg=Colors.Bred('Exception on timeout function %s' % str(e)))
                         finally:
-                            results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
-                            summary.put({'done': done, 'failures': self.testsFailed, 'timings': self.testsTimings}, block=False)
-                            # After we return the processes will be killed, so we must make sure the queues are drained properly.
+                            # The watcher thread calls os._exit(1) right after
+                            # this returns, bypassing Python finalization and
+                            # the normal post-loop shutdown put. Ship both the
+                            # per-test result and the shutdown sentinel here so
+                            # the coordinator's bounded count of
+                            # n_jobs + parallelism remains accurate. close() +
+                            # join_thread() flushes both puts to the pipe first.
+                            results.put({'test_name': test.name, 'output': output.getvalue(),
+                                         'done': 1, 'failures': self.testsFailed,
+                                         'timings': self.testsTimings,
+                                         'shutdown': False}, block=False)
+                            results.put({'test_name': '<worker shutdown>', 'output': '',
+                                         'done': 0, 'failures': {}, 'timings': [],
+                                         'shutdown': True}, block=False)
                             results.close()
-                            summary.close()
-                            summary.join_thread()
                             results.join_thread()
-                    done += self.run_single_test(test, on_timeout)
 
-                results.put({'test_name': test.name, "output": output.getvalue()}, block=False)
+                    done_delta = self.run_single_test(test, on_timeout)
 
+                results.put({'test_name': test.name, 'output': output.getvalue(),
+                             'done': done_delta, 'failures': self.testsFailed,
+                             'timings': self.testsTimings,
+                             'shutdown': False}, block=False)
+
+            # Always ship one shutdown message per worker so the coordinator
+            # reads a known total of n_jobs + parallelism messages. Captures
+            # failures raised during final shutdown (e.g. "redis did not exit
+            # cleanly" when env_reuse=True).
+            self.testsFailed = {}
             self.takeEnvDown(fullShutDown=True)
-
-            # serialized the results back
-            summary.put({'done': done, 'failures': self.testsFailed, 'timings': self.testsTimings}, block=False)
+            results.put({'test_name': '<worker shutdown>', 'output': '',
+                         'done': 0, 'failures': self.testsFailed,
+                         'timings': [],
+                         'shutdown': True}, block=False)
 
         results = Queue()
-        summary = Queue()
+        # Open group for all tests at the start (parallel execution)
+        self._openGitHubActionsTestsGroup()
         if self.parallelism == 1:
             run_jobs_main_thread(jobs)
         else :
             processes = []
             currPort = Defaults.port
             for i in range(self.parallelism):
-                p = Process(target=run_jobs, args=(jobs,results,summary,currPort))
+                p = Process(target=run_jobs, args=(jobs,results,currPort))
                 currPort += 30 # safe distance for cluster and replicas
                 processes.append(p)
                 p.start()
-            for _ in self.progressbar(n_jobs):
+            # Workers send exactly n_jobs per-test messages plus one shutdown
+            # message each, for a known total. The single shared queue does
+            # not preserve per-worker ordering, so a fast worker's shutdown
+            # may arrive before a slow worker's last test. We read every
+            # message in one bounded loop and tick the progressbar only on
+            # per-test ones. The has_live_processor guard turns a worker
+            # crash before it ships its shutdown message into a clean error
+            # instead of an indefinite hang.
+            def _get_result():
                 while True:
-                    # check if we have some lives executors
-                    has_live_processor = False
-                    for p in processes:
-                        if p.is_alive():
-                            has_live_processor = True
-                            break
                     try:
-                        res = results.get(timeout=1)
-                        break
-                    except Exception as e:
-                        if not has_live_processor:
-                            raise Exception('Failed to get job result and no more processors is alive')
-                output = res['output']
-                print('%s' % output, end="")
+                        return results.get(timeout=1)
+                    except Exception:
+                        if not any(p.is_alive() for p in processes):
+                            raise Exception('Failed to get job result and no more processors are alive')
+
+            bar_iter = iter(self.progressbar(n_jobs))
+            for _ in range(n_jobs + self.parallelism):
+                res = _get_result()
+                if res['output']:
+                    print('%s' % res['output'], end="")
+                done += res['done']
+                self.testsFailed.update(res['failures'])
+                self.testsTimings.extend(res.get('timings', []))
+                if not res['shutdown']:
+                    next(bar_iter, None)
+            next(bar_iter, None)  # finalize bar.update(n_jobs)
 
             for p in processes:
                 p.join()
 
-            # join results
-            while True:
-                try:
-                    res = summary.get(timeout=1)
-                except Exception as e:
-                    break
-                done += res['done']
-                self.testsFailed.update(res['failures'])
-                self.testsTimings.extend(res.get('timings', []))
-
         endTime = time.time()
 
+        # Close group after all tests complete (parallel execution)
+        self._closeGitHubActionsTestsGroup()
+
+        # Summary goes outside the group
         print(Colors.Bold('\nTest Took: %d sec' % (endTime - startTime)))
         print(Colors.Bold('Total Tests Run: %d, Total Tests Failed: %d, Total Tests Passed: %d' % (done, self.getFailedTestsCount(), done - self.getFailedTestsCount())))
         self.print_slowest_tests()

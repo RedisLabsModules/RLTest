@@ -23,7 +23,7 @@ class StandardEnv(object):
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
                  terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None,
-                 redisConfigFile=None, dualTLS=False
+                 redisConfigFile=None, dualTLS=False, startupGraceSecs=0.1
                  ):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
@@ -72,6 +72,7 @@ class StandardEnv(object):
         self.terminateRetrySecs = terminateRetrySecs
         self.redisConfigFile = redisConfigFile
         self.dualTLS = dualTLS
+        self.startupGraceSecs = startupGraceSecs
 
         if port > 0:
             self.port = port
@@ -381,7 +382,7 @@ class StandardEnv(object):
         if masters and self.masterProcess is None:
             self.masterProcess = subprocess.Popen(args=self.masterCmdArgs, env=self.masterOSEnv, cwd=self.dbDirPath,
                                                   **options)
-            time.sleep(0.1)
+            time.sleep(self.startupGraceSecs)
             if self._isAlive(self.masterProcess):
                 con = self.getConnection()
                 self.waitForRedisToStart(con, self.masterProcess)
@@ -392,7 +393,7 @@ class StandardEnv(object):
                 print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
             self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, cwd=self.dbDirPath,
                                                  **options)
-            time.sleep(0.1)
+            time.sleep(self.startupGraceSecs)
             if self._isAlive(self.slaveProcess):
                 con = self.getSlaveConnection()
                 self.waitForRedisToStart(con, self.slaveProcess)

@@ -6,6 +6,9 @@ import redis
 import time
 from RLTest.utils import Colors
 
+# Interval in seconds between status updates during cluster wait
+CLUSTER_STATUS_INTERVAL_SEC = 5
+
 
 class ClusterEnv(object):
     def __init__(self, **kwargs):
@@ -23,6 +26,8 @@ class ClusterEnv(object):
         self.protocol = kwargs.get('protocol', 2)
         self.terminateRetries = kwargs.get('terminateRetries', None)
         self.terminateRetrySecs = kwargs.get('terminateRetrySecs', None)
+        self.verbose = kwargs.get('verbose', False)
+        self.clusterStartTimeout = kwargs.pop('clusterStartTimeout', 40)
         startPort = kwargs.pop('port', 10000)
         totalRedises = self.shardsCount * (2 if useSlaves else 1)
         randomizePorts = kwargs.pop('randomizePorts', False)
@@ -48,30 +53,70 @@ class ClusterEnv(object):
         return [shard.getInformationBeforeDispose() for shard in self.shards]
 
     def getInformationAfterDispose(self):
-        return [shard.getInformationAfterDispose() for shard in self.shards]  
+        return [shard.getInformationAfterDispose() for shard in self.shards]
 
-    def waitCluster(self, timeout_sec=40):
-        st = time.time()
+    def _countOk(self):
+        """Returns count of shards reporting cluster_state:ok"""
         ok = 0
+        for shard in self.shards:
+            con = shard.getConnection()
+            try:
+                status = con.execute_command('CLUSTER', 'INFO')
+            except Exception as e:
+                print('got error on cluster info, will try again, %s' % str(e))
+                continue
+            if 'cluster_state:ok' in str(status):
+                ok += 1
+        return ok
+
+    def _countAgreeSlots(self):
+        """Returns count of shards that agree on slots view"""
+        ok = 0
+        first_view = None
+        for shard in self.shards:
+            con = shard.getConnection()
+            try:
+                slots_view = con.execute_command('CLUSTER', 'SLOTS')
+            except Exception as e:
+                print('got error on cluster slots, will try again, %s' % str(e))
+                continue
+            if first_view is None:
+                first_view = slots_view
+            if slots_view == first_view:
+                ok += 1
+        return ok
+
+    def waitCluster(self, timeout_sec=40, verbose=True):
+        st = time.time()
+        last_status_time = st
+        total_shards = len(self.shards)
+
+        if verbose:
+            print(Colors.Yellow('Waiting for cluster to be ready (timeout: %d seconds, %d shards)...' %
+                                (timeout_sec, total_shards)))
 
         while st + timeout_sec > time.time():
-            ok = 0
-            for shard in self.shards:
-                con = shard.getConnection()
-                try:
-                    status = con.execute_command('CLUSTER', 'INFO')
-                except Exception as e:
-                    print('got error on cluster info, will try again, %s' % str(e))
-                    continue
-                if 'cluster_state:ok' in str(status):
-                    ok += 1
-            if ok == len(self.shards):
+            ok_count = self._countOk()
+            slots_count = self._countAgreeSlots()
+
+            if ok_count == total_shards and slots_count == total_shards:
+                elapsed = time.time() - st
+                if verbose:
+                    print(Colors.Green('Cluster is ready after %.1f seconds' % elapsed))
                 for shard in self.shards:
                     try:
                         shard.getConnection().execute_command('SEARCH.CLUSTERREFRESH')
                     except Exception:
                         pass
                 return
+
+            # Print periodic status update
+            now = time.time()
+            if verbose and (now - last_status_time) >= CLUSTER_STATUS_INTERVAL_SEC:
+                elapsed = now - st
+                print(Colors.Yellow('  Cluster wait: %.1fs elapsed - %d/%d shards OK, %d/%d agree on slots...' %
+                                    (elapsed, ok_count, total_shards, slots_count, total_shards)))
+                last_status_time = now
 
             time.sleep(0.1)
         raise RuntimeError(
@@ -80,14 +125,25 @@ class ClusterEnv(object):
     def startEnv(self, masters=True, slaves=True):
         if self.envIsUp == True:
             return  # env is already up
+
+        total_shards = len(self.shards)
+        if self.verbose:
+            print(Colors.Yellow('Starting cluster with %d shards...' % total_shards))
+
         try:
-            for shard in self.shards:
+            for i, shard in enumerate(self.shards):
                 shard.startEnv(masters, slaves)
-        except Exception:
+                if self.verbose:
+                    print(Colors.Yellow('  Started shard %d/%d' % (i + 1, total_shards)))
+        except Exception as e:
+            print(Colors.Bred('Error starting shard %d: %s' % (i + 1, str(e))))
+            print(Colors.Bred('Stopping all shards...'))
             for shard in self.shards:
                 shard.stopEnv()
             raise
 
+        if self.verbose:
+            print(Colors.Yellow('Configuring cluster topology...'))
         slots_per_node = int(16384 / len(self.shards)) + 1
         for i, shard in enumerate(self.shards):
             con = shard.getConnection()
@@ -103,10 +159,15 @@ class ClusterEnv(object):
             try:
                 con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x)
                                     for x in range(start_slot, end_slot)))
-            except Exception:
-                pass
+            except Exception as e:
+                print(Colors.Bred('  Error assigning slots %d-%d to shard %d: %s' %
+                                  (start_slot, end_slot - 1, i + 1, str(e))))
 
-        self.waitCluster()
+            if self.verbose:
+                print(Colors.Yellow('  Configured shard %d/%d (slots %d-%d)' %
+                                    (i + 1, total_shards, start_slot, min(end_slot - 1, 16383))))
+
+        self.waitCluster(timeout_sec=self.clusterStartTimeout, verbose=self.verbose)
         self.envIsUp = True
         self.envIsHealthy = True
 

@@ -4,7 +4,6 @@ from __future__ import print_function
 import contextlib
 import inspect
 import os
-import sys
 import unittest
 import warnings
 
@@ -28,7 +27,7 @@ def genDeprecated(name, target):
 
 
 class Query:
-    def __init__(self, env, *query, **options):
+    def __init__(self, env: 'Env', *query, **options):
         self.query = query
         self.options = options
         self.env = env
@@ -67,40 +66,40 @@ class Query:
         self.res = list(map(fn, self.res))
         return self
 
-    def equal(self, expected):
-        self.env.assertEqual(self.res, expected, 1)
+    def equal(self, expected, depth=0, message=None):
+        self.env.assertEqual(self.res, expected, 1 + depth, message=message)
         return self
 
-    def noEqual(self, expected):
-        self.env.assertNotEqual(self.res, expected, 1)
+    def noEqual(self, expected, depth=0, message=None):
+        self.env.assertNotEqual(self.res, expected, 1 + depth, message=message)
         return self
 
-    def true(self):
-        self.env.assertTrue(self.res, 1)
+    def true(self, depth=0, message=None):
+        self.env.assertTrue(self.res, 1 + depth, message=message)
         return self
 
-    def false(self):
-        self.env.assertFalse(self.res, 1)
+    def false(self, depth=0, message=None):
+        self.env.assertFalse(self.res, 1 + depth, message=message)
         return self
 
-    def ok(self):
-        self.env.assertEqual(self.res, 'OK', 1)
+    def ok(self, depth=0, message=None):
+        self.env.assertEqual(self.res, 'OK', 1 + depth, message=message)
         return self
 
-    def contains(self, val):
-        self.env.assertContains(val, self.res, 1)
+    def contains(self, val, depth=0, message=None):
+        self.env.assertContains(val, self.res, 1 + depth, message=message)
         return self
 
-    def notContains(self, val):
-        self.env.assertNotContains(val, self.res, 1)
+    def notContains(self, val, depth=0, message=None):
+        self.env.assertNotContains(val, self.res, 1 + depth, message=message)
         return self
 
-    def error(self):
-        self.env.assertTrue(self.errorRaised, 1)
+    def error(self, depth=0, message=None):
+        self.env.assertTrue(self.errorRaised, 1 + depth, message=message)
         return self
 
-    def noError(self):
-        self.env.assertFalse(self.errorRaised, 1)
+    def noError(self, depth=0, message=None):
+        self.env.assertFalse(self.errorRaised, 1 + depth, message=message)
         return self
 
     raiseError = genDeprecated('raiseError', error)
@@ -143,6 +142,7 @@ class Defaults:
     randomize_ports = False
     oss_password = None
     cluster_node_timeout = None
+    cluster_start_timeout = 40
     curr_test_name = None
     port = 6379
     enable_debug_command = False
@@ -153,6 +153,7 @@ class Defaults:
     protocol = 2
     redis_config_file = None
     dualTLS = False
+    startup_grace_secs = 0.1
 
     def getKwargs(self):
         kwargs = {
@@ -201,7 +202,8 @@ class Env:
                  tlsCaCertFile=None, tlsPassphrase=None, logDir=None, redisBinaryPath=None, dmcBinaryPath=None,
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
                  freshEnv=False, enableDebugCommand=None, enableModuleCommand=None, enableProtectedConfigs=None, protocol=None,
-                 terminateRetries=None, terminateRetrySecs=None, redisConfigFile=None, dualTLS=False):
+                 terminateRetries=None, terminateRetrySecs=None, redisConfigFile=None, dualTLS=False,
+                 startupGraceSecs=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -254,6 +256,8 @@ class Env:
         self.assertionFailedSummary = []
 
         self.dualTLS = dualTLS if dualTLS else Defaults.dualTLS
+
+        self.startupGraceSecs = startupGraceSecs if startupGraceSecs is not None else Defaults.startup_grace_secs
 
         if not freshEnv and Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
@@ -316,6 +320,7 @@ class Env:
                                         **kwargs)
         if self.env == 'oss-cluster':
             kwargs['password'] = Defaults.oss_password if self.password is None else self.password
+            kwargs['clusterStartTimeout'] = Defaults.cluster_start_timeout
             return ClusterEnv(shardsCount=self.shardsCount, redisBinaryPath=self.redisBinaryPath,
                               outputFilesFormat='%s-' + '%s-oss-cluster' % test_fname,
                               randomizePorts=Defaults.randomize_ports,
@@ -370,7 +375,8 @@ class Env:
             'terminateRetries': self.terminateRetries,
             'terminateRetrySecs': self.terminateRetrySecs,
             'redisConfigFile': self.redisConfigFile,
-            'dualTLS': self.dualTLS
+            'dualTLS': self.dualTLS,
+            'startupGraceSecs': self.startupGraceSecs,
         }
         return kwargs
 
@@ -382,7 +388,7 @@ class Env:
         self.envRunner.stopEnv(masters, slaves)
 
     def stopEnvWithSegFault(self, masters = True, slaves = True):
-        self.envRunner.stopEnvWithSegFault(masters, slaves)        
+        self.envRunner.stopEnvWithSegFault(masters, slaves)
 
     def getEnvStr(self):
         return self.env
@@ -397,6 +403,10 @@ class Env:
             return self.envRunner.getClusterConnection()
         else:
             return self.getConnection()
+
+    def waitCluster(self, timeout_sec=40):
+        if isinstance(self.envRunner, (ClusterEnv, EnterpriseRedisClusterEnv)):
+            self.envRunner.waitCluster(timeout_sec)
 
     def addShardToClusterIfExists(self):
         if isinstance(self.envRunner, ClusterEnv):
@@ -523,7 +533,7 @@ class Env:
 
     def assertExists(self, val, depth=0):
         warnings.warn("AssertExists is deprecated, use cmd instead", DeprecationWarning)
-        self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=0)
+        self._assertion('%s exists in db' % repr(val), self.con.exists(val), depth=depth)
 
     def executeCommand(self, *query, **options):
         warnings.warn("execute_command is deprecated, use cmd instead", DeprecationWarning)
@@ -566,10 +576,10 @@ class Env:
             yield 1
         except Exception as e:
             if contained:
-                self.assertContains(contained, str(e), depth=2)
-            self._assertion('Expected Response Error', True, depth=1)
+                self.assertContains(contained, str(e), depth=2, message=msg)
+            self._assertion('Expected Response Error', True, depth=1, message=msg)
         else:
-            self._assertion('Expected Response Error', False, depth=1)
+            self._assertion('Expected Response Error', False, depth=1, message=msg)
 
     def restartAndReload(self, shardId=None, timeout_sec=40):
         self.dumpAndReload(restart=True, shardId=shardId, timeout_sec=timeout_sec)
