@@ -3,18 +3,22 @@ import os
 import sys
 import importlib.util
 import inspect
+from RLTest.env_spec import resolve_spec
 from RLTest.utils import Colors
 
 
 class TestFunction(object):
     is_class = False
 
-    def __init__(self, filename, symbol, modulename):
+    def __init__(self, filename, symbol, modulename, env_spec=None):
         self.filename = filename
         self.symbol = symbol
         self.modulename = modulename
         self.is_method = False
         self.name = '{}:{}'.format(self.modulename, symbol)
+        # Resolved env requirements (dict or None). None means "no declared
+        # spec — fall back to legacy behaviour".
+        self.env_spec = env_spec
 
     def initialize(self):
         module_spec = importlib.util.spec_from_file_location(self.modulename, self.filename)
@@ -30,10 +34,12 @@ class TestFunction(object):
 class TestMethod(object):
     is_class = False
 
-    def __init__(self, obj, name):
+    def __init__(self, obj, name, env_spec=None):
         self.target = obj
         self.name = name
         self.is_method = True
+        # Methods inherit their class's env_spec; they cannot override it.
+        self.env_spec = env_spec
 
     def initialize(self):
         pass
@@ -44,12 +50,13 @@ class TestMethod(object):
 class TestClass(object):
     is_class = True
 
-    def __init__(self, filename, symbol, modulename, functions):
+    def __init__(self, filename, symbol, modulename, functions, env_spec=None):
         self.filename = filename
         self.symbol = symbol
         self.modulename = modulename
         self.functions = functions
         self.name = '{}:{}'.format(self.modulename, symbol)
+        self.env_spec = env_spec
 
     def initialize(self):
         module_spec = importlib.util.spec_from_file_location(self.modulename, self.filename)
@@ -70,7 +77,8 @@ class TestClass(object):
             if not callable(bound):
                 continue
             fns.append(TestMethod(bound,
-                                  name='{}:{}.{}'.format(self.modulename, self.clsname, mname)))
+                                  name='{}:{}.{}'.format(self.modulename, self.clsname, mname),
+                                  env_spec=self.env_spec))
         return fns
 
 
@@ -129,9 +137,15 @@ class TestLoader(object):
                 if inspect.isclass(obj):
                     methnames = [mname for mname in dir(obj)
                                     if self.filter_method(mname, subfilter)]
-                    self.tests.append(TestClass(filename, symbol, module_name, methnames))
+                    spec = resolve_spec(obj)
+                    self.tests.append(
+                        TestClass(filename, symbol, module_name, methnames, env_spec=spec)
+                    )
                 elif inspect.isfunction(obj):
-                    self.tests.append(TestFunction(filename, symbol, module_name))
+                    spec = resolve_spec(obj)
+                    self.tests.append(
+                        TestFunction(filename, symbol, module_name, env_spec=spec)
+                    )
         except OSError as e:
             print(Colors.Red("Can't access file %s." % filename))
             raise e
