@@ -712,14 +712,32 @@ class RLTest:
         except:
             test_args = inspect.getfullargspec(test.target).args
 
-        if len(test_args) > 0 and not test.is_method:
+        # For bound methods, drop the implicit ``self`` so we can detect a
+        # declared ``env`` parameter the same way for functions and methods.
+        if test.is_method:
+            method_args = [a for a in test_args if a != 'self']
+        else:
+            method_args = test_args
+
+        env = None
+        if test.is_method:
+            # Class methods don't construct their own env — it was built once
+            # during ``run_single_test`` and stored on the class instance as
+            # ``self.env``. We just forward it if the method declares ``env``.
+            if method_args:
+                env = getattr(test.target.__self__, 'env', None)
+        elif method_args:
+            spec = getattr(test, 'env_spec', None)
             try:
-                # env = Env(testName=test.name)
-                env = Defaults.env_factory(testName=test.name)
+                if spec is not None:
+                    env = Defaults.env_factory(testName=test.name, **spec)
+                else:
+                    env = Defaults.env_factory(testName=test.name)
             except Exception as e:
                 self.handleFailure(testFullName=testFullName, exception=e, prefix=msgPrefix, testname=test.name)
                 return 0
 
+        if env is not None:
             fn = lambda: test.target(env)
             before_func = lambda: before(env)
             after_func = lambda: after(env)
@@ -832,7 +850,17 @@ class RLTest:
 
                     Defaults.curr_test_name = test.name
                     try:
-                        obj = test.create_instance()
+                        # If the class declared an env_spec, build the env up
+                        # front and pass it to ``__init__``. The class is then
+                        # expected to accept ``env`` and stash it on
+                        # ``self.env`` so its methods can use it (matching the
+                        # existing class-shared-env convention).
+                        spec = getattr(test, 'env_spec', None)
+                        if spec is not None:
+                            env = Defaults.env_factory(testName=test.name, **spec)
+                            obj = test.create_instance(env)
+                        else:
+                            obj = test.create_instance()
 
                     except unittest.SkipTest:
                         self.printSkip(test.name)
