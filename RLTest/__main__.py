@@ -712,14 +712,23 @@ class RLTest:
         except:
             test_args = inspect.getfullargspec(test.target).args
 
-        if len(test_args) > 0 and not test.is_method:
+        # Only function-style tests receive ``env`` as a parameter. Class
+        # methods access env via ``self`` (the class stashes it in
+        # ``__init__``); declaring ``env`` on a method will surface as a
+        # natural ``TypeError`` through the failure path below.
+        env = None
+        if test_args and not test.is_method:
+            spec = getattr(test, 'env_spec', None)
             try:
-                # env = Env(testName=test.name)
-                env = Defaults.env_factory(testName=test.name)
+                if spec is not None:
+                    env = Defaults.env_factory(testName=test.name, **spec)
+                else:
+                    env = Defaults.env_factory(testName=test.name)
             except Exception as e:
                 self.handleFailure(testFullName=testFullName, exception=e, prefix=msgPrefix, testname=test.name)
                 return 0
 
+        if env is not None:
             fn = lambda: test.target(env)
             before_func = lambda: before(env)
             after_func = lambda: after(env)
@@ -832,7 +841,17 @@ class RLTest:
 
                     Defaults.curr_test_name = test.name
                     try:
-                        obj = test.create_instance()
+                        # If the class declared an env_spec, build the env up
+                        # front and pass it to ``__init__``. What the class
+                        # does with it after that is its own business — the
+                        # runner never reads attributes off the instance.
+                        # Test methods access env through ``self``.
+                        spec = getattr(test, 'env_spec', None)
+                        if spec is not None:
+                            env = Defaults.env_factory(testName=test.name, **spec)
+                            obj = test.create_instance(env)
+                        else:
+                            obj = test.create_instance()
 
                     except unittest.SkipTest:
                         self.printSkip(test.name)
