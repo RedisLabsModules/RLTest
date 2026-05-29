@@ -1067,7 +1067,7 @@ class RLTest:
         if self.testsFailed:
             if self.args.failed_tests_file:
                 with open(self.args.failed_tests_file, 'w') as file:
-                    for test, _ in self.testsFailed:
+                    for test in self.testsFailed.keys():
                         file.write(test.split(' ')[0] + "\n")
 
             print(Colors.Bold('Failed Tests Summary:'))
