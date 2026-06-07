@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from .redis_std import StandardEnv
+from .redis_std import StandardEnv, MASTER, SLAVE
 from redis.cluster import ClusterNode
 import redis
 import time
@@ -86,20 +86,57 @@ class ClusterEnv(object):
                 ok += 1
         return ok
 
+    def _expectedReplicasInSlots(self):
+        """Returns the expected number of replica entries across CLUSTER SLOTS.
+
+        One replica entry is expected per slot-range row for each shard that
+        has a running slave. Returns 0 when no slaves are configured.
+        """
+        return sum(
+            1 for shard in self.shards
+            if getattr(shard, 'useSlaves', False)
+            and getattr(shard, 'slaveProcess', None) is not None
+        )
+
+    def _countReplicasInSlots(self):
+        """Returns the number of replica entries reported across all shards.
+
+        Queries CLUSTER SLOTS from a master and counts the replica entries
+        (positions after the first master entry in each slot row). Only the
+        first master is queried because all masters should agree post-gossip.
+        """
+        if not self.shards:
+            return 0
+        con = self.shards[0].getConnection()
+        try:
+            slots_view = con.execute_command('CLUSTER', 'SLOTS')
+        except Exception as e:
+            print('got error on cluster slots, will try again, %s' % str(e))
+            return 0
+        count = 0
+        for row in slots_view:
+            # row = [start, end, master_entry, replica_entry, replica_entry, ...]
+            if len(row) > 3:
+                count += len(row) - 3
+        return count
+
     def waitCluster(self, timeout_sec=40, verbose=True):
         st = time.time()
         last_status_time = st
         total_shards = len(self.shards)
+        expected_replicas = self._expectedReplicasInSlots()
 
         if verbose:
-            print(Colors.Yellow('Waiting for cluster to be ready (timeout: %d seconds, %d shards)...' %
-                                (timeout_sec, total_shards)))
+            print(Colors.Yellow('Waiting for cluster to be ready (timeout: %d seconds, %d shards, %d replicas)...' %
+                                (timeout_sec, total_shards, expected_replicas)))
 
         while st + timeout_sec > time.time():
             ok_count = self._countOk()
             slots_count = self._countAgreeSlots()
+            replicas_count = self._countReplicasInSlots() if expected_replicas else 0
 
-            if ok_count == total_shards and slots_count == total_shards:
+            if (ok_count == total_shards and slots_count == total_shards
+                    and replicas_count >= expected_replicas):
                 elapsed = time.time() - st
                 if verbose:
                     print(Colors.Green('Cluster is ready after %.1f seconds' % elapsed))
@@ -114,13 +151,83 @@ class ClusterEnv(object):
             now = time.time()
             if verbose and (now - last_status_time) >= CLUSTER_STATUS_INTERVAL_SEC:
                 elapsed = now - st
-                print(Colors.Yellow('  Cluster wait: %.1fs elapsed - %d/%d shards OK, %d/%d agree on slots...' %
-                                    (elapsed, ok_count, total_shards, slots_count, total_shards)))
+                if expected_replicas:
+                    print(Colors.Yellow(
+                        '  Cluster wait: %.1fs elapsed - %d/%d shards OK, %d/%d agree on slots, %d/%d replicas visible...'
+                        % (elapsed, ok_count, total_shards, slots_count, total_shards,
+                           replicas_count, expected_replicas)))
+                else:
+                    print(Colors.Yellow('  Cluster wait: %.1fs elapsed - %d/%d shards OK, %d/%d agree on slots...' %
+                                        (elapsed, ok_count, total_shards, slots_count, total_shards)))
                 last_status_time = now
 
             time.sleep(0.1)
         raise RuntimeError(
             "Cluster OK wait loop timed out after %s seconds" % timeout_sec)
+
+    def _attachSlavesToCluster(self):
+        """Attach slaves to their masters via CLUSTER MEET + CLUSTER REPLICATE.
+
+        Each StandardEnv shard owns one master and (when useSlaves is True)
+        one slave. Slaves were booted with --cluster-enabled but no master
+        link (see redis_std.py). Now that masters have MEET'd each other and
+        slots are assigned, MEET each slave from its master so the slave
+        joins gossip, then issue CLUSTER REPLICATE on the slave's connection
+        to attach it to the master.
+        """
+        total_shards = len(self.shards)
+        slave_shards = [s for s in self.shards if getattr(s, 'useSlaves', False)
+                        and getattr(s, 'slaveProcess', None) is not None]
+        if not slave_shards:
+            return
+
+        if self.verbose:
+            print(Colors.Yellow('Attaching %d slave(s) to cluster...' % len(slave_shards)))
+
+        # Briefly wait for masters to finish gossiping with each other.
+        time.sleep(0.5)
+
+        # Phase 1: MEET each slave from its master so the slave joins gossip.
+        master_node_ids = {}
+        for i, shard in enumerate(self.shards):
+            if not (getattr(shard, 'useSlaves', False) and shard.slaveProcess is not None):
+                continue
+            master_conn = shard.getConnection()
+            master_node_id = master_conn.execute_command('CLUSTER', 'MYID')
+            if isinstance(master_node_id, bytes):
+                master_node_id = master_node_id.decode()
+            master_node_ids[i] = master_node_id
+            slave_port = shard.getPort(SLAVE)
+            master_conn.execute_command('CLUSTER', 'MEET', '127.0.0.1', slave_port)
+
+        # Allow gossip to propagate so each slave sees the master it will replicate.
+        time.sleep(0.5)
+
+        # Phase 2: CLUSTER REPLICATE on each slave connection.
+        for i, shard in enumerate(self.shards):
+            if i not in master_node_ids:
+                continue
+            master_node_id = master_node_ids[i]
+            slave_conn = shard.getSlaveConnection()
+            # Retry briefly to handle the race where the slave has not yet
+            # learned the master node id via gossip.
+            attached = False
+            last_err = None
+            for _ in range(20):
+                try:
+                    slave_conn.execute_command('CLUSTER', 'REPLICATE', master_node_id)
+                    attached = True
+                    break
+                except Exception as e:
+                    last_err = e
+                    time.sleep(0.25)
+            if not attached:
+                raise RuntimeError(
+                    'CLUSTER REPLICATE failed for shard %d/%d slave: %s'
+                    % (i + 1, total_shards, last_err))
+            if self.verbose:
+                print(Colors.Yellow('  Attached slave for shard %d/%d (replicate %s)' %
+                                    (i + 1, total_shards, master_node_id[:8])))
 
     def startEnv(self, masters=True, slaves=True):
         if self.envIsUp == True:
@@ -166,6 +273,10 @@ class ClusterEnv(object):
             if self.verbose:
                 print(Colors.Yellow('  Configured shard %d/%d (slots %d-%d)' %
                                     (i + 1, total_shards, start_slot, min(end_slot - 1, 16383))))
+
+        # Attach slaves (if any) before waiting for cluster_state:ok so the
+        # final waitCluster call also covers replica readiness.
+        self._attachSlavesToCluster()
 
         self.waitCluster(timeout_sec=self.clusterStartTimeout, verbose=self.verbose)
         self.envIsUp = True

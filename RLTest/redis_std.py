@@ -221,13 +221,21 @@ class StandardEnv(object):
             cmdArgs += ['--loglevel', self.loglevel]
         if self.outputFilesFormat is not None:
             cmdArgs += ['--dbfilename', self._getFileName(role, '.rdb')]
-        if role == SLAVE:
+        if role == SLAVE and not self.clusterEnabled:
+            # Standalone replication: tie the slave to its master at boot.
             cmdArgs += ['--slaveof', 'localhost', str(self.port)]
+            if self.password:
+                cmdArgs += ['--masterauth', self.password]
+        elif role == SLAVE and self.clusterEnabled:
+            # Cluster mode: do NOT use --slaveof. The slave will be attached
+            # to its master via CLUSTER REPLICATE after the cluster is formed
+            # (see redis_cluster.py::startEnv). Boot it as an empty
+            # cluster-enabled node so it can join gossip.
             if self.password:
                 cmdArgs += ['--masterauth', self.password]
         if self.password:
             cmdArgs += ['--requirepass', self.password]
-        if self.clusterEnabled and role is not SLAVE:
+        if self.clusterEnabled:
             # creating .cluster.conf in /tmp as lock fails on NFS
             cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', '/tmp/' + self._getFileName(role, '.cluster.conf'),
                         '--cluster-node-timeout', '5000' if self.clusterNodeTimeout is None else str(self.clusterNodeTimeout)]
