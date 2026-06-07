@@ -136,6 +136,7 @@ class Defaults:
     logdir = None
     loglevel = None
     use_slaves = False
+    replicas_per_shard = 1
     num_shards = 1
     external_addr = 'localhost:6379'
     use_unix = False
@@ -161,6 +162,7 @@ class Defaults:
             'moduleArgs': self.module_args,
             'port': self.port,
             'useSlaves': self.use_slaves,
+            'replicasPerShard': self.replicas_per_shard,
             'useAof': self.use_aof,
             'useRdbPreamble': self.use_rdb_preamble,
             'dbDirPath': self.logdir,
@@ -184,7 +186,8 @@ class Defaults:
 
 class Env:
     RTestInstance = None
-    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
+    EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'replicasPerShard',
+                        'shardsCount', 'useAof',
                         'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'enableProtectedConfigs',
                         'enableModuleCommand', 'protocol', 'password']
 
@@ -203,7 +206,7 @@ class Env:
                  redisEnterpriseBinaryPath=None, noDefaultModuleArgs=False, clusterNodeTimeout = None,
                  freshEnv=False, enableDebugCommand=None, enableModuleCommand=None, enableProtectedConfigs=None, protocol=None,
                  terminateRetries=None, terminateRetrySecs=None, redisConfigFile=None, dualTLS=False,
-                 startupGraceSecs=None):
+                 startupGraceSecs=None, replicasPerShard=None):
 
         self.testName = testName if testName else Defaults.curr_test_name
         if self.testName is None:
@@ -220,6 +223,11 @@ class Env:
             self.moduleArgs = fix_modulesArgs(self.module, moduleArgs, Defaults.module_args)
         self.env = env if env else Defaults.env
         self.useSlaves = useSlaves if useSlaves else Defaults.use_slaves
+        # Per-test override is rare; default falls back to the global value set
+        # via --replicas-per-shard. Only meaningful for cluster mode with
+        # useSlaves; standalone always uses 1 slave.
+        self.replicasPerShard = (replicasPerShard if replicasPerShard is not None
+                                 else Defaults.replicas_per_shard)
         self.shardsCount = shardsCount if shardsCount else Defaults.num_shards
         self.decodeResponses = decodeResponses if decodeResponses else Defaults.decode_responses
         self.useAof = useAof if useAof else Defaults.use_aof
@@ -351,6 +359,7 @@ class Env:
             'modulePath': self.module,
             'moduleArgs': self.moduleArgs,
             'useSlaves': self.useSlaves,
+            'replicasPerShard': self.replicasPerShard,
             'decodeResponses': self.decodeResponses,
             'useAof': self.useAof,
             'useRdbPreamble': self.useRdbPreamble,
