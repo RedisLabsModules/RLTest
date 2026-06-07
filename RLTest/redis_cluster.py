@@ -9,6 +9,14 @@ from RLTest.utils import Colors
 # Interval in seconds between status updates during cluster wait
 CLUSTER_STATUS_INTERVAL_SEC = 5
 
+# Brief pause to let master-to-master gossip settle before/after slave MEET.
+GOSSIP_SETTLE_SEC = 0.5
+# Max attempts when issuing CLUSTER REPLICATE on a freshly-MEET'd slave; the
+# slave may not yet have learned the master's node id via gossip.
+REPLICATE_RETRY_MAX = 20
+# Sleep between CLUSTER REPLICATE retries.
+REPLICATE_RETRY_INTERVAL_SEC = 0.25
+
 
 class ClusterEnv(object):
     def __init__(self, **kwargs):
@@ -127,7 +135,12 @@ class ClusterEnv(object):
         return ok
 
     def _expectedReplicasInSlots(self):
-        """Returns the expected number of replica entries across CLUSTER SLOTS.
+        """Return total live slaves across all shards.
+
+        Counts from shard.slaveProcesses (process-side), not from CLUSTER SLOTS.
+        This is robust to non-contiguous slot distributions during partial
+        migration -- the process count is authoritative regardless of how
+        CLUSTER SLOTS rows are partitioned.
 
         Each shard reports one slot-range row, and that row contains one
         replica entry per running slave attached to that shard's master.
@@ -234,7 +247,7 @@ class ClusterEnv(object):
             print(Colors.Yellow('Attaching %d slave(s) to cluster...' % total_slaves))
 
         # Briefly wait for masters to finish gossiping with each other.
-        time.sleep(0.5)
+        time.sleep(GOSSIP_SETTLE_SEC)
 
         # Phase 1: MEET each slave from its master so the slave joins gossip.
         master_node_ids = {}
@@ -254,7 +267,7 @@ class ClusterEnv(object):
                 master_conn.execute_command('CLUSTER', 'MEET', '127.0.0.1', slave_port)
 
         # Allow gossip to propagate so each slave sees the master it will replicate.
-        time.sleep(0.5)
+        time.sleep(GOSSIP_SETTLE_SEC)
 
         # Phase 2: CLUSTER REPLICATE on each slave connection.
         for i, shard in enumerate(self.shards):
@@ -267,14 +280,14 @@ class ClusterEnv(object):
                 # learned the master node id via gossip.
                 attached = False
                 last_err = None
-                for _ in range(20):
+                for _ in range(REPLICATE_RETRY_MAX):
                     try:
                         slave_conn.execute_command('CLUSTER', 'REPLICATE', master_node_id)
                         attached = True
                         break
                     except Exception as e:
                         last_err = e
-                        time.sleep(0.25)
+                        time.sleep(REPLICATE_RETRY_INTERVAL_SEC)
                 if not attached:
                     raise RuntimeError(
                         'CLUSTER REPLICATE failed for shard %d/%d slave[%d]: %s'
@@ -308,33 +321,40 @@ class ClusterEnv(object):
         if self.verbose:
             print(Colors.Yellow('Configuring cluster topology...'))
         slots_per_node = int(16384 / len(self.shards)) + 1
-        for i, shard in enumerate(self.shards):
-            con = shard.getConnection()
-            for s in self.shards:
-                con.execute_command('CLUSTER', 'MEET',
-                                    '127.0.0.1', s.getMasterPort())
+        try:
+            for i, shard in enumerate(self.shards):
+                con = shard.getConnection()
+                for s in self.shards:
+                    con.execute_command('CLUSTER', 'MEET',
+                                        '127.0.0.1', s.getMasterPort())
 
-            start_slot = i * slots_per_node
-            end_slot = start_slot + slots_per_node
-            if end_slot > 16384:
-                end_slot = 16384
+                start_slot = i * slots_per_node
+                end_slot = start_slot + slots_per_node
+                if end_slot > 16384:
+                    end_slot = 16384
 
-            try:
-                con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x)
-                                    for x in range(start_slot, end_slot)))
-            except Exception as e:
-                print(Colors.Bred('  Error assigning slots %d-%d to shard %d: %s' %
-                                  (start_slot, end_slot - 1, i + 1, str(e))))
+                try:
+                    con.execute_command('CLUSTER', 'ADDSLOTS', *(str(x)
+                                        for x in range(start_slot, end_slot)))
+                except Exception as e:
+                    print(Colors.Bred('  Error assigning slots %d-%d to shard %d: %s' %
+                                      (start_slot, end_slot - 1, i + 1, str(e))))
 
-            if self.verbose:
-                print(Colors.Yellow('  Configured shard %d/%d (slots %d-%d)' %
-                                    (i + 1, total_shards, start_slot, min(end_slot - 1, 16383))))
+                if self.verbose:
+                    print(Colors.Yellow('  Configured shard %d/%d (slots %d-%d)' %
+                                        (i + 1, total_shards, start_slot, min(end_slot - 1, 16383))))
 
-        # Attach slaves (if any) before waiting for cluster_state:ok so the
-        # final waitCluster call also covers replica readiness.
-        self._attachSlavesToCluster()
+            # Attach slaves (if any) before waiting for cluster_state:ok so the
+            # final waitCluster call also covers replica readiness.
+            self._attachSlavesToCluster()
 
-        self.waitCluster(timeout_sec=self.clusterStartTimeout, verbose=self.verbose)
+            self.waitCluster(timeout_sec=self.clusterStartTimeout, verbose=self.verbose)
+        except Exception:
+            # Topology phase failures (waitCluster timeout, REPLICATE retry
+            # exhaustion, etc.) would otherwise leak every redis-server we
+            # already booted in the shard loop above. Tear them down.
+            self.stopEnv()
+            raise
         self.envIsUp = True
         self.envIsHealthy = True
 
