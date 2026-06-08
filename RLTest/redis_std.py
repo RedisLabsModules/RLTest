@@ -23,7 +23,7 @@ class StandardEnv(object):
                  useAof=False, useRdbPreamble=True, debugger=None, sanitizer=None, noCatch=False, noLog=False, unix=False, verbose=False, useTLS=False,
                  tlsCertFile=None, tlsKeyFile=None, tlsCaCertFile=None, clusterNodeTimeout=None, tlsPassphrase=None, enableDebugCommand=False, protocol=2,
                  terminateRetries=None, terminateRetrySecs=None, enableProtectedConfigs=False, enableModuleCommand=False, loglevel=None,
-                 redisConfigFile=None, dualTLS=False, startupGraceSecs=0.1
+                 redisConfigFile=None, dualTLS=False, startupGraceSecs=0.1, replicasPerShard=1
                  ):
         self.uuid = uuid.uuid4().hex
         self.redisBinaryPath = os.path.expanduser(redisBinaryPath) if redisBinaryPath.startswith(
@@ -33,6 +33,19 @@ class StandardEnv(object):
         self.moduleArgs = fix_modulesArgs(self.modulePath, moduleArgs, haveSeqs=False)
         self.outputFilesFormat = self.uuid + '.' + outputFilesFormat
         self.useSlaves = useSlaves
+        # Number of replicas attached to this shard's master. Default 1
+        # preserves the historical single-replica behavior. Multi-replica
+        # support (>1) is only meaningful for cluster mode; in standalone we
+        # cap at 1 to keep behavior unchanged.
+        if useSlaves:
+            if not clusterEnabled and replicasPerShard != 1:
+                # Standalone replication keeps a single replica; per design
+                # there is no clear use case for multiple chained replicas at
+                # this level.
+                replicasPerShard = 1
+            self.replicasPerShard = replicasPerShard
+        else:
+            self.replicasPerShard = 0
         self.masterServerId = serverId
         self.password = password
         self.clusterEnabled = clusterEnabled
@@ -52,10 +65,23 @@ class StandardEnv(object):
         self.masterStdout = None
         self.masterStderr = None
         self.masterExitCode = None
-        self.slaveProcess = None
-        self.slaveStdout = None
-        self.slaveStderr = None
-        self.slaveExitCode = None
+        # Slave state is stored as per-replica lists so a single shard can own
+        # more than one replica (controlled by replicasPerShard). The legacy
+        # scalar attributes (slaveProcess, slavePort, slaveStdout, slaveStderr,
+        # slaveExitCode, slaveServerId) remain accessible via @property
+        # accessors below for backward compatibility; they map to index 0.
+        n_slaves = self.replicasPerShard if self.useSlaves else 0
+        self.slaveProcesses = [None] * n_slaves
+        self.slaveStdouts = [None] * n_slaves
+        self.slaveStderrs = [None] * n_slaves
+        self.slaveExitCodes = [None] * n_slaves
+        # Slave indices (0-based, into the per-shard lists above) that a test
+        # has deliberately shut down via SHUTDOWN/DEBUG SLEEP/etc. The
+        # corresponding slaveProcesses entry is cleared so that stopEnv() will
+        # not try to terminate an already-gone process, and the corresponding
+        # slaveExitCodes entry is forced to 0 so that checkExitCode() does not
+        # flag a missing exit code as a crash. See markSlaveDeadByTest().
+        self._expectedDeadSlaves = set()
         self.verbose = verbose
         self.role = MASTER
         self.useTLS = useTLS
@@ -76,13 +102,16 @@ class StandardEnv(object):
 
         if port > 0:
             self.port = port
-            self.slavePort = port + 1 if self.useSlaves else 0
+            # Allocate sequential ports right after the master port, one per
+            # replica. With replicasPerShard==1 this matches historical
+            # behavior (slavePort == port + 1).
+            self.slavePorts = [port + 1 + i for i in range(n_slaves)] if self.useSlaves else []
         elif port == 0:
             self.port = get_random_port()
-            self.slavePort = get_random_port() if self.useSlaves else 0
+            self.slavePorts = [get_random_port() for _ in range(n_slaves)] if self.useSlaves else []
         else:
             self.port = -1
-            self.slavePort = -1
+            self.slavePorts = [-1] * n_slaves if self.useSlaves else []
 
         if self.has_interactive_debugger and serverId > 1:
             assert self.noCatch and not self.useSlaves and not self.clusterEnabled
@@ -123,16 +152,123 @@ class StandardEnv(object):
 
         self.masterCmdArgs = self.createCmdArgs(MASTER)
         self.masterOSEnv = self.createCmdOSEnv(MASTER)
+        # Per-replica command args / env / server ids. The current slave index
+        # used by createCmdArgs/createCmdOSEnv/_getFileName is tracked via the
+        # transient self._slaveIdx attribute set during the loop below; this
+        # avoids changing the createCmdArgs/_getFileName signatures and
+        # therefore preserves backward compatibility.
+        self.slaveServerIds = []
+        self.slaveCmdArgsList = []
+        self.slaveOSEnvList = []
         if self.useSlaves:
-            self.slaveServerId = serverId + 1
-            self.slaveCmdArgs = self.createCmdArgs(SLAVE)
-            self.slaveOSEnv = self.createCmdOSEnv(SLAVE)
+            for i in range(self.replicasPerShard):
+                self._slaveIdx = i
+                self.slaveServerIds.append(serverId + 1 + i)
+                self.slaveCmdArgsList.append(self.createCmdArgs(SLAVE))
+                self.slaveOSEnvList.append(self.createCmdOSEnv(SLAVE))
+            self._slaveIdx = 0
 
         self.envIsHealthy = True
 
+    # ---- Backward-compatibility scalar accessors ----
+    # External callers (and the existing test suite) read/write scalar
+    # attributes such as self.slaveProcess, self.slavePort, self.slaveServerId,
+    # self.slaveStdout, self.slaveStderr, self.slaveExitCode, self.slaveCmdArgs
+    # and self.slaveOSEnv. These properties expose index 0 of the underlying
+    # per-replica lists so that pre-existing code continues to work unchanged
+    # whenever replicasPerShard == 1 (the default).
+    @property
+    def slaveProcess(self):
+        return self.slaveProcesses[0] if self.slaveProcesses else None
+
+    @slaveProcess.setter
+    def slaveProcess(self, value):
+        if self.slaveProcesses:
+            self.slaveProcesses[0] = value
+        else:
+            self.slaveProcesses = [value]
+
+    @property
+    def slavePort(self):
+        return self.slavePorts[0] if self.slavePorts else 0
+
+    @slavePort.setter
+    def slavePort(self, value):
+        if self.slavePorts:
+            self.slavePorts[0] = value
+        else:
+            self.slavePorts = [value]
+
+    @property
+    def slaveServerId(self):
+        return self.slaveServerIds[0] if self.slaveServerIds else None
+
+    @slaveServerId.setter
+    def slaveServerId(self, value):
+        if self.slaveServerIds:
+            self.slaveServerIds[0] = value
+        else:
+            self.slaveServerIds = [value]
+
+    @property
+    def slaveStdout(self):
+        return self.slaveStdouts[0] if self.slaveStdouts else None
+
+    @slaveStdout.setter
+    def slaveStdout(self, value):
+        if self.slaveStdouts:
+            self.slaveStdouts[0] = value
+        else:
+            self.slaveStdouts = [value]
+
+    @property
+    def slaveStderr(self):
+        return self.slaveStderrs[0] if self.slaveStderrs else None
+
+    @slaveStderr.setter
+    def slaveStderr(self, value):
+        if self.slaveStderrs:
+            self.slaveStderrs[0] = value
+        else:
+            self.slaveStderrs = [value]
+
+    @property
+    def slaveExitCode(self):
+        return self.slaveExitCodes[0] if self.slaveExitCodes else None
+
+    @slaveExitCode.setter
+    def slaveExitCode(self, value):
+        if self.slaveExitCodes:
+            self.slaveExitCodes[0] = value
+        else:
+            self.slaveExitCodes = [value]
+
+    @property
+    def slaveCmdArgs(self):
+        return self.slaveCmdArgsList[0] if self.slaveCmdArgsList else None
+
+    @property
+    def slaveOSEnv(self):
+        return self.slaveOSEnvList[0] if self.slaveOSEnvList else None
+
+    def getNumSlaves(self):
+        """Returns the number of slaves configured for this shard."""
+        return len(self.slaveProcesses)
+
     def _getFileName(self, role, suffix):
-        return (self.outputFilesFormat + suffix) % (
-            'master-%d' % self.masterServerId if role == MASTER else 'slave-%d' % self.slaveServerId)
+        if role == MASTER:
+            tag = 'master-%d' % self.masterServerId
+        else:
+            # When createCmdArgs is called once per replica during __init__,
+            # self._slaveIdx points to the replica currently being built. After
+            # construction, callers that pass role=SLAVE expect the legacy
+            # single-slave tag (index 0).
+            idx = getattr(self, '_slaveIdx', 0)
+            server_id = (self.slaveServerIds[idx]
+                         if self.slaveServerIds and idx < len(self.slaveServerIds)
+                         else self.masterServerId + 1)
+            tag = 'slave-%d' % server_id
+        return (self.outputFilesFormat + suffix) % tag
 
     def _getValgrindFilePath(self, role):
         return os.path.join(self.dbDirPath, self._getFileName(role, '.valgrind.log'))
@@ -221,13 +357,21 @@ class StandardEnv(object):
             cmdArgs += ['--loglevel', self.loglevel]
         if self.outputFilesFormat is not None:
             cmdArgs += ['--dbfilename', self._getFileName(role, '.rdb')]
-        if role == SLAVE:
+        if role == SLAVE and not self.clusterEnabled:
+            # Standalone replication: tie the slave to its master at boot.
             cmdArgs += ['--slaveof', 'localhost', str(self.port)]
+            if self.password:
+                cmdArgs += ['--masterauth', self.password]
+        elif role == SLAVE and self.clusterEnabled:
+            # Cluster mode: do NOT use --slaveof. The slave will be attached
+            # to its master via CLUSTER REPLICATE after the cluster is formed
+            # (see redis_cluster.py::startEnv). Boot it as an empty
+            # cluster-enabled node so it can join gossip.
             if self.password:
                 cmdArgs += ['--masterauth', self.password]
         if self.password:
             cmdArgs += ['--requirepass', self.password]
-        if self.clusterEnabled and role is not SLAVE:
+        if self.clusterEnabled:
             # creating .cluster.conf in /tmp as lock fails on NFS
             cmdArgs += ['--cluster-enabled', 'yes', '--cluster-config-file', '/tmp/' + self._getFileName(role, '.cluster.conf'),
                         '--cluster-node-timeout', '5000' if self.clusterNodeTimeout is None else str(self.clusterNodeTimeout)]
@@ -269,14 +413,26 @@ class StandardEnv(object):
         wait_for_conn(con, proc, retries=1000 if self.debugger else 200)
         self._waitForAOFChild(con)
 
-    def getPid(self, role):
-        return self.masterProcess.pid if role == MASTER else self.slaveProcess.pid
+    def getPid(self, role, slaveIdx=0):
+        if role == MASTER:
+            return self.masterProcess.pid
+        idx = getattr(self, '_slaveIdx', slaveIdx)
+        return self.slaveProcesses[idx].pid
 
-    def getPort(self, role):
-        return self.port if role == MASTER else self.slavePort
+    def getPort(self, role, slaveIdx=0):
+        if role == MASTER:
+            return self.port
+        # During __init__, createCmdArgs(SLAVE) is invoked once per replica
+        # while self._slaveIdx walks through the index range; honor it so each
+        # replica gets its own port wired into its command line.
+        idx = getattr(self, '_slaveIdx', slaveIdx)
+        return self.slavePorts[idx] if self.slavePorts else 0
 
-    def getServerId(self, role):
-        return self.masterServerId if role == MASTER else self.slaveServerId
+    def getServerId(self, role, slaveIdx=0):
+        if role == MASTER:
+            return self.masterServerId
+        idx = getattr(self, '_slaveIdx', slaveIdx)
+        return self.slaveServerIds[idx] if self.slaveServerIds else None
 
     def _printEnvData(self, prefix='', role=MASTER):
         print(Colors.Yellow(prefix + 'pid: %d' % (self.getPid(role))))
@@ -307,14 +463,28 @@ class StandardEnv(object):
         print(Colors.Yellow(prefix + 'master:'))
         self._printEnvData(prefix + '\t', MASTER)
         if self.useSlaves:
-            print(Colors.Yellow(prefix + 'slave:'))
-            self._printEnvData(prefix + '\t', SLAVE)
+            for i in range(self.getNumSlaves()):
+                label = 'slave:' if self.getNumSlaves() == 1 else 'slave[%d]:' % i
+                print(Colors.Yellow(prefix + label))
+                # _printEnvData reads role-keyed scalars; switch self._slaveIdx
+                # so the helpers (getPid/getPort/getServerId/_getFileName)
+                # return the i-th replica's values for this print iteration.
+                old_idx = getattr(self, '_slaveIdx', 0)
+                self._slaveIdx = i
+                try:
+                    self._printEnvData(prefix + '\t', SLAVE)
+                finally:
+                    self._slaveIdx = old_idx
 
     def getInformationBeforeDispose(self):
         res = {}
         instances = [(MASTER, self.getConnection(), self.masterProcess)]
         if self.useSlaves:
-            instances.append((SLAVE, self.getSlaveConnection(), self.slaveProcess))
+            for i in range(self.getNumSlaves()):
+                instances.append((SLAVE if i == 0 and self.getNumSlaves() == 1
+                                  else '%s-%d' % (SLAVE, i),
+                                  self.getSlaveConnection(i),
+                                  self.slaveProcesses[i]))
         for role, conn, proc in instances:
             info = None
             try:
@@ -330,7 +500,11 @@ class StandardEnv(object):
         res = {}
         instances = [(MASTER, self.masterStdout, self.masterStderr)]
         if self.useSlaves:
-            instances.append((SLAVE, self.slaveStdout, self.slaveStderr))
+            for i in range(self.getNumSlaves()):
+                instances.append((SLAVE if i == 0 and self.getNumSlaves() == 1
+                                  else '%s-%d' % (SLAVE, i),
+                                  self.slaveStdouts[i],
+                                  self.slaveStderrs[i]))
         for role, stdout, stderr in instances:
             stdoutStr = None
             stderrStr = None
@@ -388,20 +562,28 @@ class StandardEnv(object):
                 self.waitForRedisToStart(con, self.masterProcess)
             else:
                 self.masterProcess = None
-        if self.useSlaves and slaves and self.slaveProcess is None:
-            if self.verbose:
-                print(Colors.Green("Redis slave command: " + ' '.join(self.slaveCmdArgs)))
-            self.slaveProcess = subprocess.Popen(args=self.slaveCmdArgs, env=self.slaveOSEnv, cwd=self.dbDirPath,
-                                                 **options)
-            time.sleep(self.startupGraceSecs)
-            if self._isAlive(self.slaveProcess):
-                con = self.getSlaveConnection()
-                self.waitForRedisToStart(con, self.slaveProcess)
-            else:
-                self.slaveProcess = None
+        if self.useSlaves and slaves:
+            for i in range(self.getNumSlaves()):
+                if self.slaveProcesses[i] is not None:
+                    continue
+                if self.verbose:
+                    label = "Redis slave command" if self.getNumSlaves() == 1 \
+                        else "Redis slave[%d] command" % i
+                    print(Colors.Green("%s: %s" % (label, ' '.join(self.slaveCmdArgsList[i]))))
+                self.slaveProcesses[i] = subprocess.Popen(
+                    args=self.slaveCmdArgsList[i], env=self.slaveOSEnvList[i],
+                    cwd=self.dbDirPath, **options)
+                time.sleep(self.startupGraceSecs)
+                if self._isAlive(self.slaveProcesses[i]):
+                    con = self.getSlaveConnection(i)
+                    self.waitForRedisToStart(con, self.slaveProcesses[i])
+                else:
+                    self.slaveProcesses[i] = None
 
-        self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
-        self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
+        any_slave_alive = any(p is not None for p in self.slaveProcesses)
+        all_slaves_alive = all(p is not None for p in self.slaveProcesses) if self.slaveProcesses else True
+        self.envIsUp = self.masterProcess is not None or any_slave_alive
+        self.envIsHealthy = self.masterProcess is not None and (all_slaves_alive if self.useSlaves else True)
 
         # self.masterStdout = self.masterProcess.stdout if self.masterProcess else None
         # self.masterStderr = self.masterProcess.stderr if self.masterProcess else None
@@ -418,8 +600,11 @@ class StandardEnv(object):
             return True
         return False
 
-    def _segfault(self, role, retries=3):
-        process = self.masterProcess if role == MASTER else self.slaveProcess
+    def _segfault(self, role, retries=3, slaveIdx=0):
+        if role == MASTER:
+            process = self.masterProcess
+        else:
+            process = self.slaveProcesses[slaveIdx]
         if not self._isAlive(process):
             return
         for _ in range(retries):
@@ -440,14 +625,32 @@ class StandardEnv(object):
     def stopEnvWithSegFault(self, masters = True, slaves = True):
         if self.masterProcess is not None and masters is True:
             self._segfault(MASTER)
-        if self.useSlaves and self.slaveProcess is not None and slaves is True:
-            self._segfault(SLAVE)
+        if self.useSlaves and slaves is True:
+            for i in range(self.getNumSlaves()):
+                if self.slaveProcesses[i] is not None:
+                    self._segfault(SLAVE, slaveIdx=i)
 
-    def _stopProcess(self, role):
-        process = self.masterProcess if role == MASTER else self.slaveProcess
-        serverId = self.masterServerId if role == MASTER else self.slaveServerId
+    def _stopProcess(self, role, slaveIdx=0):
+        if role == MASTER:
+            process = self.masterProcess
+            serverId = self.masterServerId
+        else:
+            process = self.slaveProcesses[slaveIdx]
+            serverId = self.slaveServerIds[slaveIdx]
+        # _getFileName(SLAVE, ...) reads self._slaveIdx to pick the correct
+        # log file when verbose_analyse_server_log is invoked below.
+        old_idx = getattr(self, '_slaveIdx', 0)
+        self._slaveIdx = slaveIdx
+        try:
+            return self.__stopProcessImpl(process, role, serverId, slaveIdx)
+        finally:
+            self._slaveIdx = old_idx
+
+    def __stopProcessImpl(self, process, role, serverId, slaveIdx):
         if not self._isAlive(process):
-            if not self.has_interactive_debugger:
+            expected_dead = (role == SLAVE and
+                             slaveIdx in self._expectedDeadSlaves)
+            if not self.has_interactive_debugger and not expected_dead:
                 # on interactive debugger its expected that then process will not be alive
                 print('\t' + Colors.Bred('process is not alive, might have crash durring test execution, '
                                          'check this out. server id : %s' % str(serverId)))
@@ -494,7 +697,7 @@ class StandardEnv(object):
             if role == MASTER:
                 self.masterExitCode = process.poll()
             else:
-                self.slaveExitCode = process.poll()
+                self.slaveExitCodes[slaveIdx] = process.poll()
         except OSError as e:
             print('\t' + Colors.Bred(
                 'OSError caught while waiting for {0} process to end: {1}'.format(role, e.__str__())))
@@ -520,31 +723,42 @@ class StandardEnv(object):
         if self.masterProcess is not None and masters is True:
             self._stopProcess(MASTER)
             self.masterProcess = None
-        if self.useSlaves and self.slaveProcess is not None and slaves is True:
-            self._stopProcess(SLAVE)
-            self.slaveProcess = None
-        self.envIsUp = self.masterProcess is not None or self.slaveProcess is not None
-        self.envIsHealthy = self.masterProcess is not None and (self.slaveProcess is not None if self.useSlaves else True)
+        if self.useSlaves and slaves is True:
+            for i in range(self.getNumSlaves()):
+                if self.slaveProcesses[i] is not None:
+                    self._stopProcess(SLAVE, slaveIdx=i)
+                    self.slaveProcesses[i] = None
+        any_slave_alive = any(p is not None for p in self.slaveProcesses)
+        all_slaves_alive = all(p is not None for p in self.slaveProcesses) if self.slaveProcesses else True
+        self.envIsUp = self.masterProcess is not None or any_slave_alive
+        self.envIsHealthy = self.masterProcess is not None and (all_slaves_alive if self.useSlaves else True)
 
-    def _getConnection(self, role):
-        if self.useUnix:
-            return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
-                                     password=self.password, decode_responses=self.decodeResponses, protocol=self.protocol)
-        elif self.useTLS:
-            return redis.StrictRedis('localhost', self.getPort(role),
-                                     password=self.password,
-                                     ssl=True,
-                                     ssl_password=self.tlsPassphrase,
-                                     ssl_keyfile=self.getTLSKeyFile(),
-                                     ssl_certfile=self.getTLSCertFile(),
-                                     ssl_cert_reqs=None,
-                                     ssl_ca_certs=self.getTLSCACertFile(),
-                                     decode_responses=self.decodeResponses,
-                                     protocol=self.protocol
-                                     )
-        else:
-            return redis.StrictRedis('localhost', self.getPort(role),
-                                     password=self.password, decode_responses=self.decodeResponses, protocol=self.protocol)
+    def _getConnection(self, role, slaveIdx=0):
+        # When fetching a slave connection, temporarily steer the role-aware
+        # helpers (getPort/getUnixPath) at the requested replica index.
+        old_idx = getattr(self, '_slaveIdx', 0)
+        self._slaveIdx = slaveIdx
+        try:
+            if self.useUnix:
+                return redis.StrictRedis(unix_socket_path=self.getUnixPath(role),
+                                         password=self.password, decode_responses=self.decodeResponses, protocol=self.protocol)
+            elif self.useTLS:
+                return redis.StrictRedis('localhost', self.getPort(role),
+                                         password=self.password,
+                                         ssl=True,
+                                         ssl_password=self.tlsPassphrase,
+                                         ssl_keyfile=self.getTLSKeyFile(),
+                                         ssl_certfile=self.getTLSCertFile(),
+                                         ssl_cert_reqs=None,
+                                         ssl_ca_certs=self.getTLSCACertFile(),
+                                         decode_responses=self.decodeResponses,
+                                         protocol=self.protocol
+                                         )
+            else:
+                return redis.StrictRedis('localhost', self.getPort(role),
+                                         password=self.password, decode_responses=self.decodeResponses, protocol=self.protocol)
+        finally:
+            self._slaveIdx = old_idx
 
     def getConnection(self, shardId=1):
         return self._getConnection(MASTER)
@@ -553,10 +767,16 @@ class StandardEnv(object):
     def getOSSMasterNodesConnectionList(self):
         return [self.getConnection()]
 
-    def getSlaveConnection(self):
+    def getSlaveConnection(self, slaveIdx=0):
         if self.useSlaves:
-            return self._getConnection(SLAVE)
+            return self._getConnection(SLAVE, slaveIdx=slaveIdx)
         raise Exception('asked for slave connection but no slave exists')
+
+    def getSlavePort(self, slaveIdx=0):
+        """Returns the port for the slave at the given index (default 0)."""
+        if not self.useSlaves or not self.slavePorts:
+            raise Exception('asked for slave port but no slave exists')
+        return self.slavePorts[slaveIdx]
 
     # List of nodes that initial bootstrapping can be done from
     def getMasterNodesList(self):
@@ -590,7 +810,8 @@ class StandardEnv(object):
         conns = []
         conns.append(self.getConnection())
         if self.useSlaves:
-            conns.append(self.getSlaveConnection())
+            for i in range(self.getNumSlaves()):
+                conns.append(self.getSlaveConnection(i))
         if restart:
             for con in conns:
                 self._waitForAOFChild(con)
@@ -613,15 +834,58 @@ class StandardEnv(object):
         except Exception as e:
             print(e)
 
+    def markSlaveDeadByTest(self, slave_idx):
+        """Mark a slave as deliberately shut down by the test.
+
+        Tests that intentionally terminate a replica (for example by sending
+        SHUTDOWN NOSAVE to exercise a failover code path) must call this so
+        that RLTest's teardown does not subsequently flag the missing process
+        as a crash. After this call:
+
+        * ``checkExitCode`` will treat ``slaveExitCodes[slave_idx]`` as 0
+          rather than ``None``.
+        * ``stopEnv`` will skip the slave because its process entry is
+          cleared.
+        * If ``__stopProcessImpl`` is ever invoked for this slave (e.g. via
+          a direct ``_stopProcess`` call), the "process is not alive"
+          warning is suppressed.
+
+        Parameters
+        ----------
+        slave_idx : int
+            Zero-based index into the per-shard slave lists
+            (``slaveProcesses`` / ``slaveExitCodes`` / ``slaveServerIds``).
+            Note that this is NOT the absolute ``serverId`` printed by
+            RLTest in failure output; convert from the displayed id via
+            ``serverId - masterServerId - 1`` if needed, or look up the
+            index by port via ``slavePorts``.
+        """
+        if not self.useSlaves:
+            raise ValueError('markSlaveDeadByTest called on a shard '
+                             'without replicas')
+        slave_idx = int(slave_idx)
+        if slave_idx < 0 or slave_idx >= self.getNumSlaves():
+            raise IndexError('slave_idx %d out of range [0, %d)' %
+                             (slave_idx, self.getNumSlaves()))
+        self._expectedDeadSlaves.add(slave_idx)
+        self.slaveExitCodes[slave_idx] = 0
+        self.slaveProcesses[slave_idx] = None
+        print('\t' + Colors.Yellow(
+            'slave-%d marked dead by test (expected)' % slave_idx))
+
     def checkExitCode(self):
         ret = True
 
         if self.masterExitCode != 0:
             print('\t' + Colors.Bred('bad exit code for serverId %s' % str(self.masterServerId)))
             ret = False
-        if self.useSlaves and (self.slaveExitCode is None or self.slaveExitCode != 0):
-            print('\t' + Colors.Bred('bad exit code for serverId %s' % str(self.slaveServerId)))
-            ret = False
+        if self.useSlaves:
+            for i in range(self.getNumSlaves()):
+                exit_code = self.slaveExitCodes[i]
+                if exit_code is None or exit_code != 0:
+                    print('\t' + Colors.Bred('bad exit code for serverId %s' %
+                                             str(self.slaveServerIds[i])))
+                    ret = False
         return ret
 
     def isUp(self):
