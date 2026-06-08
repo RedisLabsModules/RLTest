@@ -75,6 +75,13 @@ class StandardEnv(object):
         self.slaveStdouts = [None] * n_slaves
         self.slaveStderrs = [None] * n_slaves
         self.slaveExitCodes = [None] * n_slaves
+        # Slave indices (0-based, into the per-shard lists above) that a test
+        # has deliberately shut down via SHUTDOWN/DEBUG SLEEP/etc. The
+        # corresponding slaveProcesses entry is cleared so that stopEnv() will
+        # not try to terminate an already-gone process, and the corresponding
+        # slaveExitCodes entry is forced to 0 so that checkExitCode() does not
+        # flag a missing exit code as a crash. See markSlaveDeadByTest().
+        self._expectedDeadSlaves = set()
         self.verbose = verbose
         self.role = MASTER
         self.useTLS = useTLS
@@ -641,7 +648,9 @@ class StandardEnv(object):
 
     def __stopProcessImpl(self, process, role, serverId, slaveIdx):
         if not self._isAlive(process):
-            if not self.has_interactive_debugger:
+            expected_dead = (role == SLAVE and
+                             slaveIdx in self._expectedDeadSlaves)
+            if not self.has_interactive_debugger and not expected_dead:
                 # on interactive debugger its expected that then process will not be alive
                 print('\t' + Colors.Bred('process is not alive, might have crash durring test execution, '
                                          'check this out. server id : %s' % str(serverId)))
@@ -824,6 +833,45 @@ class StandardEnv(object):
             self.getConnection().execute_command(*cmd)
         except Exception as e:
             print(e)
+
+    def markSlaveDeadByTest(self, slave_idx):
+        """Mark a slave as deliberately shut down by the test.
+
+        Tests that intentionally terminate a replica (for example by sending
+        SHUTDOWN NOSAVE to exercise a failover code path) must call this so
+        that RLTest's teardown does not subsequently flag the missing process
+        as a crash. After this call:
+
+        * ``checkExitCode`` will treat ``slaveExitCodes[slave_idx]`` as 0
+          rather than ``None``.
+        * ``stopEnv`` will skip the slave because its process entry is
+          cleared.
+        * If ``__stopProcessImpl`` is ever invoked for this slave (e.g. via
+          a direct ``_stopProcess`` call), the "process is not alive"
+          warning is suppressed.
+
+        Parameters
+        ----------
+        slave_idx : int
+            Zero-based index into the per-shard slave lists
+            (``slaveProcesses`` / ``slaveExitCodes`` / ``slaveServerIds``).
+            Note that this is NOT the absolute ``serverId`` printed by
+            RLTest in failure output; convert from the displayed id via
+            ``serverId - masterServerId - 1`` if needed, or look up the
+            index by port via ``slavePorts``.
+        """
+        if not self.useSlaves:
+            raise ValueError('markSlaveDeadByTest called on a shard '
+                             'without replicas')
+        slave_idx = int(slave_idx)
+        if slave_idx < 0 or slave_idx >= self.getNumSlaves():
+            raise IndexError('slave_idx %d out of range [0, %d)' %
+                             (slave_idx, self.getNumSlaves()))
+        self._expectedDeadSlaves.add(slave_idx)
+        self.slaveExitCodes[slave_idx] = 0
+        self.slaveProcesses[slave_idx] = None
+        print('\t' + Colors.Yellow(
+            'slave-%d marked dead by test (expected)' % slave_idx))
 
     def checkExitCode(self):
         ret = True
