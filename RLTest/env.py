@@ -154,6 +154,8 @@ class Defaults:
     redis_config_file = None
     dualTLS = False
     startup_grace_secs = 0.1
+    # Lets a consumer substitute a subclass for bare Env(...) construction (e.g. enterprise test envs).
+    env_class = None
 
     def getKwargs(self):
         kwargs = {
@@ -187,6 +189,11 @@ class Env:
     EnvCompareParams = ['module', 'moduleArgs', 'env', 'useSlaves', 'shardsCount', 'useAof',
                         'useRdbPreamble', 'forceTcp', 'enableDebugCommand', 'enableProtectedConfigs',
                         'enableModuleCommand', 'protocol', 'password']
+
+    def __new__(cls, *args, **kwargs):
+        if cls is Env and Defaults.env_class is not None:
+            cls = Defaults.env_class
+        return super().__new__(cls)
 
     def compareEnvs(self, env):
         if env is None:
