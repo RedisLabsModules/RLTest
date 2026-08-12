@@ -219,6 +219,11 @@ parser.add_argument(
     help='run env with slaves enabled')
 
 parser.add_argument(
+    '--replicas-per-shard', default=1, type=int,
+    help='Number of replicas per shard when --use-slaves is set '
+         '(cluster mode only). Default: 1.')
+
+parser.add_argument(
     '--shards-count', default=1, type=int,
     help='Number shards in bdb')
 
@@ -516,6 +521,9 @@ class RLTest:
         Defaults.logdir = self.args.log_dir
         Defaults.loglevel = self.args.log_level
         Defaults.use_slaves = self.args.use_slaves
+        if self.args.replicas_per_shard < 1:
+            raise Exception('--replicas-per-shard must be >= 1')
+        Defaults.replicas_per_shard = self.args.replicas_per_shard
         Defaults.num_shards = self.args.shards_count
         Defaults.shards_ports = self.args.shards_ports.split(',') if self.args.shards_ports is not None else None
         Defaults.cluster_address = self.args.cluster_address
