@@ -745,8 +745,10 @@ class RLTest:
             after_func = after
 
         hasException = False
+        setup_ok = False
         try:
             before_func()
+            setup_ok = True
             fn()
             passed = True
         except unittest.SkipTest:
@@ -769,7 +771,23 @@ class RLTest:
             hasException = True
             passed = False
         finally:
-            after_func()
+            # A tearDown written against a successful setUp (e.g. one that
+            # reads self.env) will itself raise if setUp never got that far.
+            # Skip it in that case, and otherwise route a tearDown failure
+            # through handleFailure like any other test failure: letting it
+            # escape here bypasses handleFailure and kills the whole worker
+            # process instead of just failing this one test.
+            if setup_ok:
+                try:
+                    after_func()
+                except Exception as teardown_err:
+                    if self.args.exit_on_failure:
+                        raise
+
+                    self.handleFailure(testFullName=testFullName, exception=teardown_err,
+                                       prefix=msgPrefix, testname=test.name, env=self.currEnv)
+                    hasException = True
+                    passed = False
 
         numFailed = 0
         if self.currEnv:
