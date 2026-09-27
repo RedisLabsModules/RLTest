@@ -145,9 +145,11 @@ def fix_modulesArgs(modules, modulesArgs, defaultArgs=None, haveSeqs=True):
     if type(modulesArgs) == str:
         parts = split_by_semicolon(modulesArgs)
         if len(parts) == 1:
-            # No semicolons - keep as plain string
+            # No unescaped semicolons - keep as a plain string, but take the split's
+            # single part rather than the input: the input still carries the backslashes
+            # of any escaped semicolon, and passing those on to the module is fatal.
             is_plain_str = True
-            modulesArgs = [[modulesArgs.strip()]]
+            modulesArgs = [[parts[0]]]
         else:
             # Has semicolons - already split
             modulesArgs = [parts]

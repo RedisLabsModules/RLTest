@@ -108,3 +108,15 @@ class TestFixModulesArgs(TestCase):
         defaults = [['GC enabled']]
         result = fix_modulesArgs(['/mod.so'], 'nogc TIMEOUT 80', defaults)
         self.assertEqual(result, [['nogc TIMEOUT 80 GC enabled']])
+
+    # 13. Escaped semicolons in a plain string are unescaped, as the module needs the
+    # bare separator - a backslash reaching it makes the value invalid (MOD-18913)
+    def test_escaped_semicolons_plain_string(self):
+        result = fix_modulesArgs(['/mod.so'], r'COMPACTION_POLICY max:1m:1d\;min:10s:1h')
+        self.assertEqual(result, [['COMPACTION_POLICY max:1m:1d;min:10s:1h']])
+
+    # 13b. ...and also when defaults are merged into it
+    def test_escaped_semicolons_plain_string_with_defaults(self):
+        defaults = [['TIMEOUT 60']]
+        result = fix_modulesArgs(['/mod.so'], r'COMPACTION_POLICY max:1m:1d\;min:10s:1h', defaults)
+        self.assertEqual(result, [['COMPACTION_POLICY max:1m:1d;min:10s:1h TIMEOUT 60']])
