@@ -633,8 +633,6 @@ class RLTest:
             if self.require_clean_exit and self.currEnv and (not self.currEnv.checkExitCode() or not flush_ok):
                 print(Colors.Bred('\tRedis did not exit cleanly'))
                 self.addFailure(self.currEnv.testName, ['redis process failure'])
-                if self.args.check_exitcode:
-                    raise Exception('Process exited dirty')
             self.currEnv = None
 
     def printException(self, err):
