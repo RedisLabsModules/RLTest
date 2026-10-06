@@ -16,6 +16,9 @@ from .utils import Colors, wait_for_conn, fix_modules, fix_modulesArgs
 MASTER = 'master'
 SLAVE = 'slave'
 
+_TERMINATE_TIMEOUT = 30
+_KILL_TIMEOUT = 5
+
 
 class StandardEnv(object):
     def __init__(self, redisBinaryPath, port=6379, modulePath=None, moduleArgs=None, outputFilesFormat=None,
@@ -470,20 +473,21 @@ class StandardEnv(object):
                 for p in pchi:
                     try:
                         p.terminate()
-                        p.wait()
+                        try:
+                            p.wait(timeout=_TERMINATE_TIMEOUT)
+                        except psutil.TimeoutExpired:
+                            p.kill()
+                            p.wait(timeout=_KILL_TIMEOUT)
                     except:
                         pass
 
             if self.terminateRetries is None:
-                # ask once, then wait for process to exit
+                # Drain pipes while waiting, but never wait indefinitely for SIGTERM.
                 process.terminate()
-                termination_start_time = time.time()
-                while process.poll() is None:  # None returns if the processes is not finished yet, retry until redis exits
-                    time.sleep(0.1)
-                    if time.time() - termination_start_time > 30:
-                        # if process is still running after 30 seconds, try reading its output
-                        process_out, process_err = process.communicate()
-                        print(Colors.Bred(f'\t[TERMINATING] out ({process_out}), error ({process_err})'))
+                try:
+                    process.communicate(timeout=_TERMINATE_TIMEOUT)
+                except subprocess.TimeoutExpired:
+                    self._killUnresponsiveProcess(process, role, serverId)
             else:
                 # keep asking every few seconds until process has exited, otherwise kill
                 if self.terminateRetrySecs is None:
@@ -496,8 +500,8 @@ class StandardEnv(object):
                     else:
                         done = True
                         break
-                if not done:
-                    process.kill()
+                if not done and process.poll() is None:
+                    self._killUnresponsiveProcess(process, role, serverId)
 
             if role == MASTER:
                 self.masterExitCode = process.poll()
@@ -507,6 +511,29 @@ class StandardEnv(object):
             print('\t' + Colors.Bred(
                 'OSError caught while waiting for {0} process to end: {1}'.format(role, e.__str__())))
             pass
+
+    def _killUnresponsiveProcess(self, process, role, serverId):
+        print('\t' + Colors.Bred(
+            '[TERMINATING] {0} server id {1} did not exit on SIGTERM; sending SIGKILL'.format(role, serverId)))
+        process.kill()
+        # Reap the process before recording its exit code. A retained pipe in a
+        # descendant must not turn even the SIGKILL fallback into an infinite wait.
+        try:
+            process_out, process_err = process.communicate(timeout=_KILL_TIMEOUT)
+            print(Colors.Bred('\t[TERMINATING] out ({0}), error ({1})'.format(process_out, process_err)))
+        finally:
+            if self.outputFilesFormat is not None and not self.noCatch and not self.noLog:
+                path = os.path.join(self.dbDirPath or '.', self._getFileName(role, '.log'))
+                print('\t' + Colors.Bred('[TERMINATING] Redis log tail: {0}'.format(path)))
+                try:
+                    with open(path, 'rb') as logfile:
+                        logfile.seek(0, os.SEEK_END)
+                        logfile.seek(max(0, logfile.tell() - 65536))
+                        lines = logfile.read().decode('utf-8', errors='replace').splitlines()
+                    for line in lines[-100:]:
+                        print('\t\t' + line)
+                except OSError as error:
+                    print('\t[TERMINATING] Unable to read Redis log: {0}'.format(error))
 
     def verbose_analyse_server_log(self, role):
         path = "{0}".format(self._getFileName(role, '.log'))
