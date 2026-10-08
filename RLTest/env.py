@@ -270,11 +270,17 @@ class Env:
 
         self.startupGraceSecs = startupGraceSecs if startupGraceSecs is not None else Defaults.startup_grace_secs
 
+        # Carry unreported failures across both runner replacement and wrapper reuse.
+        # Leave the old flag intact in case constructing the new environment fails.
+        previous = Env.RTestInstance.currEnv if Env.RTestInstance else None
+        self._previousShutdownFailure = previous.hasShutdownFailure() if previous else False
+
         if not freshEnv and Env.RTestInstance and Env.RTestInstance.currEnv and self.compareEnvs(Env.RTestInstance.currEnv):
             self.envRunner = Env.RTestInstance.currEnv.envRunner
         else:
             if Env.RTestInstance and Env.RTestInstance.currEnv:
                 Env.RTestInstance.currEnv.stop()
+                self._previousShutdownFailure = previous.hasShutdownFailure()
             self.envRunner = self.getEnvByName()
 
         try:
@@ -606,7 +612,11 @@ class Env:
     def hasShutdownFailure(self, reset=False):
         # External environments do not own Redis processes.
         check = getattr(self.envRunner, 'hasShutdownFailure', None)
-        return check(reset=reset) if check is not None else False
+        current = check(reset=reset) if check is not None else False
+        previous = getattr(self, '_previousShutdownFailure', False)
+        if reset:
+            self._previousShutdownFailure = False
+        return current or previous
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()

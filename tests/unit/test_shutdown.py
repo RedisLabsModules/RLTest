@@ -250,3 +250,67 @@ def test_reused_environment_reports_failure_on_original_test(tmp_path):
         with patch.object(env, 'isUp', return_value=False):
             rl.takeEnvDown(fullShutDown=True)
     assert rl.testsFailed == {'original': ['redis process failure']}
+
+
+def test_class_shutdown_failure_does_not_hide_later_assertions(tmp_path):
+    from contextlib import nullcontext
+    from RLTest.env import Defaults
+    from RLTest.loader import TestMethod
+    std = make_env(tmp_path)
+    env = Env.__new__(Env)
+    env.envRunner = std
+    env.assertionFailedSummary = []
+    rl = RLTest.__new__(RLTest)
+    rl.currEnv = env
+    rl.testsFailed = {}
+    rl.args = argparse.Namespace(test_timeout=0, exit_on_failure=False, stop_on_failure=False)
+
+    def forced_shutdown():
+        std.shutdownFailed = True
+
+    def assertion_failure():
+        env.assertionFailedSummary.append('later assertion failed')
+
+    test = Mock(is_class=True, env_spec=None)
+    test.name = 'regression'
+    test.get_functions.return_value = [TestMethod(forced_shutdown, 'first'),
+                                      TestMethod(assertion_failure, 'second'),
+                                      TestMethod(assertion_failure, 'third')]
+    with patch.object(Defaults, 'curr_test_name', None), \
+         patch.object(rl, 'envScopeGuard', return_value=nullcontext()), \
+         patch.object(rl, 'printFail'), patch.object(rl, 'printPass') as passed, \
+         patch.object(Defaults, 'print_verbose_information_on_failure', False):
+        assert rl.run_single_test(test, lambda: None) == 3
+    assert set(rl.testsFailed) == {'first', 'second', 'third'}
+    passed.assert_not_called()
+
+
+@pytest.mark.parametrize('replacements', [1, 2])
+def test_environment_replacement_retains_shutdown_failure(tmp_path, replacements):
+    from RLTest.env import Defaults
+    from RLTest.loader import TestMethod
+    old = Env.__new__(Env)
+    old.envRunner = make_env(tmp_path)
+    old.assertionFailedSummary = []
+    rl = RLTest.__new__(RLTest)
+    rl.currEnv = old
+    rl.testsFailed = {}
+    rl.args = argparse.Namespace(exit_on_failure=False, stop_on_failure=False)
+
+    def replacement():
+        for _ in range(replacements):
+            Env(testName='swap', freshEnv=True, logDir=str(tmp_path))
+
+    def stop(env):
+        if env is old:
+            env.envRunner.shutdownFailed = True
+
+    with patch.object(Env, 'RTestInstance', rl), \
+         patch.object(Env, 'getEnvByName', side_effect=lambda: make_env(tmp_path)), \
+         patch.object(Env, 'start'), patch.object(Env, 'stop', stop), \
+         patch.object(Defaults, 'debug_pause', False), \
+         patch.object(rl, 'printFail'), patch.object(rl, 'printPass') as passed:
+        assert rl._runTest(TestMethod(replacement, 'swap')) == 1
+        assert not rl.currEnv.hasShutdownFailure()
+    assert rl.testsFailed == {'swap': ['redis process failure']}
+    passed.assert_not_called()

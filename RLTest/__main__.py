@@ -899,8 +899,11 @@ class RLTest:
                     after = getattr(obj, 'tearDown', lambda x=None: None)
                     for subtest in test.get_functions(obj):
                         timeout_handler.reset()
+                        # Only assertion counts belong in the assertion watermark.
+                        # Shutdowns and exceptions contribute to failures separately.
+                        assertions = self.currEnv.getNumberOfFailedAssertion() if self.currEnv else 0
                         failures += self._runTest(subtest, prefix='\t',
-                                                numberOfAssertionFailed=failures,
+                                                numberOfAssertionFailed=assertions,
                                                 before=before, after=after)
                         done += 1
 
