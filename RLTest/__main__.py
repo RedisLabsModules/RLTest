@@ -630,7 +630,7 @@ class RLTest:
                 except:
                     flush_ok = False
             self.currEnv.stop()
-            if self.currEnv.hasShutdownFailure() or (self.require_clean_exit and (not self.currEnv.checkExitCode() or not flush_ok)):
+            if self.currEnv.hasShutdownFailure(reset=True) or (self.require_clean_exit and (not self.currEnv.checkExitCode() or not flush_ok)):
                 print(Colors.Bred('\tRedis did not exit cleanly'))
                 self.addFailure(self.currEnv.testName, ['redis process failure'])
                 if self.args.check_exitcode:
@@ -795,6 +795,13 @@ class RLTest:
             if numFailed > numberOfAssertionFailed:
                 self.handleFailure(testFullName=testFullName, prefix=msgPrefix,
                                    testname=test.name, env=self.currEnv)
+                passed = False
+            # Attribute a mid-test stop/restart to this test before env reuse
+            # changes testName. Consume only after reporting, never on restart.
+            if self.currEnv.hasShutdownFailure(reset=True):
+                self.addFailure(test.name, ['redis process failure'])
+                self.printFail(testFullName)
+                numFailed += 1
                 passed = False
         elif not hasException:
             self.addFailure(test.name, '<Environment destroyed>')

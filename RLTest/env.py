@@ -603,10 +603,10 @@ class Env:
         if Defaults.debug_print or force:
             print('\t' + Colors.Bold('debug:\t') + Colors.Gray(msg))
 
-    def hasShutdownFailure(self):
+    def hasShutdownFailure(self, reset=False):
         # External environments do not own Redis processes.
         check = getattr(self.envRunner, 'hasShutdownFailure', None)
-        return check() if check is not None else False
+        return check(reset=reset) if check is not None else False
 
     def checkExitCode(self):
         return self.envRunner.checkExitCode()

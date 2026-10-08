@@ -183,3 +183,70 @@ def test_darwin_debugger_child_wait_is_bounded(tmp_path):
     child.kill.assert_called_once_with()
     assert env.masterProcess is None
     assert env.hasShutdownFailure()
+
+
+@pytest.mark.parametrize('instrumentation', ['valgrind', 'sanitizer'])
+def test_instrumented_shutdown_can_finish_after_thirty_seconds(tmp_path, instrumentation):
+    from RLTest.debuggers import Valgrind
+    kwargs = {'debugger': Valgrind('')} if instrumentation == 'valgrind' else {'sanitizer': 'address'}
+    env = make_env(tmp_path, **kwargs)
+    process = Mock()
+    process.poll.side_effect = [None, None, 0, 0, 0]
+    process.wait.side_effect = [subprocess.TimeoutExpired('redis-server', 1), 0]
+    env.masterProcess = process
+    with patch.object(env, '_isAlive', return_value=True), \
+         patch('RLTest.redis_std.time.monotonic', side_effect=[0, 0, 31]):
+        env.stopEnv()
+    process.kill.assert_not_called()
+    assert process.wait.call_count == 2
+    assert env.masterExitCode == 0
+    assert not env.hasShutdownFailure()
+
+
+def test_diagnostic_path_error_cannot_prevent_teardown(tmp_path, capsys):
+    env = make_env(tmp_path)
+    process = start_process(True)
+    env.masterProcess = process
+    try:
+        with patch.object(env, '_getFileName', side_effect=TypeError('invalid log format')), \
+             patch('RLTest.redis_std._TERMINATE_TIMEOUT', .1):
+            env.stopEnv()
+        assert process.returncode == -signal.SIGKILL
+        assert env.masterProcess is None
+        assert env.masterExitCode == -signal.SIGKILL
+        assert env.hasShutdownFailure()
+        assert 'could not read server log' in capsys.readouterr().out
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.communicate(timeout=5)
+
+
+def test_reused_environment_reports_failure_on_original_test(tmp_path):
+    from RLTest.loader import TestMethod
+    first, second = make_env(tmp_path), make_env(tmp_path)
+    cluster = ClusterEnv.__new__(ClusterEnv)
+    cluster.shards = [first, second]
+    env = Env.__new__(Env)
+    env.envRunner = cluster
+    env.assertionFailedSummary = []
+    env.testName = 'original'
+    rl = RLTest.__new__(RLTest)
+    rl.currEnv = env
+    rl.testsFailed = {}
+    rl.args = argparse.Namespace(env_reuse=True, check_exitcode=False,
+                                 exit_on_failure=False, stop_on_failure=False)
+    rl.require_clean_exit = False
+    def original():
+        # A mid-test stop/restart must retain the failure until the test ends.
+        first.shutdownFailed = second.shutdownFailed = True
+    def following():
+        pass
+    with patch.object(rl, 'printFail'), patch.object(rl, 'printPass'):
+        assert rl._runTest(TestMethod(original, name='original')) == 1
+        assert not cluster.hasShutdownFailure()
+        env.testName = 'following'
+        assert rl._runTest(TestMethod(following, name='following')) == 0
+        with patch.object(env, 'isUp', return_value=False):
+            rl.takeEnvDown(fullShutDown=True)
+    assert rl.testsFailed == {'original': ['redis process failure']}

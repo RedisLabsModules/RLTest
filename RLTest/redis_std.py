@@ -17,6 +17,7 @@ MASTER = 'master'
 SLAVE = 'slave'
 
 _TERMINATE_TIMEOUT = 30
+_INSTRUMENTED_TERMINATE_TIMEOUT = 300
 _KILL_TIMEOUT = 5
 
 
@@ -491,7 +492,10 @@ class StandardEnv(object):
             if self.terminateRetries is None:
                 # Wait on the process, not pipe EOF: Redis fork children can
                 # inherit stdout/stderr and outlive their parent.
-                deadline = time.monotonic() + _TERMINATE_TIMEOUT
+                grace = (_INSTRUMENTED_TERMINATE_TIMEOUT
+                         if self.sanitizer or (self.debugger and not self.has_interactive_debugger)
+                         else _TERMINATE_TIMEOUT)
+                deadline = time.monotonic() + grace
                 while process.poll() is None:
                     process.terminate()
                     remaining = deadline - time.monotonic()
@@ -506,12 +510,12 @@ class StandardEnv(object):
                 if process.poll() is None:
                     self.shutdownFailed = True
                     print(Colors.Bred('[TERMINATING] {0} server id {1} did not exit on SIGTERM; sending SIGKILL'.format(role, serverId)))
-                    self._print_shutdown_log(role)
                     process.kill()
                     try:
                         process.wait(timeout=_KILL_TIMEOUT)
                     except subprocess.TimeoutExpired:
                         print(Colors.Bred('[TERMINATING] {0} server id {1} did not exit after SIGKILL'.format(role, serverId)))
+                    self._print_shutdown_log(role)
             else:
                 # keep asking every few seconds until process has exited, otherwise kill
                 if self.terminateRetrySecs is None:
@@ -536,18 +540,22 @@ class StandardEnv(object):
                 'OSError caught while waiting for {0} process to end: {1}'.format(role, e.__str__())))
             pass
 
-    def hasShutdownFailure(self):
-        return self.shutdownFailed
+    def hasShutdownFailure(self, reset=False):
+        failed = self.shutdownFailed
+        if reset:
+            self.shutdownFailed = False
+        return failed
 
     def _print_shutdown_log(self, role):
-        path = os.path.join(self.dbDirPath or '', self._getFileName(role, '.log'))
         try:
+            path = os.path.join(self.dbDirPath or '', self._getFileName(role, '.log'))
             with open(path, 'rb') as log:
                 log.seek(0, os.SEEK_END)
                 log.seek(max(0, log.tell() - 8192))
                 print(Colors.Bred('[TERMINATING] last server log bytes ({0}):\n{1}'.format(
                     path, log.read(8192).decode('utf-8', errors='replace'))))
-        except OSError as error:
+        except Exception as error:
+            # Diagnostics must never interrupt teardown, including invalid paths.
             print(Colors.Bred('[TERMINATING] could not read server log: {0}'.format(error)))
 
     def verbose_analyse_server_log(self, role):
