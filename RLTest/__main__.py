@@ -358,18 +358,18 @@ class EnvScopeGuard:
         self.runner = runner
 
     def __enter__(self):
-        self.runner._pendingPasses = []
+        self.runner._pendingResults = []
         self.runner._teardownFailed = False
 
     def __exit__(self, type, value, traceback):
         try:
             self.runner.takeEnvDown()
         finally:
-            pending = self.runner._pendingPasses
-            self.runner._pendingPasses = None
+            pending = self.runner._pendingResults
+            self.runner._pendingResults = None
         if type is None and not self.runner._teardownFailed:
-            for name in pending:
-                self.runner.printPass(name)
+            for printer, name in pending:
+                printer(name)
 
 class TestTimeLimit(object):
     """
@@ -849,6 +849,10 @@ class RLTest:
             self.github_actions_group_open = False
 
     def printSkip(self, name):
+        pending = getattr(self, '_pendingResults', None)
+        if pending is not None:
+            pending.append((self.printSkip, name))
+            return
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[SKIP]')))
 
     def printFail(self, name):
@@ -858,9 +862,9 @@ class RLTest:
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Bred('[ERROR]')))
 
     def printPass(self, name):
-        pending = getattr(self, '_pendingPasses', None)
+        pending = getattr(self, '_pendingResults', None)
         if pending is not None:
-            pending.append(name)
+            pending.append((self.printPass, name))
             return
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[PASS]')))
 

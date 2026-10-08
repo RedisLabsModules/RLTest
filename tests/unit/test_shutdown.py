@@ -381,7 +381,9 @@ def test_class_constructor_skip_consumes_shutdown_failure(tmp_path, forced):
 
 
 @pytest.mark.parametrize('forced', [False, True])
-def test_pass_output_waits_for_environment_teardown(tmp_path, capsys, forced):
+@pytest.mark.parametrize('outcome', ['pass', 'skip', 'constructor_skip'])
+def test_result_output_waits_for_environment_teardown(tmp_path, capsys, forced, outcome):
+    import unittest
     from RLTest.env import Defaults
     from RLTest.loader import TestMethod
     env = Env.__new__(Env)
@@ -396,13 +398,26 @@ def test_pass_output_waits_for_environment_teardown(tmp_path, capsys, forced):
                                  exit_on_failure=False, stop_on_failure=False)
 
     def stop():
-        assert '[PASS]' not in capsys.readouterr().out
+        output = capsys.readouterr().out
+        assert '[PASS]' not in output
+        assert '[SKIP]' not in output
         env.envRunner.shutdownFailed = forced
 
-    with patch.object(Defaults, 'print_verbose_information_on_failure', False), \
+    def target():
+        if outcome != 'pass':
+            raise unittest.SkipTest()
+
+    test = TestMethod(target, 'teardown')
+    if outcome == 'constructor_skip':
+        test = Mock(is_class=True, env_spec=None)
+        test.name = 'teardown'
+        test.create_instance.side_effect = target
+    with patch.object(Defaults, 'curr_test_name', None), \
+         patch.object(Defaults, 'print_verbose_information_on_failure', False), \
          patch.object(env, 'isUp', return_value=False), patch.object(env, 'stop', stop):
-        assert rl.run_single_test(TestMethod(lambda: None, 'teardown'), lambda: None) == 1
+        assert rl.run_single_test(test, lambda: None) == (0 if outcome == 'constructor_skip' else 1)
     output = capsys.readouterr().out
-    assert ('[PASS]' in output) == (not forced)
+    assert ('[PASS]' in output) == (not forced and outcome == 'pass')
+    assert ('[SKIP]' in output) == (not forced and outcome != 'pass')
     assert ('[FAIL]' in output) == forced
     assert rl.testsFailed == ({'teardown': ['redis process failure']} if forced else {})
