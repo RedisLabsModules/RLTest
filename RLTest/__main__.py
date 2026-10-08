@@ -358,10 +358,18 @@ class EnvScopeGuard:
         self.runner = runner
 
     def __enter__(self):
-        pass
+        self.runner._pendingResults = []
+        self.runner._teardownFailed = False
 
     def __exit__(self, type, value, traceback):
-        self.runner.takeEnvDown()
+        try:
+            self.runner.takeEnvDown()
+        finally:
+            pending = self.runner._pendingResults
+            self.runner._pendingResults = None
+        if type is None and not self.runner._teardownFailed:
+            for printer, name in pending:
+                printer(name)
 
 class TestTimeLimit(object):
     """
@@ -630,9 +638,11 @@ class RLTest:
                 except:
                     flush_ok = False
             self.currEnv.stop()
-            if self.require_clean_exit and self.currEnv and (not self.currEnv.checkExitCode() or not flush_ok):
+            if self.currEnv.hasShutdownFailure(reset=True) or (self.require_clean_exit and (not self.currEnv.checkExitCode() or not flush_ok)):
                 print(Colors.Bred('\tRedis did not exit cleanly'))
                 self.addFailure(self.currEnv.testName, ['redis process failure'])
+                self._teardownFailed = True
+                self.printFail(self.currEnv.testName)
                 if self.args.check_exitcode:
                     raise Exception('Process exited dirty')
             self.currEnv = None
@@ -746,14 +756,16 @@ class RLTest:
 
         hasException = False
         setup_ok = False
+        skipped = False
         try:
             before_func()
             setup_ok = True
             fn()
             passed = True
         except unittest.SkipTest:
-            self.printSkip(testFullName)
-            return 0
+            # Still run teardown and consume shutdown failures for this test.
+            skipped = True
+            passed = True
         except TestAssertionFailure:
             if self.args.exit_on_failure:
                 self.takeEnvDown(fullShutDown=True)
@@ -796,7 +808,14 @@ class RLTest:
                 self.handleFailure(testFullName=testFullName, prefix=msgPrefix,
                                    testname=test.name, env=self.currEnv)
                 passed = False
-        elif not hasException:
+            # Attribute a mid-test stop/restart to this test before env reuse
+            # changes testName. Consume only after reporting, never on restart.
+            if self.currEnv.hasShutdownFailure(reset=True):
+                self.addFailure(test.name, ['redis process failure'])
+                self.printFail(testFullName)
+                numFailed += 1
+                passed = False
+        elif not hasException and not skipped:
             self.addFailure(test.name, '<Environment destroyed>')
             passed = False
 
@@ -808,7 +827,10 @@ class RLTest:
             input('press any button to move to the next test')
 
         if passed:
-            self.printPass(testFullName)
+            if skipped:
+                self.printSkip(testFullName)
+            else:
+                self.printPass(testFullName)
 
         if hasException:
             numFailed += 1 # exception should be counted as failure
@@ -827,6 +849,10 @@ class RLTest:
             self.github_actions_group_open = False
 
     def printSkip(self, name):
+        pending = getattr(self, '_pendingResults', None)
+        if pending is not None:
+            pending.append((self.printSkip, name))
+            return
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[SKIP]')))
 
     def printFail(self, name):
@@ -836,6 +862,10 @@ class RLTest:
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Bred('[ERROR]')))
 
     def printPass(self, name):
+        pending = getattr(self, '_pendingResults', None)
+        if pending is not None:
+            pending.append((self.printPass, name))
+            return
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[PASS]')))
 
     def envScopeGuard(self):
@@ -879,12 +909,18 @@ class RLTest:
                             obj = test.create_instance()
 
                     except unittest.SkipTest:
-                        self.printSkip(test.name)
+                        if self.currEnv and self.currEnv.hasShutdownFailure(reset=True):
+                            self.addFailure(test.name, ['redis process failure'])
+                            self.printFail(test.name)
+                        else:
+                            self.printSkip(test.name)
                         return 0
 
                     except Exception as e:
                         self.printException(e)
                         self.addFailure(test.name + " [__init__]")
+                        if self.currEnv and self.currEnv.hasShutdownFailure(reset=True):
+                            self.addFailure(test.name + " [__init__]", ['redis process failure'])
                         return 0
 
                     failures = 0
@@ -892,8 +928,11 @@ class RLTest:
                     after = getattr(obj, 'tearDown', lambda x=None: None)
                     for subtest in test.get_functions(obj):
                         timeout_handler.reset()
+                        # Only assertion counts belong in the assertion watermark.
+                        # Shutdowns and exceptions contribute to failures separately.
+                        assertions = self.currEnv.getNumberOfFailedAssertion() if self.currEnv else 0
                         failures += self._runTest(subtest, prefix='\t',
-                                                numberOfAssertionFailed=failures,
+                                                numberOfAssertionFailed=assertions,
                                                 before=before, after=after)
                         done += 1
 

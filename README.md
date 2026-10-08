@@ -267,3 +267,18 @@ def test_example_3():
     env.assertEqual(con2.get('x'), '1')
 
 ```
+
+### Shutdown grace period
+
+With the default shutdown policy (`terminateRetries=None`), RLTest retries
+SIGTERM once per second for up to 30 seconds, then sends SIGKILL and waits up to
+5 seconds for process exit. Valgrind and sanitizer runs get a 300-second grace
+period to allow for slower saves and exit-time analysis. Explicit
+`terminateRetries`/`terminateRetrySecs` settings retain their existing behavior.
+A forced shutdown under the default policy fails the test even without
+`--check-exitcode`.
+
+On macOS, interactive debugger teardown also bounds the inferior-process wait:
+30 seconds after SIGTERM, followed by SIGKILL and a 5-second wait. An inferior
+left paused at a breakpoint can therefore be killed and reported as a failure;
+teardown no longer waits indefinitely for debugger input.
