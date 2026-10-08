@@ -473,11 +473,7 @@ class StandardEnv(object):
                 for p in pchi:
                     try:
                         p.terminate()
-                        try:
-                            p.wait(timeout=_TERMINATE_TIMEOUT)
-                        except psutil.TimeoutExpired:
-                            p.kill()
-                            p.wait(timeout=_KILL_TIMEOUT)
+                        p.wait()
                     except:
                         pass
 
@@ -487,7 +483,10 @@ class StandardEnv(object):
                 try:
                     process.communicate(timeout=_TERMINATE_TIMEOUT)
                 except subprocess.TimeoutExpired:
-                    self._killUnresponsiveProcess(process, role, serverId)
+                    print(Colors.Bred('[TERMINATING] {0} server id {1} did not exit on SIGTERM; sending SIGKILL'.format(role, serverId)))
+                    process.kill()
+                    process_out, process_err = process.communicate(timeout=_KILL_TIMEOUT)
+                    print(Colors.Bred('\t[TERMINATING] out ({0}), error ({1})'.format(process_out, process_err)))
             else:
                 # keep asking every few seconds until process has exited, otherwise kill
                 if self.terminateRetrySecs is None:
@@ -500,8 +499,8 @@ class StandardEnv(object):
                     else:
                         done = True
                         break
-                if not done and process.poll() is None:
-                    self._killUnresponsiveProcess(process, role, serverId)
+                if not done:
+                    process.kill()
 
             if role == MASTER:
                 self.masterExitCode = process.poll()
@@ -511,29 +510,6 @@ class StandardEnv(object):
             print('\t' + Colors.Bred(
                 'OSError caught while waiting for {0} process to end: {1}'.format(role, e.__str__())))
             pass
-
-    def _killUnresponsiveProcess(self, process, role, serverId):
-        print('\t' + Colors.Bred(
-            '[TERMINATING] {0} server id {1} did not exit on SIGTERM; sending SIGKILL'.format(role, serverId)))
-        process.kill()
-        # Reap the process before recording its exit code. A retained pipe in a
-        # descendant must not turn even the SIGKILL fallback into an infinite wait.
-        try:
-            process_out, process_err = process.communicate(timeout=_KILL_TIMEOUT)
-            print(Colors.Bred('\t[TERMINATING] out ({0}), error ({1})'.format(process_out, process_err)))
-        finally:
-            if self.outputFilesFormat is not None and not self.noCatch and not self.noLog:
-                path = os.path.join(self.dbDirPath or '.', self._getFileName(role, '.log'))
-                print('\t' + Colors.Bred('[TERMINATING] Redis log tail: {0}'.format(path)))
-                try:
-                    with open(path, 'rb') as logfile:
-                        logfile.seek(0, os.SEEK_END)
-                        logfile.seek(max(0, logfile.tell() - 65536))
-                        lines = logfile.read().decode('utf-8', errors='replace').splitlines()
-                    for line in lines[-100:]:
-                        print('\t\t' + line)
-                except OSError as error:
-                    print('\t[TERMINATING] Unable to read Redis log: {0}'.format(error))
 
     def verbose_analyse_server_log(self, role):
         path = "{0}".format(self._getFileName(role, '.log'))
