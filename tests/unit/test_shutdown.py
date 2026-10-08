@@ -101,7 +101,7 @@ def test_sigkill_output_wait_is_also_bounded(tmp_path, capsys):
         with pytest.raises(subprocess.TimeoutExpired):
             env._stopProcess(MASTER)
     process.kill.assert_called_once_with()
-    assert [call.kwargs for call in process.communicate.call_args_list] == [
+    assert [call[1] for call in process.communicate.call_args_list] == [
         {'timeout': 30}, {'timeout': 5}]
     # Diagnostics survive even if a descendant retains an output pipe.
     assert 'shutdown refused' in capsys.readouterr().out
