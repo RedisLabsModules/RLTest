@@ -630,7 +630,7 @@ class RLTest:
                 except:
                     flush_ok = False
             self.currEnv.stop()
-            if self.require_clean_exit and self.currEnv and (not self.currEnv.checkExitCode() or not flush_ok):
+            if self.currEnv.hasShutdownFailure() or (self.require_clean_exit and (not self.currEnv.checkExitCode() or not flush_ok)):
                 print(Colors.Bred('\tRedis did not exit cleanly'))
                 self.addFailure(self.currEnv.testName, ['redis process failure'])
                 if self.args.check_exitcode:

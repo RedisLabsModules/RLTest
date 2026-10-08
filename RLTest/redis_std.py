@@ -54,6 +54,7 @@ class StandardEnv(object):
         self.masterProcess = None
         self.masterStdout = None
         self.masterStderr = None
+        self.shutdownFailed = False
         self.masterExitCode = None
         self.slaveProcess = None
         self.slaveStdout = None
@@ -466,27 +467,51 @@ class StandardEnv(object):
                     self.verbose_analyse_server_log(role)
             return
         try:
-            if platform.system() == 'Darwin':
-                # On macOS, with lldb, killing lldb process does not terminate inferior processes
-                p0 = psutil.Process(pid=process.pid)
-                pchi = p0.children(recursive=True)
-                for p in pchi:
+            if platform.system() == 'Darwin' and self.has_interactive_debugger:
+                # lldb does not forward termination to its inferiors. Bound the
+                # whole child group wait, rather than waiting per child forever.
+                children = psutil.Process(process.pid).children(recursive=True)
+                for child in children:
                     try:
-                        p.terminate()
-                        p.wait()
-                    except:
+                        child.terminate()
+                    except psutil.NoSuchProcess:
                         pass
+                _, alive = psutil.wait_procs(children, timeout=_TERMINATE_TIMEOUT)
+                if alive:
+                    self.shutdownFailed = True
+                    for child in alive:
+                        try:
+                            child.kill()
+                        except psutil.NoSuchProcess:
+                            pass
+                    _, alive = psutil.wait_procs(alive, timeout=_KILL_TIMEOUT)
+                    if alive:
+                        print(Colors.Bred('[TERMINATING] debugger children survived SIGKILL'))
 
             if self.terminateRetries is None:
-                # Drain pipes while waiting, but never wait indefinitely for SIGTERM.
-                process.terminate()
-                try:
-                    process.communicate(timeout=_TERMINATE_TIMEOUT)
-                except subprocess.TimeoutExpired:
+                # Wait on the process, not pipe EOF: Redis fork children can
+                # inherit stdout/stderr and outlive their parent.
+                deadline = time.monotonic() + _TERMINATE_TIMEOUT
+                while process.poll() is None:
+                    process.terminate()
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    try:
+                        process.wait(timeout=min(1, remaining))
+                    except subprocess.TimeoutExpired:
+                        # Redis may refuse shutdown during initial AOF rewrite;
+                        # retry SIGTERM so it can exit cleanly after the rewrite.
+                        continue
+                if process.poll() is None:
+                    self.shutdownFailed = True
                     print(Colors.Bred('[TERMINATING] {0} server id {1} did not exit on SIGTERM; sending SIGKILL'.format(role, serverId)))
+                    self._print_shutdown_log(role)
                     process.kill()
-                    process_out, process_err = process.communicate(timeout=_KILL_TIMEOUT)
-                    print(Colors.Bred('\t[TERMINATING] out ({0}), error ({1})'.format(process_out, process_err)))
+                    try:
+                        process.wait(timeout=_KILL_TIMEOUT)
+                    except subprocess.TimeoutExpired:
+                        print(Colors.Bred('[TERMINATING] {0} server id {1} did not exit after SIGKILL'.format(role, serverId)))
             else:
                 # keep asking every few seconds until process has exited, otherwise kill
                 if self.terminateRetrySecs is None:
@@ -510,6 +535,20 @@ class StandardEnv(object):
             print('\t' + Colors.Bred(
                 'OSError caught while waiting for {0} process to end: {1}'.format(role, e.__str__())))
             pass
+
+    def hasShutdownFailure(self):
+        return self.shutdownFailed
+
+    def _print_shutdown_log(self, role):
+        path = os.path.join(self.dbDirPath or '', self._getFileName(role, '.log'))
+        try:
+            with open(path, 'rb') as log:
+                log.seek(0, os.SEEK_END)
+                log.seek(max(0, log.tell() - 8192))
+                print(Colors.Bred('[TERMINATING] last server log bytes ({0}):\n{1}'.format(
+                    path, log.read(8192).decode('utf-8', errors='replace'))))
+        except OSError as error:
+            print(Colors.Bred('[TERMINATING] could not read server log: {0}'.format(error)))
 
     def verbose_analyse_server_log(self, role):
         path = "{0}".format(self._getFileName(role, '.log'))

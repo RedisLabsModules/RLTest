@@ -267,6 +267,9 @@ class ClusterEnv(object):
         for shard in self.shards:
             shard.broadcast(*cmd)
 
+    def hasShutdownFailure(self):
+        return any(shard.hasShutdownFailure() for shard in self.shards)
+
     def checkExitCode(self):
         for shard in self.shards:
             if not shard.checkExitCode():
