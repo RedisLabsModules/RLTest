@@ -746,14 +746,16 @@ class RLTest:
 
         hasException = False
         setup_ok = False
+        skipped = False
         try:
             before_func()
             setup_ok = True
             fn()
             passed = True
         except unittest.SkipTest:
-            self.printSkip(testFullName)
-            return 0
+            # Still run teardown and consume shutdown failures for this test.
+            skipped = True
+            passed = True
         except TestAssertionFailure:
             if self.args.exit_on_failure:
                 self.takeEnvDown(fullShutDown=True)
@@ -803,7 +805,7 @@ class RLTest:
                 self.printFail(testFullName)
                 numFailed += 1
                 passed = False
-        elif not hasException:
+        elif not hasException and not skipped:
             self.addFailure(test.name, '<Environment destroyed>')
             passed = False
 
@@ -815,7 +817,10 @@ class RLTest:
             input('press any button to move to the next test')
 
         if passed:
-            self.printPass(testFullName)
+            if skipped:
+                self.printSkip(testFullName)
+            else:
+                self.printPass(testFullName)
 
         if hasException:
             numFailed += 1 # exception should be counted as failure

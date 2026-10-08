@@ -314,3 +314,37 @@ def test_environment_replacement_retains_shutdown_failure(tmp_path, replacements
         assert not rl.currEnv.hasShutdownFailure()
     assert rl.testsFailed == {'swap': ['redis process failure']}
     passed.assert_not_called()
+
+
+@pytest.mark.parametrize('forced', [False, True])
+@pytest.mark.parametrize('phase', ['body', 'teardown'])
+def test_skipped_test_consumes_its_shutdown_failure(tmp_path, forced, phase):
+    import unittest
+    from RLTest.loader import TestMethod
+    std = make_env(tmp_path)
+    env = Env.__new__(Env)
+    env.envRunner = std
+    env.assertionFailedSummary = []
+    rl = RLTest.__new__(RLTest)
+    rl.currEnv = env
+    rl.testsFailed = {}
+    rl.args = argparse.Namespace(exit_on_failure=False, stop_on_failure=False)
+
+    def skipped():
+        if phase == 'body':
+            std.shutdownFailed = forced
+        raise unittest.SkipTest()
+
+    def teardown():
+        if phase == 'teardown':
+            std.shutdownFailed = forced
+
+    with patch.object(rl, 'printSkip') as skip, patch.object(rl, 'printFail'), \
+         patch.object(rl, 'printPass') as passed:
+        assert rl._runTest(TestMethod(skipped, 'skipped'), after=teardown) == int(forced)
+        assert not std.hasShutdownFailure()
+        assert skip.call_count == (0 if forced else 1)
+        passed.assert_not_called()
+        assert rl._runTest(TestMethod(lambda: None, 'following')) == 0
+        passed.assert_called_once_with('following')
+    assert rl.testsFailed == ({'skipped': ['redis process failure']} if forced else {})
