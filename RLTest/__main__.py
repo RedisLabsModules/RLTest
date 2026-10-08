@@ -358,10 +358,18 @@ class EnvScopeGuard:
         self.runner = runner
 
     def __enter__(self):
-        pass
+        self.runner._pendingPasses = []
+        self.runner._teardownFailed = False
 
     def __exit__(self, type, value, traceback):
-        self.runner.takeEnvDown()
+        try:
+            self.runner.takeEnvDown()
+        finally:
+            pending = self.runner._pendingPasses
+            self.runner._pendingPasses = None
+        if type is None and not self.runner._teardownFailed:
+            for name in pending:
+                self.runner.printPass(name)
 
 class TestTimeLimit(object):
     """
@@ -633,6 +641,8 @@ class RLTest:
             if self.currEnv.hasShutdownFailure(reset=True) or (self.require_clean_exit and (not self.currEnv.checkExitCode() or not flush_ok)):
                 print(Colors.Bred('\tRedis did not exit cleanly'))
                 self.addFailure(self.currEnv.testName, ['redis process failure'])
+                self._teardownFailed = True
+                self.printFail(self.currEnv.testName)
                 if self.args.check_exitcode:
                     raise Exception('Process exited dirty')
             self.currEnv = None
@@ -848,6 +858,10 @@ class RLTest:
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Bred('[ERROR]')))
 
     def printPass(self, name):
+        pending = getattr(self, '_pendingPasses', None)
+        if pending is not None:
+            pending.append(name)
+            return
         print('%s:\r\n\t%s' % (Colors.Cyan(name), Colors.Green('[PASS]')))
 
     def envScopeGuard(self):
@@ -891,12 +905,18 @@ class RLTest:
                             obj = test.create_instance()
 
                     except unittest.SkipTest:
-                        self.printSkip(test.name)
+                        if self.currEnv and self.currEnv.hasShutdownFailure(reset=True):
+                            self.addFailure(test.name, ['redis process failure'])
+                            self.printFail(test.name)
+                        else:
+                            self.printSkip(test.name)
                         return 0
 
                     except Exception as e:
                         self.printException(e)
                         self.addFailure(test.name + " [__init__]")
+                        if self.currEnv and self.currEnv.hasShutdownFailure(reset=True):
+                            self.addFailure(test.name + " [__init__]", ['redis process failure'])
                         return 0
 
                     failures = 0

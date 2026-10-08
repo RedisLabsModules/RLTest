@@ -348,3 +348,61 @@ def test_skipped_test_consumes_its_shutdown_failure(tmp_path, forced, phase):
         assert rl._runTest(TestMethod(lambda: None, 'following')) == 0
         passed.assert_called_once_with('following')
     assert rl.testsFailed == ({'skipped': ['redis process failure']} if forced else {})
+
+
+@pytest.mark.parametrize('forced', [False, True])
+def test_class_constructor_skip_consumes_shutdown_failure(tmp_path, forced):
+    import unittest
+    from RLTest.env import Defaults
+    from RLTest.loader import TestMethod
+    env = Env.__new__(Env)
+    env.envRunner = make_env(tmp_path)
+    env.assertionFailedSummary = []
+    rl = RLTest.__new__(RLTest)
+    rl.currEnv = env
+    rl.testsFailed = {}
+    rl.args = argparse.Namespace(test_timeout=0, env_reuse=True,
+                                 exit_on_failure=False, stop_on_failure=False)
+    test = Mock(is_class=True, env_spec=None)
+    test.name = 'constructor'
+
+    def skipped():
+        env.envRunner.shutdownFailed = forced
+        raise unittest.SkipTest()
+
+    test.create_instance.side_effect = skipped
+    with patch.object(Defaults, 'curr_test_name', None), \
+         patch.object(env, 'flush'), patch.object(rl, 'printSkip') as skip:
+        assert rl.run_single_test(test, lambda: None) == 0
+        assert skip.call_count == (0 if forced else 1)
+        assert not env.hasShutdownFailure()
+        assert rl._runTest(TestMethod(lambda: None, 'following')) == 0
+    assert rl.testsFailed == ({'constructor': ['redis process failure']} if forced else {})
+
+
+@pytest.mark.parametrize('forced', [False, True])
+def test_pass_output_waits_for_environment_teardown(tmp_path, capsys, forced):
+    from RLTest.env import Defaults
+    from RLTest.loader import TestMethod
+    env = Env.__new__(Env)
+    env.envRunner = make_env(tmp_path)
+    env.testName = 'teardown'
+    env.assertionFailedSummary = []
+    rl = RLTest.__new__(RLTest)
+    rl.currEnv = env
+    rl.testsFailed = {}
+    rl.require_clean_exit = False
+    rl.args = argparse.Namespace(test_timeout=0, env_reuse=False, check_exitcode=False,
+                                 exit_on_failure=False, stop_on_failure=False)
+
+    def stop():
+        assert '[PASS]' not in capsys.readouterr().out
+        env.envRunner.shutdownFailed = forced
+
+    with patch.object(Defaults, 'print_verbose_information_on_failure', False), \
+         patch.object(env, 'isUp', return_value=False), patch.object(env, 'stop', stop):
+        assert rl.run_single_test(TestMethod(lambda: None, 'teardown'), lambda: None) == 1
+    output = capsys.readouterr().out
+    assert ('[PASS]' in output) == (not forced)
+    assert ('[FAIL]' in output) == forced
+    assert rl.testsFailed == ({'teardown': ['redis process failure']} if forced else {})
