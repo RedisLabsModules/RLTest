@@ -19,7 +19,6 @@ SLAVE = 'slave'
 _TERMINATE_TIMEOUT = 30
 _INSTRUMENTED_TERMINATE_TIMEOUT = 300
 _KILL_TIMEOUT = 5
-_SAVE_RETRY_TIMEOUT = 10
 
 
 class StandardEnv(object):
@@ -659,21 +658,7 @@ class StandardEnv(object):
             self.stopEnv()
             self.startEnv()
         else:
-            for con in conns:
-                deadline = time.monotonic() + _SAVE_RETRY_TIMEOUT
-                while True:
-                    try:
-                        # A concurrent BGSAVE may hold an older snapshot. We still
-                        # need our own successful SAVE before reloading.
-                        con.save()
-                        break
-                    except redis.ResponseError as err:
-                        if str(err) != 'Background save already in progress':
-                            raise
-                        remaining = deadline - time.monotonic()
-                        if remaining <= 0:
-                            raise
-                        time.sleep(min(0.05, remaining))
+            [con.save() for con in conns]
             try:
                 # Given we've already saved on the prior step, there is no need to SAVE again on the DEBUG RELOAD
                 [con.execute_command('DEBUG', 'RELOAD', 'NOSAVE') for con in conns]
