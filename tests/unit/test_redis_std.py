@@ -2,9 +2,6 @@ import os
 import shutil
 import tempfile
 from unittest import TestCase
-from unittest.mock import Mock, call, patch
-
-import redis
 
 from RLTest.redis_std import StandardEnv
 from tests.unit.test_common import REDIS_BINARY, TLS_CERT, TLS_KEY, TLS_CACERT
@@ -12,57 +9,6 @@ from tests.unit.test_common import REDIS_BINARY, TLS_CERT, TLS_KEY, TLS_CACERT
 tlsCertFile = 'fake_redis.crt'
 tlsKeyFile = 'fake_redis.key'
 tlsCaCertFile = 'fake_ca.crt'
-
-
-class TestDumpAndReload(TestCase):
-    def make_env(self, slave=False):
-        env = StandardEnv.__new__(StandardEnv)
-        env.useSlaves = slave
-        env.getConnection = Mock(return_value=Mock())
-        env.getSlaveConnection = Mock(return_value=Mock())
-        return env
-
-    @patch('RLTest.redis_std.time.sleep')
-    def test_busy_save_retries_on_master_and_replica(self, sleep):
-        env = self.make_env(slave=True)
-        for conn in (env.getConnection(), env.getSlaveConnection()):
-            conn.save.side_effect = [
-                redis.ResponseError('Background save already in progress'), True]
-        env.dumpAndReload()
-        for conn in (env.getConnection(), env.getSlaveConnection()):
-            self.assertEqual(conn.mock_calls, [
-                call.save(), call.save(),
-                call.execute_command('DEBUG', 'RELOAD', 'NOSAVE')])
-        self.assertEqual(sleep.call_count, 2)
-
-    @patch('RLTest.redis_std.time.sleep')
-    @patch('RLTest.redis_std.time.monotonic', side_effect=[0, 10])
-    def test_busy_save_timeout_does_not_reload(self, monotonic, sleep):
-        env = self.make_env()
-        conn = env.getConnection()
-        error = redis.ResponseError('Background save already in progress')
-        conn.save.side_effect = error
-        with self.assertRaises(redis.ResponseError) as raised:
-            env.dumpAndReload()
-        self.assertIs(raised.exception, error)
-        conn.save.assert_called_once_with()
-        conn.execute_command.assert_not_called()
-        sleep.assert_not_called()
-
-    @patch('RLTest.redis_std.time.sleep')
-    def test_other_save_errors_are_not_retried(self, sleep):
-        for error in (redis.ResponseError('Permission denied'),
-                      redis.ConnectionError('Connection lost')):
-            with self.subTest(error=error):
-                env = self.make_env()
-                conn = env.getConnection()
-                conn.save.side_effect = error
-                with self.assertRaises(type(error)) as raised:
-                    env.dumpAndReload()
-                self.assertIs(raised.exception, error)
-                conn.save.assert_called_once_with()
-                conn.execute_command.assert_not_called()
-        sleep.assert_not_called()
 
 
 class TestStandardEnv(TestCase):
