@@ -14,6 +14,7 @@ import shlex
 import json
 from multiprocessing import Process, Queue, set_start_method
 
+from RLTest.test_hooks import run_with_hooks
 from RLTest.env import Env, TestAssertionFailure, Defaults
 from RLTest.utils import Colors, fix_modules, fix_modulesArgs, is_github_actions
 from RLTest.loader import TestLoader
@@ -746,7 +747,7 @@ class RLTest:
                 return 0
 
         if env is not None:
-            fn = lambda: test.target(env)
+            fn = lambda: run_with_hooks(test.target, env)
             before_func = lambda: before(env)
             after_func = lambda: after(env)
         else:
