@@ -994,20 +994,14 @@ class RLTest:
             print(Colors.Bred('only one test can be run on interactive-debugger use -t'))
             sys.exit(1)
 
-        jobs = Queue()
-        n_jobs = 0
-        for test in self.loader:
-            jobs.put(test, block=False)
-            n_jobs += 1
+        tests = list(self.loader)
+        n_jobs = len(tests)
 
-        def run_jobs_main_thread(jobs):
+        def run_jobs_main_thread(tests):
             nonlocal done
             bar = self.progressbar(n_jobs)
-            for _ in bar:
-                try:
-                    test = jobs.get(timeout=0.1)
-                except Exception as e:
-                    break
+            for i in bar:
+                test = tests[i]
 
                 def on_timeout():
                     nonlocal done
@@ -1027,9 +1021,8 @@ class RLTest:
         def run_jobs(jobs, results, port):
             Defaults.port = port
             while True:
-                try:
-                    test = jobs.get(timeout=0.1)
-                except Exception as e:
+                test = jobs.get()
+                if test is None:
                     break
 
                 # Reset per-test: addFailure() in this worker writes into this
@@ -1081,8 +1074,13 @@ class RLTest:
         # Open group for all tests at the start (parallel execution)
         self._openGitHubActionsTestsGroup()
         if self.parallelism == 1:
-            run_jobs_main_thread(jobs)
+            run_jobs_main_thread(tests)
         else :
+            # A timed get() can see an empty queue before the feeder thread
+            # flushes, so workers block on get() until their None sentinel.
+            jobs = Queue()
+            for test in tests + [None] * self.parallelism:
+                jobs.put(test, block=False)
             processes = []
             currPort = Defaults.port
             for i in range(self.parallelism):
